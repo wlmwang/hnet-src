@@ -4,6 +4,9 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include <pwd.h>
+#include <grp.h>
+
 #include "wMisc.h"
 
 #ifndef FALLTHROUGH_INTENDED
@@ -166,7 +169,6 @@ namespace hnet {
 		        dst++;
 		        src++;
 		    }
-
 		    *dst = '\0';
 		    return dst;
 		}
@@ -213,7 +215,7 @@ namespace hnet {
 			//切换当前目录
 			char dir_path[256] = {0};
 			if (prefix == NULL) {
-				if (GetCwd(dir_path, sizeof(dir_path)) == -1) {
+				if (getcwd(dir_path, sizeof(dir_path)) == -1) {
 					cout << "[system] getcwd failed: " << strerror(errno) << endl;
 					exit(0);
 				}

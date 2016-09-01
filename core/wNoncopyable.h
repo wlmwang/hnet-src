@@ -7,19 +7,19 @@
 #ifndef _W_NONCOPYABLE_H_
 #define _W_NONCOPYABLE_H_
 
-/**
- *  禁止复制、赋值
- */
-class wNoncopyable
-{
+namespace hnet {
+
+// 禁止拷贝、赋值
+class wNoncopyable {
 	protected:
-		wNoncopyable() {};
-		~wNoncopyable() {};
+		wNoncopyable() { }
+		~wNoncopyable() { }
 		
 	private:
 		wNoncopyable(const wNoncopyable&);
 		const wNoncopyable & operator= (const wNoncopyable &);
 };
+}	// namespace hnet
 
 #endif
 

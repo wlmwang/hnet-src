@@ -4,31 +4,21 @@
  * Copyright (C) Hupu, Inc.
  */
 
-template <typename T>
-wConfig<T>::~wConfig() 
-{
-	SAFE_DELETE(mProcTitle);
-}
+#include "wConfig.h"
+#include "wProcTitle.h"
 
-template <typename T>
-int wConfig<T>::GetOption(int argc, const char *argv[])
-{
-	char *p;
-	int  i;
+namespace hnet {
 
-	for (i = 1; i < argc; i++) 
-	{
-		p = (char *) argv[i];
-		if (*p++ != '-') 
-		{
+int wConfig::GetOption(int argc, const char *argv[]) {
+	for (int i = 1; i < argc; i++) {
+		char* p = (char *) argv[i];
+		if (*p++ != '-') {
 			LOG_ERROR(ELOG_KEY, "[system] invalid option: \"%s\"", argv[i]);
 			return -1;
 		}
 
-		while (*p) 
-		{
-			switch (*p++) 
-			{
+		while (*p) {
+			switch (*p++) {
 			case '?':
 			case 'v':
 				mShowVer = 1;
@@ -39,14 +29,12 @@ int wConfig<T>::GetOption(int argc, const char *argv[])
 				break;
 				
 			case 'h':
-				if (*p) 
-				{
+				if (*p) {
 					mHost = p;
 					goto next;
 				}
 
-				if (argv[++i]) 
-				{
+				if (argv[++i]) {
 					mHost = (char *) argv[i];
 					goto next;
 				}
@@ -55,14 +43,12 @@ int wConfig<T>::GetOption(int argc, const char *argv[])
 				return -1;
 				
 			case 'p':
-				if (*p) 
-				{
+				if (*p) {
 					mPort = atoi(p);
 					goto next;
 				}
 
-				if (argv[++i]) 
-				{
+				if (argv[++i]) {
 					mPort = atoi(argv[i]);
 					goto next;
 				}
@@ -71,14 +57,12 @@ int wConfig<T>::GetOption(int argc, const char *argv[])
 				return -1;
 
 			case 's':
-				if (*p) 
-				{
+				if (*p) {
 					mSignal = (char *) p;
 					goto next;
 				}
 
-				if (argv[++i]) 
-				{
+				if (argv[++i]) {
 					mSignal = (char *) argv[i];
 					goto next;
 				}
@@ -99,9 +83,9 @@ int wConfig<T>::GetOption(int argc, const char *argv[])
 	return 0;
 }
 
-template <typename T>
-void wConfig<T>::InitProcTitle(int argc, const char *argv[])
-{
+void wConfig::InitProcTitle(int argc, const char *argv[]) {
 	mProcTitle = new wProcTitle(argc, argv);
 	mProcTitle->InitSetproctitle();
 }
+
+}	// namespace hnet

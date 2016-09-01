@@ -7,19 +7,30 @@
 #ifndef _W_LOG_H_
 #define _W_LOG_H_
 
-#include <stdarg.h>
+#include <cstdarg>
 #include "wCore.h"
 
-//default errorlog
-#define ELOG_KEY	"error"
-#define ELOG_FILE	"log/error.log"
-#define ELOG_FSIZE  10 * 1024 * 1024
-#define ELOG_BACKUP	20
+// 基于log4cpp的日志
+namespace hnet {
 
-/**
- * 基于log4cpp的日志管理库
- * 日志系统开关
- */
+const char*		kErrLogKey = "error";
+const char*		kErrLogFile = "log/error.log";
+const uint32_t	kErrLogSize = 10 << 20;
+const uint8_t	kErrLogBackup = 20;
+
+//日志等级
+//NOTSET <  DEBUG < INFO  < WARN < LEVEL_NOTICE < ERROR  < FATAL 
+enum LogLevel {	
+	LEVEL_FATAL  = 0,
+	LEVEL_ERROR  = 300,
+	LEVEL_WARN   = 400,
+	LEVEL_NOTICE = 500,
+	LEVEL_INFO   = 600,
+	LEVEL_DEBUG  = 700,
+	LEVEL_NOTSET = 800,
+};
+
+// 日志系统开关
 #ifdef USE_LOG4CPP
 #	define	INIT_ROLLINGFILE_LOG(vLogName, vLogDir, vPriority, ...)	InitLog(vLogName, vLogDir, vPriority, ##__VA_ARGS__)
 #	define	RE_INIT_LOG(vLogName, vPriority, ...)	ReInitLog(vLogName, vPriority, ##__VA_ARGS__)
@@ -50,19 +61,6 @@
 #	define 	LOG_FATAL(vLogName, vFmt, ...)
 #	define 	LOG_SHUTDOWN_ALL
 #endif
-
-//日志等级
-//NOTSET <  DEBUG < INFO  < WARN < LEVEL_NOTICE < ERROR  < FATAL 
-enum LogLevel
-{	
-	LEVEL_FATAL  = 0,
-	LEVEL_ERROR  = 300,
-	LEVEL_WARN   = 400,
-	LEVEL_NOTICE = 500,
-	LEVEL_INFO   = 600,
-	LEVEL_DEBUG  = 700,
-	LEVEL_NOTSET = 800,
-};
 
 //初始化一种类型的日志：如果该类型日志已存在，
 //则重新初始化，如果不存在，则创建。
@@ -102,5 +100,7 @@ int LogWarn_va(const char* vLogName, const char* vFmt, va_list ap );
 int LogError_va(const char* vLogName, const char* vFmt, va_list ap );
 int LogFatal_va(const char* vLogName, const char* vFmt, va_list ap );
 int Log_va(const char* vLogName, int vPriority, const char* vFmt, va_list ap );
+
+}	// namespace hnet
 
 #endif

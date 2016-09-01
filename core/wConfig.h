@@ -10,28 +10,31 @@
 #include "wCore.h"
 #include "wLog.h"
 #include "wMisc.h"
-#include "wSingleton.h"
-#include "wProcTitle.h"
+#include "wNoncopyable.h"
 #include "tinyxml.h"	//lib tinyxml
 
-template <typename T>
-class wConfig : public wSingleton<T>
-{
+namespace hnet {
+
+class wProcTitle;
+
+class wConfig: private wNoncopyable {
 	public:
-		virtual ~wConfig();
-		virtual int GetOption(int argc, const char *argv[]);
-		void InitProcTitle(int argc, const char *argv[]);
+	virtual ~wConfig() {
+		misc::SafeDelete(mProcTitle);
+	}
+	virtual int GetOption(int argc, const char *argv[]);
+	void InitProcTitle(int argc, const char *argv[]);
 
 	public:
-		int mShowVer {0};	//版本信息
-		int mDaemon {0};	//是否启动为守护进程
-		char *mSignal {NULL};	//信号字符串
-		char *mHost {NULL};
-		int mPort {0};
+	int mShowVer {0};	//版本信息
+	int mDaemon {0};	//是否启动为守护进程
+	char *mSignal {NULL};	//信号字符串
+	char *mHost {NULL};
+	int mPort {0};
 
-		wProcTitle *mProcTitle {NULL};		//进程标题
+	wProcTitle *mProcTitle {NULL};		//进程标题
 };
 
-#include "wConfig.inl"
+}	// namespace hnet
 
 #endif

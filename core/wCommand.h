@@ -9,38 +9,47 @@
 
 #include "wCore.h"
 
-#define W_CMD(cmd, para) ((para)<<8 | (cmd))
+namespace hnet {
+
+const uint8_t kCmdNull = 0;
+const uint8_t kParaNull = 0;
+
+// 小端
+inline uint16_t CmdId(uint8_t cmd, uint8_t para) {
+	return (static_cast<uint16_t>(para) << 8) | (static_cast<uint16_t>(cmd));
+}
 
 #pragma pack(1)
 
-const BYTE CMD_NULL = 0;
-const BYTE PARA_NULL = 0;
-
-enum
-{
-	SERVER,
-	CLIENT,
-};
-
-struct _Null_t
-{
-	_Null_t(const BYTE cmd, const BYTE para) : mCmd(cmd), mPara(para) {}
-	WORD GetId() const { return mId; }
-	BYTE GetCmd() const { return mCmd; }
-	BYTE GetPara() const { return mPara; }
+struct wNull_t {
+	wNull_t(const uint8_t cmd, const uint8_t para): mCmd(cmd), mPara(para) { }
 	
-	union
-	{
-		WORD mId;
-		struct {BYTE mCmd; BYTE mPara;};
+	uint16_t GetId() const {
+		return mId;
+	}
+	uint8_t GetCmd() const {
+		return mCmd;
+	}
+	uint8_t GetPara() const {
+		return mPara;
+	}
+	
+	// 消息类型
+	union {
+		struct {
+			uint8_t mCmd; 
+			uint8_t mPara;
+		};
+		uint16_t mId;
 	};
 };
 
-struct wCommand : public _Null_t
-{
-	wCommand(const BYTE cmd = CMD_NULL, const BYTE para = PARA_NULL) : _Null_t(cmd, para) {}
+struct wCommand : public wNull_t {
+	wCommand(const uint8_t cmd = kCmdNull, const uint8_t para = kParaNull): wNull_t(cmd, para) { }
 };
 
 #pragma pack()
+
+}	// namespace hnet
 
 #endif
