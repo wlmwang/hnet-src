@@ -62,7 +62,6 @@ const u_char*   kGroup = "root";
 const u_char*   kPidPath = "../log/hnet.pid";
 const u_char*   kLockPath = "../log/hnet.lock";
 
-// worker惊群锁
 const u_char*   kAcceptMutex = "../log/hnet.mutex";
 
 }   // namespace config
@@ -71,6 +70,5 @@ const u_char*   kAcceptMutex = "../log/hnet.mutex";
 using namespace std;
 
 }   // namespace hnet
-
 
 #endif

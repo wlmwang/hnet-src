@@ -7,7 +7,6 @@
 #include "wProcTitle.h"
 
 namespace hnet {
-
 extern char **environ;
 
 wProcTitle::wProcTitle(int argc, const char *argv[]) {

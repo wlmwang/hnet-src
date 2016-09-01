@@ -4,214 +4,84 @@
  * Copyright (C) Hupu, Inc.
  */
 
-/**
- *  用于实现一个在共享内存下的最大长度固定的字符串
- */
+#ifndef _W_SLICE_H_
+#define _W_SLICE_H_
 
-#ifndef _W_STRING_H_
-#define _W_STRING_H_
-
-#include <stdarg.h>
-#include <ostream>
-
+#include <cstdarg>
 #include "wCore.h"
 
-namespace W
-{
-	template <int size>
-	class string
-	{
-		public:
-			string()
-			{
-				memset(&value_, 0, MAX_SIZE+1);
-				len_ = 0;
-			}
+namespace hnet {
 
-			string(const string& s)
-			{
-				strcpy(value_, s.value_);
-				len_ = s.len_;
-			}
+class wSlice {
+public:
+    wSlice() : data_(""), size_(0) { }
+    
+    wSlice(const char* d, size_t n) : data_(d), size_(n) { }
 
-			string(const char *s)
-			{
-				strncpy(value_, s, MAX_SIZE);
-				value_[MAX_SIZE] = '\0';
-				short len = strlen(s);
-				len_ = len > MAX_SIZE ? MAX_SIZE : len;
-			}
+    wSlice(const std::string& s) : data_(s.data()), size_(s.size()) { }
 
-			string(char c)
-			{
-				value_[0] = c;
-				value_[1] = 0;
-				len_ = 1;
-			}
+    wSlice(const char* s) : data_(s), size_(strlen(s)) { }
 
-			inline short length() { return len_; }
+    const char* data() const { return data_; }
 
-			inline const char *c_str() const
-			{
-				return value_;
-			}
+    size_t size() const { return size_; }
 
-			inline string& append(const char *fmt, ...)
-			{
-				va_list ap;
-				va_start(ap, fmt);
-				int n = vsnprintf(&value_[len_], MAX_SIZE - len_, fmt, ap);
-				va_end(ap);
+    bool empty() const { return size_ == 0; }
 
-				if( n >= (MAX_SIZE - len_) ) 
-				{
-					len_ = MAX_SIZE - 1;
-				}
-				else
-				{
-					len_ += n;
-				}
-				return *this;
-			}
+    char operator[](size_t n) const {
+        assert(n < size());
+        return data_[n];
+    }
 
-			inline string& append(const string& s)
-			{
-				strncat(value_, s.value_, MAX_SIZE - value_);
-				len_ = strlen(value_);
+    // Change this slice to refer to an empty array
+    void clear() { data_ = ""; size_ = 0; }
 
-				return *this;
-			}
+    // Drop the first "n" bytes from this slice.
+    void remove_prefix(size_t n) {
+        assert(n <= size());
+        data_ += n;
+        size_ -= n;
+    }
 
-			inline string& append(char c)
-			{
-				if( len_ < MAX_SIZE )
-				{
-					value_[len_] = c;
-					value_[++len_] = 0;
-				}
-				return *this;
-			}
+    // Return a string that contains the copy of the referenced data.
+    std::string ToString() const { return std::string(data_, size_); }
 
-			friend std::ostream& operator<< (std::ostream& os, string& s)
-			{
-				os << s.value_;
-				return os;
-			}
+    // Three-way comparison.  Returns value:
+    //   <  0 iff "*this" <  "b",
+    //   == 0 iff "*this" == "b",
+    //   >  0 iff "*this" >  "b"
+    int compare(const Slice& b) const;
 
-			inline friend string operator+ (const string& lhs, const string &rhs)
-			{
-				return string(lhs).append(rhs);
-			}
+    // Return true iff "x" is a prefix of "*this"
+    bool starts_with(const Slice& x) const {
+        return ((size_ >= x.size_) && (memcmp(data_, x.data_, x.size_) == 0));
+    }
 
-			inline friend string operator+ (const char *lhs, const string &rhs)
-			{
-				return string(lhs).append(rhs);
-			}
+private:
+    const char* data_;
+    size_t size_;
 
-			inline friend string operator+ (const string& lhs, const char *rhs)
-			{
-				return string(lhs).append(rhs);
-			}
-
-			inline friend string operator+ (char lhs, const string &rhs)
-			{
-				return string(lhs).append(rhs);
-			}
-
-			inline friend string operator+ (const string& lhs, char rhs)
-			{
-				return string(lhs).append(string(rhs));
-			}
-
-			inline string& operator+= (const string& s)
-			{
-				return append(s);
-			}
-
-			inline string& operator+= (const char *s)
-			{
-				return append(s);
-			}
-
-			inline char operator[] (short index)
-			{
-				if( index <= len_ )
-				{
-					return value_[index];
-				}
-				return 0;
-			}
-
-			inline string& operator= (const string& s)
-			{
-				if( this != &s )
-				{
-					strcpy(value_, s.value_);
-					len_ = s.len_;
-				}
-				return *this;
-			}
-
-			inline bool operator== (const string& s) const
-			{
-				if( this != &s )
-				{
-					if( this != &s )
-					{
-						if( len_ != s.len_ )
-						{
-							return false;
-						}
-						return (strcmp(value_, s.value_) == 0);
-					}
-					return true;
-				}
-			}
-
-			inline bool operator< (const string& s) const
-			{
-				if( this != &s )
-				{
-					if( len_ < s.len_ )
-					{
-						return true;
-					}
-
-					if( len_ > s.len_ )
-					{
-						return false;
-					}
-
-					return (strcmp(value_, s.value_) < 0);
-				}
-				return false;
-			}
-
-			inline bool operator> (const string& s) const
-			{
-				if( this != &s )
-				{
-					if( len_ > s.len_ )
-					{
-						return true;
-					}
-
-					if( len_ < s.len_ )
-					{
-						return false;
-					}
-
-					return (strcmp(value_, s.value_) > 0);
-				}
-
-				return false;
-			}
-
-		private:
-			enum {MAX_SIZE = size};
-			char value_[MAX_SIZE + 1];
-			short len_;
-	};
+ // Intentionally copyable
 };
+
+inline bool operator==(const Slice& x, const Slice& y) {
+    return ((x.size() == y.size()) && (memcmp(x.data(), y.data(), x.size()) == 0));
+}
+
+inline bool operator!=(const Slice& x, const Slice& y) {
+    return !(x == y);
+}
+
+inline int Slice::compare(const Slice& b) const {
+    const size_t min_len = (size_ < b.size_) ? size_ : b.size_;
+    int r = memcmp(data_, b.data_, min_len);
+    if (r == 0) {
+      if (size_ < b.size_) r = -1;
+      else if (size_ > b.size_) r = +1;
+    }
+    return r;
+}
+
+}   // namespace hnet
 
 #endif

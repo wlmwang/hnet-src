@@ -14,25 +14,25 @@
 #include "tinyxml.h"	//lib tinyxml
 
 namespace hnet {
-
 class wProcTitle;
 
 class wConfig: private wNoncopyable {
-	public:
-	virtual ~wConfig() {
-		misc::SafeDelete(mProcTitle);
-	}
-	virtual int GetOption(int argc, const char *argv[]);
-	void InitProcTitle(int argc, const char *argv[]);
+public:
+    wConfig() : mShowVer(0), mDaemon(0), mSignal(NULL), mHost(NULL), mPort(0),mProcTitle(NULL) { }
+    virtual ~wConfig() {
+        misc::SafeDelete(mProcTitle);
+    }
+    virtual int GetOption(int argc, const char *argv[]);
+    void InitProcTitle(int argc, const char *argv[]);
 
-	public:
-	int mShowVer {0};	//版本信息
-	int mDaemon {0};	//是否启动为守护进程
-	char *mSignal {NULL};	//信号字符串
-	char *mHost {NULL};
-	int mPort {0};
+public:
+    int mShowVer;	//版本信息
+    int mDaemon;	//是否启动为守护进程
+    char *mSignal;	//信号字符串
+    char *mHost;
+    int mPort;
 
-	wProcTitle *mProcTitle {NULL};		//进程标题
+    wProcTitle *mProcTitle;		//进程标题
 };
 
 }	// namespace hnet

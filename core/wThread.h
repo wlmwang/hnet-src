@@ -19,51 +19,51 @@ namespace hnet {
 
 class wThread : private wNoncopyable {
 public:
-	wThread() : mRunStatus(kThreadBlocked), mMutex(NULL), mCond(NULL) { }
-	virtual ~wThread() { }
+    wThread() : mRunStatus(kThreadBlocked), mMutex(NULL), mCond(NULL) { }
+    virtual ~wThread() { }
 
-	virtual int PrepareRun() = 0;
-	virtual int Run() = 0;
+    virtual int PrepareRun() = 0;
+    virtual int Run() = 0;
 
-	int StartThread(int join = 1);
-	int StopThread();
-	int Wakeup();
-	int CondBlock();
+    int StartThread(int join = 1);
+    int StopThread();
+    int Wakeup();
+    int CondBlock();
 
-	pthread_t GetTid() {
-		return mTid;
-	}
+    pthread_t GetTid() {
+            return mTid;
+    }
 	
 private:
-	static void* ThreadWrapper(void *pvArgs);
+    static void* ThreadWrapper(void *pvArgs);
 
 protected:
-	int CancelThread() {
-		return pthread_cancel(mTid);
-	}
-	bool IsBlocked() {
-		return mRunStatus == kThreadBlocked;
-	}
-	bool IsRunning() {
-		return mRunStatus == kThreadRunning;
-	}
-	bool IsStopped() {
-		return mRunStatus == kThreadStopped;
-	}
-	
-	enum pthreadStatus {
-		kThreadInit = 0,
-		kThreadBlocked = 1,
-		kThreadRunning = 2,
-		kThreadStopped = 3
-	};
+    int CancelThread() {
+        return pthread_cancel(mTid);
+    }
+    bool IsBlocked() {
+        return mRunStatus == kThreadBlocked;
+    }
+    bool IsRunning() {
+        return mRunStatus == kThreadRunning;
+    }
+    bool IsStopped() {
+        return mRunStatus == kThreadStopped;
+    }
 
-	pthreadStatus mRunStatus;
+    enum pthreadStatus {
+        kThreadInit = 0,
+        kThreadBlocked = 1,
+        kThreadRunning = 2,
+        kThreadStopped = 3
+    };
 
-	pthread_t mTid;
-	pthread_attr_t mAttr;
-	wMutex *mMutex;
-	wCond *mCond;
+    pthreadStatus mRunStatus;
+
+    pthread_t mTid;
+    pthread_attr_t mAttr;
+    wMutex *mMutex;
+    wCond *mCond;
 };
 
 }	// namespace hnet

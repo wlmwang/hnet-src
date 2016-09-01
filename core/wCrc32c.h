@@ -3,6 +3,7 @@
  * Copyright (C) Anny Wang.
  * Copyright (C) Hupu, Inc.
  */
+
 #ifndef _W_CRC32C_H_
 #define _W_CRC32C_H_
 
@@ -10,7 +11,7 @@
 
 namespace hnet {
 namespace crc32c {
-	
+
 // 掩码
 static const uint32_t kMaskDelta = 0xa282ead8ul;
 

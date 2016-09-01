@@ -25,39 +25,41 @@
 #define ICMP_DATA   5
 #define NOT_PRI		-100
 
-class wPing : private wNoncopyable
-{
-	public:
-		wPing();
-		~wPing();
-		
-		int Open();
-		int Close();
+namespace hnet {
+class wPing : private wNoncopyable {
+public:
+    wPing();
+    ~wPing();
 
-		int SetTimeout(float fTimeout = 0.1);	//单位：秒
-		int SetSendTimeout(float fTimeout = 0.1);
-		int SetRecvTimeout(float fTimeout = 0.1);
+    int Open();
+    int Close();
 
-		int Ping(const char *pIp);
-		int SendPacket();
-		int RecvPacket();
+    int SetTimeout(float fTimeout = 0.1);	//单位：秒
+    int SetSendTimeout(float fTimeout = 0.1);
+    int SetRecvTimeout(float fTimeout = 0.1);
 
-		int Pack();
-		int Unpack(char *buf, int len);
-		unsigned short CalChksum(unsigned short *addr, int len);
-		
-	protected:
-		pid_t mPid {0};
-		int mFD {FD_UNKNOWN};
-		int mSeqNum {0};
-		string mStrIp;
-		
-		struct sockaddr_in mDestAddr;	//目的地址
-		struct sockaddr_in mFromAddr;	//返回地址
+    int Ping(const char *pIp);
+    int SendPacket();
+    int RecvPacket();
 
-		char mSendpacket[PACKET_SIZE] {'\0'};
-		char mRecvpacket[PACKET_SIZE] {'\0'};
-		char mCtlpacket[PACKET_SIZE] {'\0'};	
+    int Pack();
+    int Unpack(char *buf, int len);
+    unsigned short CalChksum(unsigned short *addr, int len);
+
+protected:
+    pid_t mPid {0};
+    int mFD {FD_UNKNOWN};
+    int mSeqNum {0};
+    string mStrIp;
+
+    struct sockaddr_in mDestAddr;	//目的地址
+    struct sockaddr_in mFromAddr;	//返回地址
+
+    char mSendpacket[PACKET_SIZE] {'\0'};
+    char mRecvpacket[PACKET_SIZE] {'\0'};
+    char mCtlpacket[PACKET_SIZE] {'\0'};	
 };
+
+}   // namespace hnet
 
 #endif
