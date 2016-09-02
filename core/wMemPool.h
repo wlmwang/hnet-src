@@ -12,8 +12,7 @@
 
 namespace hnet {
 
-class wMemPool : private wNoncopyable
-{
+class wMemPool : private wNoncopyable {
 public:
     wMemPool(): alloc_ptr_(NULL), alloc_bytes_remaining_(0), blocks_memory_(0) { }
     ~wMemPool();
@@ -22,7 +21,7 @@ public:
     char* AllocateAligned(size_t bytes);
 
     size_t MemoryUsage() const {
-            return blocks_memory_ + blocks_.capacity() * sizeof(char*);
+        return blocks_memory_ + blocks_.capacity() * sizeof(char*);
     }
 
 protected:

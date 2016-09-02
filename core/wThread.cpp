@@ -18,20 +18,20 @@ void* wThread::ThreadWrapper(void *pvArgs) {
 }
 
 int wThread::StartThread(int join) {
-    pthread_attr_init(&mAttr);
-    pthread_attr_setscope(&mAttr, PTHREAD_SCOPE_SYSTEM);	// 设置线程状态为与系统中所有线程一起竞争CPU时间
+    PthreadCall("attr_init", pthread_attr_init(&mAttr));
+    PthreadCall("attr_setscope", pthread_attr_setscope(&mAttr, PTHREAD_SCOPE_SYSTEM));	// 设置线程状态为与系统中所有线程一起竞争CPU时间
     if (join == 1) {
-        pthread_attr_setdetachstate(&mAttr, PTHREAD_CREATE_JOINABLE);	// 设置非分离的线程
+        PthreadCall("attr_setdetachstate", pthread_attr_setdetachstate(&mAttr, PTHREAD_CREATE_JOINABLE));	// 设置非分离的线程
         mMutex = new wMutex();
         mCond = new wCond();
     } else {
-        pthread_attr_setdetachstate(&mAttr, PTHREAD_CREATE_DETACHED);
+        PthreadCall("attr_setdetachstate", pthread_attr_setdetachstate(&mAttr, PTHREAD_CREATE_DETACHED));
     }
 
     mRunStatus = kThreadRunning;
-    pthread_create(&mTid, &mAttr, &wThread::ThreadWrapper, (void *)this);
+    PthreadCall("create", pthread_create(&mTid, &mAttr, &wThread::ThreadWrapper, (void *)this));
 
-    pthread_attr_destroy(&mAttr);
+    PthreadCall("attr_destroy", pthread_attr_destroy(&mAttr));
     return 0;
 }
 
@@ -41,7 +41,7 @@ int wThread::StopThread() {
     mCond->Signal();
     mMutex->Unlock();
 
-    pthread_join(mTid, NULL);	// 等待该线程终止
+    PthreadCall("join", pthread_join(mTid, NULL));	// 等待该线程终止
     return 0;
 }
 
@@ -49,7 +49,8 @@ int wThread::CondBlock() {
     mMutex->Lock();
     while (IsBlocked() || mRunStatus == kThreadStopped) {	// 线程被阻塞或者停止
         if (mRunStatus == kThreadStopped) {
-            pthread_exit(NULL);
+            PthreadCall("exit", pthread_exit(NULL));
+            return -1;
         }
         mRunStatus = kThreadBlocked;
         mCond->Wait(*mMutex);	// 进入休眠状态
@@ -73,5 +74,5 @@ int wThread::Wakeup() {
     return 0;
 }
 
-}
+}   // namespace hnet
 

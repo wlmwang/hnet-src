@@ -6,71 +6,59 @@
 
 #include "wReadline.h"
 
+namespace hnet {
+
 const char *wReadline::mQuitCmd[] = {"Quit", "Exit", "End", "Bye"};
 const unsigned char wReadline::mQuitCmdNum = sizeof(wReadline::mQuitCmd) / sizeof(wReadline::mQuitCmd[0]);
 
-wReadline::wReadline()
-{
+wReadline::wReadline() {
 	memcpy(mPrompt, "Anny>", 5);
 }
 
-wReadline::~wReadline()
-{
+wReadline::~wReadline() {
 	SAFE_FREE(mLineRead);
 }
 
-inline void wReadline::SetPrompt(char* cStr, int iLen)
-{
+inline void wReadline::SetPrompt(char* cStr, int iLen) {
 	memcpy(mPrompt, cStr, iLen);
 }
 
-bool wReadline::SetCompletion(CompletionFunc_t pFunc)
-{
-	if (pFunc != NULL)
-	{
+bool wReadline::SetCompletion(CompletionFunc_t pFunc) {
+	if (pFunc != NULL) {
 		rl_attempted_completion_function = pFunc;
 		return true;
-	}
-	else if(mFunc != NULL)
-	{
+	} else if (mFunc != NULL) {
 		rl_attempted_completion_function = mFunc;
 		return true;
 	}
 	return false;
 }
 
-char *wReadline::ReadCmdLine()
-{
+char *wReadline::ReadCmdLine() {
 	SAFE_FREE(mLineRead);
 	mLineRead = readline(mPrompt);
 
 	mStripLine = StripWhite(mLineRead);
-	if(mStripLine && *mStripLine)
-	{
+	if (mStripLine && *mStripLine) {
 		add_history(mStripLine);
 	}
 
 	return mStripLine;
 }
 
-char *wReadline::StripWhite(char *pOrig)
-{
-	if(NULL == pOrig)
-		return NULL;
+char *wReadline::StripWhite(char *pOrig) {
+	if (NULL == pOrig) return NULL;
 
 	char *pStripHead = pOrig;
-	while(isspace(*pStripHead))
-	{
+	while (isspace(*pStripHead)) {
 		pStripHead++;
 	}
-	if('\0' == *pStripHead)
-	{
+	if ('\0' == *pStripHead) {
 		return pStripHead;
 	}
 
 	char *pStripTail = pStripHead + strlen(pStripHead) - 1;
-	while(pStripTail > pStripHead && isspace(*pStripTail))
-	{
+	while (pStripTail > pStripHead && isspace(*pStripTail)) {
 		pStripTail--;
 	}
 	
@@ -79,16 +67,13 @@ char *wReadline::StripWhite(char *pOrig)
 	return pStripHead;
 }
 
-bool wReadline::IsUserQuitCmd(char *pCmd)
-{
-	for(unsigned char ucQuitCmdIdx = 0; ucQuitCmdIdx < wReadline::mQuitCmdNum; ucQuitCmdIdx++)
-	{
-		if(!strcasecmp(pCmd, wReadline::mQuitCmd[ucQuitCmdIdx]))
-		{
-			return true;
-		}
+bool wReadline::IsUserQuitCmd(char *pCmd) {
+	for (unsigned char ucQuitCmdIdx = 0; ucQuitCmdIdx < wReadline::mQuitCmdNum; ucQuitCmdIdx++) {
+		if (!strcasecmp(pCmd, wReadline::mQuitCmd[ucQuitCmdIdx])) return true;
 	}
 
 	return false;
 }
+
+}	// namespace hnet
 

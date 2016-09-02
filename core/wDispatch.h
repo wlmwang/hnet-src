@@ -12,45 +12,43 @@
 #include <functional>
 
 #include "wCore.h"
+#include "wCommand.h"
 #include "wNoncopyable.h"
 
-#define DEC_DISP(dispatch) wDispatch<function<int(char*, int)>, int> dispatch
+#define DEC_DISP(dispatch) hnet::wDispatch<function<int(char*, int)>, int16_t> dispatch
 #define DEC_FUNC(func) int func(char *pBuffer, int iLen)
-#define REG_FUNC(ActIdx, vFunc) wDispatch<function<int(char*, int)>, int>::Func_t {ActIdx, std::bind(vFunc, this, std::placeholders::_1, std::placeholders::_2)}
-#define REG_DISP(dispatch, classname, cmdid, paraid, func) dispatch.Register(classname, W_CMD(cmdid, paraid), REG_FUNC(W_CMD(cmdid, paraid), func));
+#define REG_FUNC(ActIdx, vFunc) hnet::wDispatch<function<int(char*, int)>, int16_t>::Func_t {ActIdx, std::bind(vFunc, this, std::placeholders::_1, std::placeholders::_2)}
+#define REG_DISP(dispatch, classname, cmdid, paraid, func) dispatch.Register(classname, hnet::CmdId(cmdid, paraid), REG_FUNC(hnet::CmdId(cmdid, paraid), func));
 
 namespace hnet {
 
-// 每种回调Func_t（mFunc调用参数不同）需不同的wDispatch
-template<typename T, typename IDX>
+template<typename T, typename IDX = int16_t>
 class wDispatch : private wNoncopyable {
 public:
-    struct Func_t {
-        Func_t() {
-            mActIdx = "";
-        }
-        Func_t(IDX ActIdx, T Func) {
-            mActIdx = ActIdx;
-            mFunc = Func;
-        }
-        
-        IDX mActIdx;
-        // T为function类型，例：function<void(void)>
-        // mFunc用类似std::bind函数绑定，例：bind(&wTcpTask::Get, this, std::placeholders::_1)
-        T mFunc;
-    };
-    
+    struct Func_t;
+
     wDispatch() : mProcNum(0) { }
     bool Register(string className, IDX ActIdx, struct Func_t vFunc);
-    struct Func_t * GetFuncT(string className, IDX ActIdx);
-
+    struct Func_t* GetFuncT(string className, IDX ActIdx);
 protected:
-    map<string, vector<struct Func_t> > mProc;	//注册回调方法
+    map<string, vector<struct Func_t> > mProc;	// 注册回调方法
     int mProcNum;
 };
 
-template<typename T,typename IDX>
-bool wDispatch<T,IDX>::Register(string className, IDX ActIdx, struct Func_t vFunc) {
+template<typename T, typename IDX>
+struct wDispatch<T, IDX>::Func_t {
+    // 路由id，一般每个消息头都有一个表示消息类型
+    IDX mActIdx;
+    // T为function类型，例：function<int(char*, int)>
+    // mFunc用类似std::bind函数绑定，例：bind(&wTcpTask::Get, this, std::placeholders::_1)
+    T mFunc;
+
+    Func_t() : mActIdx("") { }
+    Func_t(IDX ActIdx, T Func) : mActIdx(ActIdx), mFunc(Func) { }
+};
+
+template<typename T, typename IDX>
+bool wDispatch<T, IDX>::Register(string className, IDX ActIdx, struct Func_t vFunc) {
     vector<struct Func_t> vf;
     typename map<string, vector<struct Func_t> >::iterator mp = mProc.find(className);
     if (mp != mProc.end()) {
@@ -74,8 +72,8 @@ bool wDispatch<T,IDX>::Register(string className, IDX ActIdx, struct Func_t vFun
     //return itRet.second;
 }
 
-template<typename T,typename IDX>
-struct wDispatch<T,IDX>::Func_t* wDispatch<T,IDX>::GetFuncT(string className, IDX ActIdx) {
+template<typename T, typename IDX>
+struct wDispatch<T, IDX>::Func_t* wDispatch<T,IDX>::GetFuncT(string className, IDX ActIdx) {
     typename map<string, vector<struct Func_t> >::iterator mp = mProc.find(className);
     if (mp != mProc.end()) {
         typename vector<struct Func_t>::iterator itvf = mp->second.begin();

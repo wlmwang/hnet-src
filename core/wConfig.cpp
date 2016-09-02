@@ -6,13 +6,20 @@
 
 #include "wConfig.h"
 #include "wProcTitle.h"
+#include "wLog.h"
+#include "wMisc.h"
+#include "tinyxml.h"    //lib tinyxml
 
 namespace hnet {
+wConfig::~wConfig() {
+    misc::SafeDelete(mProcTitle);
+}
+
 int wConfig::GetOption(int argc, const char *argv[]) {
     for (int i = 1; i < argc; i++) {
         char* p = (char *) argv[i];
         if (*p++ != '-') {
-            LOG_ERROR(ELOG_KEY, "[system] invalid option: \"%s\"", argv[i]);
+            LOG_ERROR(kErrLogKey, "[system] invalid option: \"%s\"", argv[i]);
             return -1;
         }
 
@@ -38,7 +45,7 @@ int wConfig::GetOption(int argc, const char *argv[]) {
                     goto next;
                 }
 
-                LOG_ERROR(ELOG_KEY, "[system] option \"-h\" requires ip address");
+                LOG_ERROR(kErrLogKey, "[system] option \"-h\" requires ip address");
                 return -1;
 
             case 'p':
@@ -52,7 +59,7 @@ int wConfig::GetOption(int argc, const char *argv[]) {
                     goto next;
                 }
 
-                LOG_ERROR(ELOG_KEY, "[system] option \"-h\" requires port number");
+                LOG_ERROR(kErrLogKey, "[system] option \"-h\" requires port number");
                 return -1;
 
             case 's':
@@ -66,10 +73,10 @@ int wConfig::GetOption(int argc, const char *argv[]) {
                     goto next;
                 }
 
-                LOG_ERROR(ELOG_KEY, "[system] option \"-h\" requires signal number");
+                LOG_ERROR(kErrLogKey, "[system] option \"-h\" requires signal number");
                 return -1;	
             default:
-                LOG_ERROR(ELOG_KEY, "[system] invalid option: \"%c\"", *(p - 1));
+                LOG_ERROR(kErrLogKey, "[system] invalid option: \"%c\"", *(p - 1));
                 return -1;
             }
         }

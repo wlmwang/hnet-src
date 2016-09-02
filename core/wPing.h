@@ -15,9 +15,8 @@
 #include <netdb.h>
 
 #include "wCore.h"
-#include "wMisc.h"
-#include "wNoncopyable.h"
 #include "wLog.h"
+#include "wNoncopyable.h"
 
 #define PACKET_SIZE	4096
 #define PDATA_SIZE	56
@@ -47,17 +46,17 @@ public:
     unsigned short CalChksum(unsigned short *addr, int len);
 
 protected:
-    pid_t mPid {0};
-    int mFD {FD_UNKNOWN};
-    int mSeqNum {0};
+    pid_t mPid;
+    int mFD;
+    int mSeqNum;
     string mStrIp;
 
     struct sockaddr_in mDestAddr;	//目的地址
     struct sockaddr_in mFromAddr;	//返回地址
 
-    char mSendpacket[PACKET_SIZE] {'\0'};
-    char mRecvpacket[PACKET_SIZE] {'\0'};
-    char mCtlpacket[PACKET_SIZE] {'\0'};	
+    char mSendpacket[PACKET_SIZE];
+    char mRecvpacket[PACKET_SIZE];
+    char mCtlpacket[PACKET_SIZE];	
 };
 
 }   // namespace hnet

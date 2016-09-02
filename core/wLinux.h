@@ -7,7 +7,8 @@
 #ifndef _W_LINUX_H_
 #define _W_LINUX_H_
 
-#define _FILE_OFFSET_BITS  64	// off_t 突破单文件4G大小限制，系统库sys/types.h中使用
+// off_t 突破单文件4G大小限制，系统库sys/types.h中使用
+#define _FILE_OFFSET_BITS  64
 
 #include <unistd.h>
 #include <sched.h>

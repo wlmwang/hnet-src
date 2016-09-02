@@ -4,7 +4,7 @@
  * Copyright (C) Hupu, Inc.
  */
 
-#include "wCore.h"
+#include "wCrc32c.h"
 #include "wMisc.h"
 
 namespace hnet {
@@ -277,7 +277,7 @@ static const uint32_t table3_[256] = {
 };
 
 // Used to fetch a naturally-aligned 32-bit word in little endian byte-order
-static inline uint32_t LE_LOAD32(const uint8_t *p) {
+static inline uint32_t LeLoad32(const uint8_t *p) {
     return coding::DecodeFixed32(reinterpret_cast<const char*>(p));
 }
 
@@ -292,7 +292,7 @@ uint32_t Extend(uint32_t crc, const char* buf, size_t size) {
 	}
 
 	auto Step4 = [&]() {
-		uint32_t c = l ^ LE_LOAD32(p);
+		uint32_t c = l ^ LeLoad32(p);
 		p += 4;
 		l = table3_[c & 0xff] ^ table2_[(c >> 8) & 0xff] ^ table1_[(c >> 16) & 0xff] ^ table0_[c >> 24];
 	}

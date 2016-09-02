@@ -6,11 +6,9 @@
 
 #include <malloc.h>
 #include <new>
-
 #include "wMemPool.h"
 
 namespace hnet {
-static const int kBlockSize = 4096;	// 页大小
 
 wMemPool::~wMemPool() {
     for (size_t i = 0; i < blocks_.size(); i++) {

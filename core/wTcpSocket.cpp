@@ -6,6 +6,7 @@
 
 #include "wTcpSocket.h"
 
+namespace hnet {
 int wTcpSocket::Open()
 {
 	if ((mFD = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -341,3 +342,5 @@ int wTcpSocket::SetKeepAlive(int iIdle, int iIntvl, int iCnt)
     
     return 0;
 }
+
+}	// namespace hnet

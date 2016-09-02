@@ -10,14 +10,12 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <poll.h>
-
 #include "wSocket.h"
 
-/**
- *  UNIX Domain Socket基础类
- */
-class wUnixSocket : public wSocket
-{
+namespace hnet {
+
+// UNIX Domain Socket基础类
+class wUnixSocket : public wSocket {
 	public:
 		wUnixSocket(SOCK_TYPE eType = SOCK_TYPE_LISTEN, SOCK_PROTO eProto = SOCK_PROTO_UNIX, SOCK_FLAG eFlag = SOCK_FLAG_RVSD) : wSocket(eType, eProto, eFlag) {}
 
@@ -27,5 +25,8 @@ class wUnixSocket : public wSocket
 		virtual int Connect(string sHost, unsigned int nPort = 0, float fTimeout = 30);
 		virtual int Accept(struct sockaddr* pClientSockAddr, socklen_t *pSockAddrSize);	
 };
+
+}
+
 
 #endif

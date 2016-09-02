@@ -8,20 +8,15 @@
 #define _W_CONFIG_H_
 
 #include "wCore.h"
-#include "wLog.h"
-#include "wMisc.h"
 #include "wNoncopyable.h"
-#include "tinyxml.h"	//lib tinyxml
 
 namespace hnet {
-class wProcTitle;
 
-class wConfig: private wNoncopyable {
+class wProcTitle;
+class wConfig : private wNoncopyable {
 public:
-    wConfig() : mShowVer(0), mDaemon(0), mSignal(NULL), mHost(NULL), mPort(0),mProcTitle(NULL) { }
-    virtual ~wConfig() {
-        misc::SafeDelete(mProcTitle);
-    }
+    wConfig() : mShowVer(0), mDaemon(0), mSignal(NULL), mHost(NULL), mPort(0), mProcTitle(NULL) { }
+    virtual ~wConfig();
     virtual int GetOption(int argc, const char *argv[]);
     void InitProcTitle(int argc, const char *argv[]);
 
@@ -31,7 +26,6 @@ public:
     char *mSignal;	//信号字符串
     char *mHost;
     int mPort;
-
     wProcTitle *mProcTitle;		//进程标题
 };
 

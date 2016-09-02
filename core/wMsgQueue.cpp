@@ -6,8 +6,8 @@
 
 #include "wMsgQueue.h"
 
-void wMsgQueue::SetBuffer(char *vBuffer, int vBufferLen)
-{
+namespace hnet {
+void wMsgQueue::SetBuffer(char *vBuffer, int vBufferLen) {
 	char *pBuffer = vBuffer;
 	mBeginIdxPtr = (int *)pBuffer;	//前4位开始地址
 	pBuffer += sizeof(int);
@@ -17,8 +17,7 @@ void wMsgQueue::SetBuffer(char *vBuffer, int vBufferLen)
 	mQueueSize = vBufferLen - 2 * sizeof(int);	//实际数据长度
 }
 
-int wMsgQueue::Pop(char *pBuffer, int vBufferLen)
-{
+int wMsgQueue::Pop(char *pBuffer, int vBufferLen) {
 	if (pBuffer == NULL) return -1;
 
 	//临时值，防止发送端同时操作产生同步问题
@@ -29,18 +28,14 @@ int wMsgQueue::Pop(char *pBuffer, int vBufferLen)
 
 	// 当前所有消息占据的长度
 	int iAllMsgLen;
-	if (iBeginIdx > iEndIdx)
-	{
+	if (iBeginIdx > iEndIdx) {
 		iAllMsgLen = (int)mQueueSize - iBeginIdx + iEndIdx;
-	}
-	else
-	{
+	} else {
 		iAllMsgLen = iEndIdx - iBeginIdx;
 	}
 	
 	//如果消息有问题，则直接忽略
-	if (iAllMsgLen <= (int)sizeof(int))
-	{
+	if (iAllMsgLen <= (int)sizeof(int)) {
 		*mBeginIdxPtr = iEndIdx;
 		return -2;
 	}
@@ -48,14 +43,11 @@ int wMsgQueue::Pop(char *pBuffer, int vBufferLen)
 	//消息长度
 	int iHeadMsgLen;
 	//分段长度
-	if (iBeginIdx > (int)mQueueSize - (int)sizeof(int)) 
-	{
+	if (iBeginIdx > (int)mQueueSize - (int)sizeof(int)) {
 		int iLenCopyOnce = (int)mQueueSize - iBeginIdx;
 		memcpy((void *)&iHeadMsgLen, (const void *)(mBufferPtr + iBeginIdx), iLenCopyOnce);
 		memcpy((void *)(((char *)&iHeadMsgLen) + iLenCopyOnce), (const void *)mBufferPtr, (int)sizeof(int) - iLenCopyOnce);
-	}
-	else 
-	{
+	} else {
 		iHeadMsgLen = *(int *)(mBufferPtr + iBeginIdx);
 	}
 
@@ -67,18 +59,14 @@ int wMsgQueue::Pop(char *pBuffer, int vBufferLen)
 
 	int iMsgEndIdx = iBeginIdx + (int)sizeof(int) + (int)iHeadMsgLen;
 	//如果消息没有分段
-	if (iMsgEndIdx <= (int)mQueueSize) 
-	{
+	if (iMsgEndIdx <= (int)mQueueSize) {
 		memcpy((void *)pBuffer, (const void *)(mBufferPtr + iBeginIdx + (int)sizeof(int)), iHeadMsgLen);
 		*mBeginIdxPtr = iMsgEndIdx;
 		return iHeadMsgLen;
-	}
-	else 
-	{
+	} else {
 		//前半段的长度
 		int iTmpLen = (int)mQueueSize - (int)sizeof(int) - iBeginIdx;
-		if (iTmpLen <= 0) 
-		{
+		if (iTmpLen <= 0) {
 			memcpy((void *)pBuffer, (const void *)(mBufferPtr - iTmpLen), iHeadMsgLen);
 			*mBeginIdxPtr = iHeadMsgLen - iTmpLen;
 			return iHeadMsgLen;
@@ -95,8 +83,7 @@ int wMsgQueue::Pop(char *pBuffer, int vBufferLen)
 	}
 }
 
-int wMsgQueue::Push(char *pBuffer, int vBufferLen)
-{
+int wMsgQueue::Push(char *pBuffer, int vBufferLen) {
 	W_ASSERT(pBuffer != NULL || vBufferLen <= 0 || vBufferLen > mQueueSize - MSG_QUEUE_RESERVE_LEN, return -1);
 
 	int iBeginIdx = *mBeginIdxPtr;
@@ -104,16 +91,11 @@ int wMsgQueue::Push(char *pBuffer, int vBufferLen)
 
 	//剩余的空间长度
 	int iLastLen;
-	if (iBeginIdx == iEndIdx)
-	{
+	if (iBeginIdx == iEndIdx) {
 		iLastLen = (int)mQueueSize;
-	}
-	else if (iBeginIdx > iEndIdx)
-	{
+	} else if (iBeginIdx > iEndIdx) {
 		iLastLen = iBeginIdx - iEndIdx;
-	}
-	else
-	{
+	} else {
 		iLastLen = (int)mQueueSize - iEndIdx + iBeginIdx;
 	}
 
@@ -127,35 +109,27 @@ int wMsgQueue::Push(char *pBuffer, int vBufferLen)
 	if ((int)vBufferLen <= 0 || (int)vBufferLen > (int)mQueueSize - MSG_QUEUE_RESERVE_LEN) return -3;
 
 	//拷贝长度，如果分段
-	if (iEndIdx > (int)mQueueSize - (int)sizeof(int)) 
-	{
+	if (iEndIdx > (int)mQueueSize - (int)sizeof(int)) {
 		int iLenCopyOnce = (int)mQueueSize - iEndIdx;
 		memcpy((void *)(mBufferPtr + iEndIdx), (const void *)&vBufferLen, iLenCopyOnce);
 		memcpy((void *)mBufferPtr, (const void *)(((char *)&vBufferLen) + iLenCopyOnce), sizeof(int) - iLenCopyOnce);
-	}
-	// 如果不分段
-	else
-	{
+	} else {	// 如果不分段
 		*(int *)(mBufferPtr + iEndIdx) = vBufferLen;
 	}
 
 	//确定当前的拷贝入口
 	int iNowEndIdx = iEndIdx + (int)sizeof(int);
-	if (iNowEndIdx >= (int)mQueueSize)
-	{
+	if (iNowEndIdx >= (int)mQueueSize) {
 		iNowEndIdx -= (int)mQueueSize;
 	}
 
 	int iMsgEndIdx = iNowEndIdx + vBufferLen;
 	//不需要分段
-	if (iMsgEndIdx <= (int)mQueueSize)
-	{
+	if (iMsgEndIdx <= (int)mQueueSize) {
 		memcpy((void *)(mBufferPtr + iNowEndIdx), (const void *)pBuffer, vBufferLen);
 		*mEndIdxPtr = iNowEndIdx + vBufferLen;
 		return 0;
-	}
-	else
-	{
+	} else {
 		//前半段的长度
 		int iTmpLen = (int)mQueueSize - iNowEndIdx;
 		//拷贝消息前半段
@@ -167,3 +141,5 @@ int wMsgQueue::Push(char *pBuffer, int vBufferLen)
 		return 0;
 	}
 }
+
+}	// namespace hnet

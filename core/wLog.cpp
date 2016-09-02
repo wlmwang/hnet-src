@@ -22,7 +22,7 @@ namespace hnet {
 #endif
 
 //初始一种类型的日志
-int InitLog(const char* vLogName, const char* vLogDir, LogLevel vPriority, unsigned int vMaxFileSize, unsigned int vMaxBackupIndex, bool vAppend) {
+int InitLog(const char* vLogName, const char* vLogDir, int32_t vPriority, uint32_t vMaxFileSize, uint32_t vMaxBackupIndex, bool vAppend) {
 #ifdef USE_LOG4CPP
     if (NULL == vLogName || NULL == vLogDir) return -1;
 
@@ -47,7 +47,7 @@ int InitLog(const char* vLogName, const char* vLogDir, LogLevel vPriority, unsig
     return 0;
 }
 
-int ReInitLog(const char* vLogName, LogLevel vPriority, unsigned int vMaxFileSize, unsigned int vMaxBackupIndex) {
+int ReInitLog(const char* vLogName, int32_t vPriority, uint32_t vMaxFileSize, uint32_t vMaxBackupIndex) {
 #ifdef USE_LOG4CPP
     if (NULL == vLogName) return -1;
     log4cpp::Category* tpCategory = log4cpp::Category::exists( vLogName);

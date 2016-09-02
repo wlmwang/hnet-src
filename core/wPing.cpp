@@ -5,10 +5,11 @@
  */
 
 #include "wPing.h"
+#include "wMisc.h"
 
 namespace hnet {
 
-wPing::wPing() {
+wPing::wPing() : mFD(kFDUnknown), mSeqNum(0) {
     mPid = getpid();
 }
 
@@ -17,9 +18,9 @@ wPing::~wPing() {
 }
 
 int wPing::Close() {
-    if (mFD != FD_UNKNOWN) {
+    if (mFD != kFDUnknown) {
         close(mFD);
-        mFD = FD_UNKNOWN;
+        mFD = kFDUnknown;
     }
     return 0;
 }
@@ -35,7 +36,7 @@ int wPing::Open() {
     int size = 50*1024;
     if (setsockopt(mFD, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) != 0) {
         LOG_ERROR(ELOG_KEY, "[system] set socket receive buf failed:%d", size);
-        return FD_UNKNOWN;
+        return kFDUnknown;
     }
 
     return mFD;
@@ -50,7 +51,7 @@ int wPing::SetTimeout(float fTimeout)
 
 int wPing::SetSendTimeout(float fTimeout)
 {
-    if (mFD == FD_UNKNOWN) return -1;
+    if (mFD == kFDUnknown) return -1;
 
     struct timeval stTimetv;
     stTimetv.tv_sec = (int)fTimeout>=0 ? (int)fTimeout : 0;
@@ -67,7 +68,7 @@ int wPing::SetSendTimeout(float fTimeout)
 
 int wPing::SetRecvTimeout(float fTimeout)
 {
-    if (mFD == FD_UNKNOWN) return -1;
+    if (mFD == kFDUnknown) return -1;
 
     struct timeval stTimetv;
     stTimetv.tv_sec = (int)fTimeout>=0 ? (int)fTimeout : 0;
@@ -84,7 +85,7 @@ int wPing::SetRecvTimeout(float fTimeout)
 
 int wPing::Ping(const char *pIp)
 {
-    if (pIp == NULL || mFD == FD_UNKNOWN) return -1;
+    if (pIp == NULL || mFD == kFDUnknown) return -1;
 
     mStrIp = pIp;	
 
@@ -128,7 +129,7 @@ int wPing::SendPacket() {
 
 /** 接收所有ICMP报文 */
 int wPing::RecvPacket() {
-    if (mFD == FD_UNKNOWN) return -1;
+    if (mFD == kFDUnknown) return -1;
 
     struct msghdr msg;
     struct iovec iov;

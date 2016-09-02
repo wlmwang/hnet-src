@@ -6,6 +6,7 @@
 
 #include "wUnixSocket.h"
 
+namespace hnet {
 int wUnixSocket::Open()
 {
 	if ((mFD = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
@@ -188,3 +189,5 @@ int wUnixSocket::Accept(struct sockaddr* pClientSockAddr, socklen_t *pSockAddrSi
 
 	return iNewFD;
 }
+
+}	// namespace hnet

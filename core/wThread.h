@@ -17,6 +17,14 @@
 
 namespace hnet {
 
+static int PthreadCall(const char* label, int result) {
+    if (result != 0) {
+        fprintf(stderr, "pthread %s: %s\n", label, strerror(result));
+        abort();
+    }
+    return result;
+}
+
 class wThread : private wNoncopyable {
 public:
     wThread() : mRunStatus(kThreadBlocked), mMutex(NULL), mCond(NULL) { }
@@ -31,7 +39,7 @@ public:
     int CondBlock();
 
     pthread_t GetTid() {
-            return mTid;
+        return mTid;
     }
 	
 private:
@@ -39,7 +47,7 @@ private:
 
 protected:
     int CancelThread() {
-        return pthread_cancel(mTid);
+        return PthreadCall("pthread_cancle", pthread_cancel(mTid));
     }
     bool IsBlocked() {
         return mRunStatus == kThreadBlocked;

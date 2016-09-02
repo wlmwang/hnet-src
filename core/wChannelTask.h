@@ -13,24 +13,26 @@
 #include "wCommand.h"
 #include "wDispatch.h"
 #include "wTask.h"
-#include "wWorker.h"
 
-class wChannelTask : public wTask
-{
-	public:
-		wChannelTask(wSocket *pSocket, wWorker *pWorker = NULL);
+namespace hnet {
 
-		virtual int HandleRecvMessage(char *pBuffer, int nLen);
-		int ParseRecvMessage(struct wCommand* pCommand, char *pBuffer, int iLen);
+class wWorker;
+class wChannelTask : public wTask {
+public:
+	wChannelTask(wSocket *pSocket, wWorker *pWorker = NULL);
 
-		DEC_FUNC(ChannelOpen);
-		DEC_FUNC(ChannelClose);
-		DEC_FUNC(ChannelQuit);
-		DEC_FUNC(ChannelTerminate);
+	virtual int HandleRecvMessage(char *pBuffer, int nLen);
+	int ParseRecvMessage(struct wCommand* pCommand, char *pBuffer, int iLen);
 
-	protected:
-		wWorker *mWorker {NULL};
-		DEC_DISP(mDispatch);
+	DEC_FUNC(ChannelOpen);
+	DEC_FUNC(ChannelClose);
+	DEC_FUNC(ChannelQuit);
+	DEC_FUNC(ChannelTerminate);
+
+protected:
+	wWorker *mWorker {NULL};
+	DEC_DISP(mDispatch);
 };
 
+}	// namespace hnet
 #endif

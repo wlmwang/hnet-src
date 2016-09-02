@@ -9,9 +9,15 @@
 
 #include "wCore.h"
 #include "wLog.h"
+#include "wStatus.h"
 #include "wNoncopyable.h"
 
 namespace hnet {
+
+static wStatus IOError(const std::string& context, int err_number) {
+	return wStatus::IOError(context, strerror(err_number));
+}
+
 // 普通文件处理
 class wFile : private wNoncopyable {
 	public:

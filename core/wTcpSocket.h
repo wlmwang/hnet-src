@@ -12,14 +12,12 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <poll.h>
-
 #include "wSocket.h"
 
-/**
- *  Tcp Socket基础类
- */
-class wTcpSocket : public wSocket
-{
+namespace hnet {
+
+// Tcp Socket基础类
+class wTcpSocket : public wSocket {
 	public:
 		wTcpSocket(SOCK_TYPE eType = SOCK_TYPE_LISTEN, SOCK_PROTO eProto = SOCK_PROTO_TCP, SOCK_FLAG eFlag = SOCK_FLAG_RVSD) : wSocket(eType, eProto, eFlag) {}
 		
@@ -37,5 +35,7 @@ class wTcpSocket : public wSocket
 	protected:
 		bool mIsKeepAlive {true};
 };
+
+}	// namespace hnet
 
 #endif

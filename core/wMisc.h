@@ -25,7 +25,6 @@
 
 namespace hnet {
 namespace coding {
-const bool kLittleEndian = true;    // 小端
 
 void EncodeFixed32(char* dst, uint32_t value);
 void EncodeFixed64(char* dst, uint64_t value);

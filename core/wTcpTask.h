@@ -11,14 +11,16 @@
 #include "wCommand.h"
 #include "wTask.h"
 
-class wTcpTask : public wTask
-{
-	public:
-		wTcpTask() {}
-		wTcpTask(wSocket *pSocket) : wTask(pSocket) {}
+namespace hnet {
+class wTcpTask : public wTask {
+public:
+	wTcpTask() {}
+	wTcpTask(wSocket *pSocket) : wTask(pSocket) {}
 
-		virtual int VerifyConn() { return 0;}
-		virtual int Verify() { return 0;}
+	virtual int VerifyConn() { return 0;}
+	virtual int Verify() { return 0;}
 };
+
+}	// namespace hnet
 
 #endif

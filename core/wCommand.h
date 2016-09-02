@@ -14,9 +14,12 @@ namespace hnet {
 const uint8_t kCmdNull = 0;
 const uint8_t kParaNull = 0;
 
-// 小端
 inline uint16_t CmdId(uint8_t cmd, uint8_t para) {
-    return (static_cast<uint16_t>(para) << 8) | (static_cast<uint16_t>(cmd));
+    if (kLittleEndian) {
+        return (static_cast<uint16_t>(para) << 8) | (static_cast<uint16_t>(cmd));
+    } else {
+        return (static_cast<uint16_t>(cmd) << 8) | (static_cast<uint16_t>(para));
+    }
 }
 
 #pragma pack(1)

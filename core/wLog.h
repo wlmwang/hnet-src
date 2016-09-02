@@ -13,10 +13,10 @@
 // 基于log4cpp的日志
 namespace hnet {
 
-const char*	kErrLogKey = "error";
-const char*	kErrLogFile = "log/error.log";
+const char*	    kErrLogKey = "error";
+const char*	    kErrLogFile = "log/error.log";
 const uint32_t  kErrLogSize = 10 << 20;
-const uint8_t	kErrLogBackup = 20;
+const uint32_t	kErrLogBackup = 20;
 
 //日志等级
 //NOTSET <  DEBUG < INFO  < WARN < LEVEL_NOTICE < ERROR  < FATAL 
@@ -28,6 +28,18 @@ enum LogLevel {
     LEVEL_INFO   = 600,
     LEVEL_DEBUG  = 700,
     LEVEL_NOTSET = 800,
+};
+
+//日志等级
+//NOTSET <  DEBUG < INFO  < WARN < LEVEL_NOTICE < ERROR  < FATAL 
+enum {
+    kLevelFatal = 0,
+    kLevelError = 300,
+    kLevelWarn  = 400,
+    kLevelNotice= 500,
+    kLevelInfo  = 600,
+    kLevelDebug = 700,
+    kLevelNotset= 800
 };
 
 // 日志系统开关
@@ -66,17 +78,17 @@ enum LogLevel {
 //则重新初始化，如果不存在，则创建。
 int InitLog(const char*	 	vLogName,			/*日志类型的名称(关键字,由此定位到日志文件)*/
             const char*		vLogDir,			/*文件名称(路径)*/
-            LogLevel	 	vPriority = LEVEL_NOTSET,	/*日志等级*/
-            unsigned int 	vMaxFileSize = 10*1024*1024,	/*回卷文件最大长度*/
-            unsigned int 	vMaxBackupIndex = 1,		/*回卷文件个数*/
-            bool		vAppend = true);                /*是否截断(默认即可)*/
+            int32_t	 	    vPriority = kLevelNotset,	/*日志等级*/
+            uint32_t        vMaxFileSize = 10*1024*1024,	/*回卷文件最大长度*/
+            uint32_t        vMaxBackupIndex = 1,		/*回卷文件个数*/
+            bool            vAppend = true);                /*是否截断(默认即可)*/
 
 //重新给已存在的日志赋值，
 //但是不能改变日志的名称，以及定位的文件。
 int ReInitLog(const char* 	vLogName, 
-            LogLevel		vPriority = LEVEL_NOTSET,	/*日志等级*/
-            unsigned int	vMaxFileSize = 10*1024*1024,	/*回卷文件最大长度*/
-            unsigned int	vMaxBackupIndex = 1);		/*回卷文件个数*/
+            int32_t         vPriority = kLevelNotset,	/*日志等级*/
+            uint32_t        vMaxFileSize = 10*1024*1024,	/*回卷文件最大长度*/
+            uint32_t        vMaxBackupIndex = 1);		/*回卷文件个数*/
 
 //关闭所有类新的日志，
 //(包括文件句柄和清除相关对象),在程序退出前用.

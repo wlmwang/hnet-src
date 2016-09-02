@@ -8,7 +8,6 @@
 #define _W_CORE_H_
 
 #include "wLinux.h"
-#include "wDef.h"
 
 #include <cassert>
 #include <cerrno>
@@ -24,18 +23,23 @@
 #include <cstdio>
 
 namespace hnet {
+
+//using namespace std;
+
 namespace config {
 
+// 小端
+const bool 		kLittleEndian = true;
+const uint32_t 	kPageSize = 4096;
 const u_char    kSetProcTitlePad = '\0';
 const u_char    kLF = '\n';
 const u_char    kCR = '\r';
 const u_char*   kCRLF = "\r\n";
 
-const uint8_t   kMaxIpLen = 16;
-const uint32_t  kListenBacklog = 511;
-
 // 主机名长度
 const uint32_t  kMaxHostNameLen = 255;
+const uint8_t   kMaxIpLen = 16;
+const uint32_t  kListenBacklog = 511;
 
 const int32_t   kFDUnknown = -1;
 
@@ -61,14 +65,9 @@ const u_char*   kGroup = "root";
 
 const u_char*   kPidPath = "../log/hnet.pid";
 const u_char*   kLockPath = "../log/hnet.lock";
-
-const u_char*   kAcceptMutex = "../log/hnet.mutex";
+const u_char*   kAcceptMutex = "../log/hnet.mutex.bin";
 
 }   // namespace config
-
-// 命名空间
-using namespace std;
-
 }   // namespace hnet
 
 #endif

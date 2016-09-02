@@ -15,9 +15,10 @@
 #include "wLog.h"
 #include "wMisc.h"
 #include "wThread.h"
-#include "wTask.h"
-#include "wWorker.h"
 
+namespace hnet {
+
+class wTask;
 class wWorker;
 class wWorkerIpc : public wThread
 {
@@ -58,5 +59,7 @@ class wWorkerIpc : public wThread
 		wTask *mTask {NULL};		//temp task
 		vector<wTask*> mTaskPool;
 };
+
+}
 
 #endif
