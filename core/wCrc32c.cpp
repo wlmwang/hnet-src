@@ -282,44 +282,44 @@ static inline uint32_t LeLoad32(const uint8_t *p) {
 }
 
 uint32_t Extend(uint32_t crc, const char* buf, size_t size) {
-	const uint8_t *p = reinterpret_cast<const uint8_t *>(buf);
-	const uint8_t *e = p + size;
-	uint32_t l = crc ^ 0xffffffffu;
+    const uint8_t *p = reinterpret_cast<const uint8_t *>(buf);
+    const uint8_t *e = p + size;
+    uint32_t l = crc ^ 0xffffffffu;
 
-	auto Step1 = [&]() {
-		int c = (l & 0xff) ^ *p++;
-		l = table0_[c] ^ (l >> 8);
-	}
+    auto Step1 = [&]() {
+        int c = (l & 0xff) ^ *p++;
+        l = table0_[c] ^ (l >> 8);
+    }
 
-	auto Step4 = [&]() {
-		uint32_t c = l ^ LeLoad32(p);
-		p += 4;
-		l = table3_[c & 0xff] ^ table2_[(c >> 8) & 0xff] ^ table1_[(c >> 16) & 0xff] ^ table0_[c >> 24];
-	}
+    auto Step4 = [&]() {
+        uint32_t c = l ^ LeLoad32(p);
+        p += 4;
+        l = table3_[c & 0xff] ^ table2_[(c >> 8) & 0xff] ^ table1_[(c >> 16) & 0xff] ^ table0_[c >> 24];
+    }
 
-  // Point x at first 4-byte aligned byte in string.  This might be
-  // just past the end of the string.
-  const uintptr_t pval = reinterpret_cast<uintptr_t>(p);
-  const uint8_t* x = reinterpret_cast<const uint8_t*>(((pval + 3) >> 2) << 2);
-  if (x <= e) {
-		// Process bytes until finished or p is 4-byte aligned
-		while (p != x) {
-			Step1();
-		}
-	}
-	// Process bytes 16 at a time
-	while ((e-p) >= 16) {
-		Step4(); Step4(); Step4(); Step4();
-	}
-	// Process bytes 4 at a time
-	while ((e-p) >= 4) {
-		Step4();
-	}
-	// Process the last few bytes
-	while (p != e) {
-		Step1();
-	}
-	return l ^ 0xffffffffu;
+    // Point x at first 4-byte aligned byte in string.  This might be
+    // just past the end of the string.
+    const uintptr_t pval = reinterpret_cast<uintptr_t>(p);
+    const uint8_t* x = reinterpret_cast<const uint8_t*>(((pval + 3) >> 2) << 2);
+    if (x <= e) {
+        // Process bytes until finished or p is 4-byte aligned
+        while (p != x) {
+            Step1();
+        }
+    }
+    // Process bytes 16 at a time
+    while ((e-p) >= 16) {
+        Step4(); Step4(); Step4(); Step4();
+    }
+    // Process bytes 4 at a time
+    while ((e-p) >= 4) {
+        Step4();
+    }
+    // Process the last few bytes
+    while (p != e) {
+        Step1();
+    }
+    return l ^ 0xffffffffu;
 }
 
 }  // namespace crc32c

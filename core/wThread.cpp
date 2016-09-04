@@ -5,6 +5,7 @@
  */
 
 #include "wThread.h"
+#include "wLog.h"
 
 namespace hnet {
 

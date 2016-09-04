@@ -15,82 +15,77 @@ wConfig::~wConfig() {
     misc::SafeDelete(mProcTitle);
 }
 
-int wConfig::GetOption(int argc, const char *argv[]) {
+wStatus wConfig::GetOption(int argc, const char *argv[]) {
     for (int i = 1; i < argc; i++) {
         char* p = (char *) argv[i];
         if (*p++ != '-') {
-            LOG_ERROR(kErrLogKey, "[system] invalid option: \"%s\"", argv[i]);
-            return -1;
+            LOG_ERROR(kErrLogKey, "[system] invalid option: \"%s\"", *(p + 1));
+            return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
         }
 
         while (*p) {
             switch (*p++) {
             case '?':
+                mShowHelp = true;  break;
             case 'v':
-                mShowVer = 1;
-                break;
-
+                mShowVer = true;   break;
             case 'd':
-                mDaemon = 1;
-                break;
+                mDaemon = true;    break;
 
             case 'h':
                 if (*p) {
                     mHost = p;
                     goto next;
                 }
-
                 if (argv[++i]) {
                     mHost = (char *) argv[i];
                     goto next;
                 }
-
                 LOG_ERROR(kErrLogKey, "[system] option \"-h\" requires ip address");
-                return -1;
+                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-h\" requires ip address");
 
             case 'p':
                 if (*p) {
                     mPort = atoi(p);
                     goto next;
                 }
-
                 if (argv[++i]) {
                     mPort = atoi(argv[i]);
                     goto next;
                 }
-
-                LOG_ERROR(kErrLogKey, "[system] option \"-h\" requires port number");
-                return -1;
+                LOG_ERROR(kErrLogKey, "[system] option \"-p\" requires port number");
+                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires port number");
 
             case 's':
                 if (*p) {
                     mSignal = (char *) p;
                     goto next;
                 }
-
                 if (argv[++i]) {
                     mSignal = (char *) argv[i];
                     goto next;
                 }
-
-                LOG_ERROR(kErrLogKey, "[system] option \"-h\" requires signal number");
-                return -1;	
+                LOG_ERROR(kErrLogKey, "[system] option \"-s\" requires signal number");
+                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires port number");
+            
             default:
                 LOG_ERROR(kErrLogKey, "[system] invalid option: \"%c\"", *(p - 1));
-                return -1;
+                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
             }
         }
     next:
         continue;
     }
 
-    InitProcTitle(argc, argv);
-    return 0;
+    return mStatus = InitProcTitle(argc, argv);
 }
 
-void wConfig::InitProcTitle(int argc, const char *argv[]) {
+wStatus wConfig::InitProcTitle(int argc, const char *argv[]) {
     mProcTitle = new wProcTitle(argc, argv);
-    mProcTitle->InitSetproctitle();
+    if (mProcTitle->InitSetproctitle() != 0) {
+        return wStatus::Corruption("wConfig::InitProcTitle", "Unkown error");
+    }
+    return wStatus::Nothing();
 }
 
 }   // namespace hnet

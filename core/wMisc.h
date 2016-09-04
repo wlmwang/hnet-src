@@ -138,7 +138,7 @@ inline u_char* AlignPtr(char* p, char* a) {
 
 template <typename T = uint64_t>
 inline void Swap(T a, T b) {
-    a = a+b;
+    a += b;
     b = a-b;
     a = a-b;
 }

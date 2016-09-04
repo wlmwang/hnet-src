@@ -8,6 +8,7 @@
 #define _W_CONFIG_H_
 
 #include "wCore.h"
+#include "wStatus.h"
 #include "wNoncopyable.h"
 
 namespace hnet {
@@ -15,18 +16,20 @@ namespace hnet {
 class wProcTitle;
 class wConfig : private wNoncopyable {
 public:
-    wConfig() : mShowVer(0), mDaemon(0), mSignal(NULL), mHost(NULL), mPort(0), mProcTitle(NULL) { }
+    wConfig() : mStatus(), mShowVer(false), mShowHelp(false), mDaemon(false), mSignal(NULL), mHost(NULL), mPort(0), mProcTitle(NULL) { }
     virtual ~wConfig();
-    virtual int GetOption(int argc, const char *argv[]);
-    void InitProcTitle(int argc, const char *argv[]);
+    virtual wStatus GetOption(int argc, const char *argv[]);
+    wStatus InitProcTitle(int argc, const char *argv[]);
 
 public:
-    int mShowVer;	//版本信息
-    int mDaemon;	//是否启动为守护进程
-    char *mSignal;	//信号字符串
+    wStatus mStatus;
+    bool mShowVer;
+    bool mShowHelp;
+    bool mDaemon;
+    char *mSignal;
     char *mHost;
     int mPort;
-    wProcTitle *mProcTitle;		//进程标题
+    wProcTitle *mProcTitle;
 };
 
 }	// namespace hnet

@@ -11,7 +11,6 @@
 #include <pthread.h>
 
 #include "wCore.h"
-#include "wLog.h"
 #include "wMutex.h"
 #include "wNoncopyable.h"
 

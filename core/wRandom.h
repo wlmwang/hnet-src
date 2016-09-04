@@ -13,26 +13,26 @@ namespace hnet {
 
 class wRandom {
 private:
-    uint32_t seed_;
+    uint32_t mSeed;
 
 public:
     explicit Random(uint32_t s) : seed_(s & 0x7fffffffu) {
-        if (seed_ == 0 || seed_ == 2147483647L) {
-            seed_ = 1;
+        if (mSeed == 0 || mSeed == 2147483647L) {
+            mSeed = 1;
         }
     }
 
 uint32_t Next() {
     static const uint32_t M = 2147483647L;   // 2^31-1
     static const uint64_t A = 16807;  // bits 14, 8, 7, 5, 2, 1, 0
-    uint64_t product = seed_ * A;
+    uint64_t product = mSeed * A;
 
     // Compute (product % M) using the fact that ((x << 31) % M) == x.
-    seed_ = static_cast<uint32_t>((product >> 31) + (product & M));
-    if (seed_ > M) {
-        seed_ -= M;
+    mSeed = static_cast<uint32_t>((product >> 31) + (product & M));
+    if (mSeed > M) {
+        mSeed -= M;
     }
-    return seed_;
+    return mSeed;
 }
 
 // 要求n>0

@@ -8,7 +8,6 @@
 #define _W_PROC_TITLE_H_
 
 #include "wCore.h"
-#include "wMisc.h"
 #include "wNoncopyable.h"
 
 namespace hnet {
@@ -18,7 +17,7 @@ public:
     wProcTitle(int argc, const char *argv[]);
     ~wProcTitle();
 
-    //务必在设置进程标题之前调用
+    // 务必在设置进程标题之前调用
     void SaveArgv();
 
     // 移动**environ到堆上，为进程标题做准备。计算**environ指针结尾地址
@@ -26,7 +25,7 @@ public:
     int InitSetproctitle();
 
     // 设置进程标题
-    void Setproctitle(const char *title, const char *pretitle = NULL);
+    void Setproctitle(const char *title, const char *preTitle = NULL);
 
 public:
     int mArgc;

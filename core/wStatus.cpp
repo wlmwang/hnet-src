@@ -4,6 +4,7 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include "wCore.h"
 #include "wStatus.h"
 
 namespace hnet {
@@ -32,7 +33,7 @@ wStatus::wStatus(Code code, const Slice& msg, const Slice& msg2) {
         result[6 + len1] = ' ';
         memcpy(result + 7 + len1, msg2.data(), len2);
     }
-    state_ = result;
+    mState = result;
 }
 
 std::string wStatus::ToString() const {
@@ -67,8 +68,8 @@ std::string wStatus::ToString() const {
         }
         std::string result(type);
         uint32_t length;
-        memcpy(&length, state_, sizeof(length));
-        result.append(state_ + 5, length);
+        memcpy(&length, mState, sizeof(length));
+        result.append(mState + 5, length);
         return result;
     }
 }
