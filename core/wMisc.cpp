@@ -6,12 +6,8 @@
 
 #include <pwd.h>
 #include <grp.h>
-
 #include "wMisc.h"
-
-#ifndef FALLTHROUGH_INTENDED
-#define FALLTHROUGH_INTENDED do { } while (0)
-#endif
+#include "wStatus.h"
 
 namespace hnet {
 namespace coding {
@@ -116,6 +112,8 @@ bool ConsumeDecimalNumber(std::string* in, uint64_t* val) {
 
 namespace misc {
 
+static inline void FallThroughIntended() { }
+
 uint32_t Hash(const char* data, size_t n, uint32_t seed) {
     const uint32_t m = 0xc6a4a793;
     const uint32_t r = 24;
@@ -134,11 +132,11 @@ uint32_t Hash(const char* data, size_t n, uint32_t seed) {
     switch (limit - data) {
         case 3:
         h += static_cast<unsigned char>(data[2]) << 16;
-        FALLTHROUGH_INTENDED;
-
+        FallThroughIntended();
+        
         case 2:
         h += static_cast<unsigned char>(data[1]) << 8;
-        FALLTHROUGH_INTENDED;
+        FallThroughIntended();
 
         case 1:
         h += static_cast<unsigned char>(data[0]);
@@ -208,61 +206,52 @@ unsigned GetIpByIF(const char* ifname) {
     return ip;
 }
 
-int InitDaemon(const char *filename, const char *prefix) {
-    filename = filename != NULL? filename: LOCK_PATH;
-
-    //切换当前目录
-    char dir_path[256] = {0};
+wStatus InitDaemon(const char *lockfile, const char *prefix) {
+    // 获取主目录
+    char dirPath[256] = {0};
     if (prefix == NULL) {
-        if (getcwd(dir_path, sizeof(dir_path)) == -1) {
-            cout << "[system] getcwd failed: " << strerror(errno) << endl;
-            exit(0);
+        if (getcwd(dirPath, sizeof(dirPath)) == -1) {
+            return wStatus::Corruption("misc::InitDaemon, getcwd failed", strerror(errno));
         }
     } else {
-        memcpy(dir_path, prefix, strlen(prefix) + 1);
+        memcpy(dirPath, prefix, strlen(prefix) + 1);
     }
 
-    //切换工作目录
-    if (chdir(dir_path) == -1) {
-        cout << "[system] Can not change run dir to "<< dir_path << " , init daemon failed: " << strerror(errno) << endl;
-        return -1;
+    if (chdir(dirPath) == -1) {
+        return wStatus::Corruption("misc::InitDaemon, chdir failed", strerror(errno))
     }
     umask(0);
 
-    int lock_fd = open(filename, O_RDWR|O_CREAT, 0640);
-    if (lock_fd < 0) {
-        cout << "[system] Open lock file failed when init daemon" << endl;
-        return -1;
+    // 独占式锁定文件，防止有相同程序的进程已经启动
+    lockfile = lockfile != NULL? lockfile: kLockPath;
+    int lockFD = open(lockfile, O_RDWR|O_CREAT, 0640);
+    if (lockFD < 0) {
+        return wStatus::IOError("misc::InitDaemon, open lockfile failed", strerror(errno));
     }
-    //独占式锁定文件，防止有相同程序的进程已经启动
-    if (flock(lock_fd, LOCK_EX | LOCK_NB) < 0) {
-        cout << "[system] Lock file failed, server is already running" << endl;
-        return -1;
+    if (flock(lockFD, LOCK_EX | LOCK_NB) < 0) {
+        return wStatus::IOError("misc::InitDaemon, flock lockfile failed(maybe server is already running)", strerror(errno));
     }
 
-    //设置进程的有效uid 若是以root身份运行，则将worker进程降级, 默认是nobody
+    // 若是以root身份运行，设置进程的实际、有效uid
     if (geteuid() == 0) {
-        if (setgid(GROUP) == -1) {
-            LOG_ERROR(ELOG_KEY, "[system] setgid(%d) failed: %s", GROUP, strerror(mErr));
-            exit(2);
+        if (setuid(kDeamonUser) == -1) {
+            return wStatus::Corruption("misc::InitDaemon, setuid failed", strerror(errno));
         }
 
-        //附加组ID
-        if (initgroups(USER, GROUP) == -1) {
-            LOG_ERROR(ELOG_KEY, "[system] initgroups(%s, %d) failed: %s", USER, GROUP, strerror(mErr));
+        if (setgid(kDeamonGroup) == -1) {
+            return wStatus::Corruption("misc::InitDaemon, setgid failed", strerror(errno));
         }
 
-        //用户ID
-        if (setuid(USER) == -1) {
-            LOG_ERROR(ELOG_KEY, "[system] setuid(%d) failed: %s", USER, strerror(mErr));            
-            exit(2);
+        // 附加组ID
+        if (initgroups(kDeamonUser, kDeamonGroup) == -1) {
+            // initgroups failed
         }
     }
 
-    fork() != 0 && exit(0);	//第一次fork
-
+    fork() != 0 && exit(0);
     setsid();
-    //忽略以下信号
+    
+    // 忽略以下信号
     wSignal stSig(SIG_IGN);
     stSig.AddSigno(SIGINT);
     stSig.AddSigno(SIGHUP);
@@ -273,12 +262,10 @@ int InitDaemon(const char *filename, const char *prefix) {
     stSig.AddSigno(SIGTTIN);
     stSig.AddSigno(SIGTTOU);
 
-    fork() != 0 && exit(0);	//再次fork
-
-    unlink(filename);
-    return 0;
+    fork() != 0 && exit(0);
+    unlink(lockfile);
+    return wStatus::Nothing();
 }
 
 }	// namespace misc
-
 }	// namespace hnet

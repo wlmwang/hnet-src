@@ -10,15 +10,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/file.h>	//int flock(int fd,int operation);
-
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <net/if.h>
-
 #include <sstream>
 #include <vector>
 #include <cstdarg>
-
 #include "wCore.h"
 #include "wCommand.h"
 #include "wSignal.h"
@@ -60,6 +57,7 @@ inline uint64_t DecodeFixed64(const char* ptr) {
 }   // namespace coding
 
 namespace logging {
+
 // 将整型按字符方式追加到str字符串结尾
 void AppendNumberTo(std::string* str, uint64_t num);
 
@@ -78,14 +76,16 @@ bool ConsumeDecimalNumber(std::string* in, uint64_t* val);
 }   // namespace logging
 
 namespace misc {
+
+class wStatus;
+// 创建守护进程
+wStatus InitDaemon(const char *filename, const char *prefix = NULL);
+
 // 哈希值 murmur hash类似算法
 uint32_t Hash(const char* data, size_t n, uint32_t seed);
 
 // 最大公约数
 uint64_t Ngcd(uint64_t arr[], size_t n);
-
-// 创建守护进程
-uint64_t InitDaemon(const char *filename, const char *prefix = NULL);
 
 // 网卡获取地址
 unsigned GetIpByIF(const char* ifname);
@@ -116,14 +116,6 @@ inline int64_t GetTimeofday() {
     return (int64_t)tv.tv_sec * 1000000 + (int64_t)tv.tv_usec;
 }
 
-/*
-inline unsigned long long GetTickCount() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (unsigned long long)tv.tv_sec * 1000 + (unsigned long long)tv.tv_usec / 1000;
-}
-*/
-
 inline uint8_t AlignMent() {
     return sizeof(unsigned long);
 }
@@ -138,9 +130,7 @@ inline u_char* AlignPtr(char* p, char* a) {
 
 template <typename T = uint64_t>
 inline void Swap(T a, T b) {
-    a += b;
-    b = a-b;
-    a = a-b;
+    T tmp = a; a = b; b = tmp;
 }
 
 template <typename T>

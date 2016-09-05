@@ -8,28 +8,24 @@
 #define _W_SHMTX_H_
 
 #include "wCore.h"
-#include "wLog.h"
+#include "wStatus.h"
 #include "wNoncopyable.h"
 
 namespace hnet {
 
 class wShm;
 class wSem;
-// 多进程互斥量（主要用于父子进程）
-// 基于信号量实现
+
+// 多进程互斥量（主要用于父子进程）。基于信号量实现
 class wShmtx : private wNoncopyable {
 public:
-	/**
-	 * 创建锁（在共享建立sem）
-	 * @param  pShm [共享内存]
-	 * @param  iSpin [自旋初始值]
-	 * @return       [0]
-	 */
-	int Create(wShm *pShm, int iSpin = 2048);
-	int Lock();
-	int Unlock();
-	int TryLock();
-	//自旋争抢锁
+	// 在共享建立sem  pShm共享内存  iSpin自旋初始值
+	wStatus Create(wShm *pShm, int iSpin = 2048);
+	wStatus Lock();
+	wStatus Unlock();
+	wStatus TryLock();
+	
+	// 自旋争抢锁
 	void LockSpin();
 
 private:

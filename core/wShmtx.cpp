@@ -5,12 +5,13 @@
  */
 
 #include "wShmtx.h"
+#include "wLog.h"
 #include "wShm.h"
 #include "wSem.h"
 
 namespace hnet {
 
-int wShmtx::Create(wShm *pShm, int iSpin) {
+wStatus wShmtx::Create(wShm *pShm, int iSpin) {
 	char *pAddr = pShm->AllocShm(sizeof(wSem));
 	if (pAddr == NULL) {
 		LOG_ERROR(ELOG_KEY, "[system] shm alloc failed for shmtx: %d", sizeof(wSem));

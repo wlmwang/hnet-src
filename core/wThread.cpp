@@ -42,23 +42,27 @@ int wThread::StopThread() {
     mCond->Signal();
     mMutex->Unlock();
 
-    PthreadCall("join", pthread_join(mTid, NULL));	// 等待该线程终止
+    // 等待该线程终止
+    PthreadCall("join", pthread_join(mTid, NULL));
     return 0;
 }
 
 int wThread::CondBlock() {
     mMutex->Lock();
-    while (IsBlocked() || mRunStatus == kThreadStopped) {	// 线程被阻塞或者停止
+    // 线程被阻塞或者停止
+    while (IsBlocked() || mRunStatus == kThreadStopped) {
         if (mRunStatus == kThreadStopped) {
             PthreadCall("exit", pthread_exit(NULL));
             return -1;
         }
         mRunStatus = kThreadBlocked;
-        mCond->Wait(*mMutex);	// 进入休眠状态
+        // 进入休眠状态
+        mCond->Wait(*mMutex);
     }
 
     if (mRunStatus != kThreadRunning) {
         // "Thread waked up"
+        // mCond->Signal();
     }
 
     mRunStatus = kThreadRunning;

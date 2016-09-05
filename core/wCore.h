@@ -25,7 +25,6 @@
 namespace hnet {
 
 using namespace std;
-namespace config {
 
 const bool      kLittleEndian = true;
 const uint32_t 	kPageSize = 4096;
@@ -57,14 +56,13 @@ const uint32_t  kMinPackageLen = 1;
 const u_char*   kSoftwareName   = "hnet";
 const u_char*   kSoftwareVer    = "0.0.1";
 
-const u_char*   kUser = "root";
-const u_char*   kGroup = "root";
+const u_char*   kDeamonUser = "root";
+const u_char*   kDeamonGroup = "root";
 
 const u_char*   kPidPath = "../log/hnet.pid";
 const u_char*   kLockPath = "../log/hnet.lock";
 const u_char*   kAcceptMutex = "../log/hnet.mutex.bin";
 
-}   // namespace config
 }   // namespace hnet
 
 #endif

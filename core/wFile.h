@@ -14,20 +14,17 @@
 
 namespace hnet {
 
-static wStatus IOError(const std::string& context, int err_number) {
+static inline wStatus IOError(const std::string& context, int err_number) {
 	return wStatus::IOError(context, strerror(err_number));
 }
 
 // 普通文件处理
 class wFile : private wNoncopyable {
 	public:
-	//成功则返回0, 失败返回-1, 错误原因存于mErrno
 	int Open(int flags = O_RDWR| O_APPEND| O_EXCL, mode_t mode = 644);
 
-	//成功则返回0, 失败返回-1, 错误原因存于errno
 	int Close();
 
-	//成功则返回0, 失败返回-1, 错误原因存于errno
 	int Unlink();
 
 	//新的偏移量（成功），-1（失败）
@@ -56,10 +53,10 @@ class wFile : private wNoncopyable {
 
 	protected:
     int mErr;
-    int mFD {FD_UNKNOWN};//文件描述符
-    off_t  mOffset {0};	//现在处理到文件何处了
-	string  mFileName;	//文件名称
-    struct stat mInfo;	//文件大小等资源信息
+    int mFD {FD_UNKNOWN};	// 文件描述符
+    off_t  mOffset {0};		// 现在处理到文件何处了
+	string  mFileName;		// 文件名称
+    struct stat mInfo;		// 文件大小等资源信息
 };
 
 }

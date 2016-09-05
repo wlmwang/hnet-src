@@ -5,6 +5,7 @@
  */
  
 #include "wShm.h"
+#include "wLog.h"
 
 namespace hnet {
 

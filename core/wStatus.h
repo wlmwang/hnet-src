@@ -41,6 +41,10 @@ public:
     static wStatus IOError(const wSlice& msg, const wSlice& msg2 = wSlice()) {
         return wStatus(kIOError, msg, msg2);
     }
+    
+    static wStatus AccessIllegal(const wSlice& msg, const wSlice& msg2 = wSlice()) {
+        return wStatus(kAccessIllegal, msg, msg2);
+    }
 
     bool Ok() const { return (mState == NULL); }
     bool IsNotFound() const { return code() == kNotFound; }
@@ -55,7 +59,8 @@ private:
         kCorruption = 2,
         kNotSupported = 3,
         kInvalidArgument = 4,
-        kIOError = 5
+        kIOError = 5,
+        kAccessIllegal = 6
     };
 
     Code code() const {

@@ -10,22 +10,21 @@
 #include <pthread.h>
 
 #include "wCore.h"
-#include "wLog.h"
 #include "wNoncopyable.h"
 
 namespace hnet {
 
-static int PthreadCall(const char* label, int result) {
-    if (result != 0) {
-        fprintf(stderr, "pthread %s: %s\n", label, strerror(result));
+static int PthreadCall(const char* label, int errNumber) {
+    if (errNumber != 0) {
+        fprintf(stderr, "pthread %s: %s\n", label, strerror(errNumber));
         abort();
     }
-    return result;
+    return errNumber;
 }
 
 class wCond;
+
 class wMutex : private wNoncopyable {
-friend class wCond;
 public:
     // PTHREAD_MUTEX_FAST_NP:  普通锁，同一线程可重复加锁，解锁一次释放锁。不提供死锁检测，尝试重新锁定互斥锁会导致死锁
     // PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP： 同一线程可重复加锁，解锁同样次数才可释放锁
@@ -66,55 +65,21 @@ public:
 protected:
     pthread_mutex_t mMutex;
     pthread_mutexattr_t mAttr;
+
+    friend class wCond;
 };
 
-//读写锁
-class RWLock : private wNoncopyable {
+class wMutexWrapper : private wNoncopyable {
 public:
-    RWLock(int pshared = PTHREAD_PROCESS_PRIVATE) {
-        PthreadCall("rwlockattr_init", pthread_rwlockattr_init(&mAttr));
-        PthreadCall("rwlockattr_setpshared", pthread_rwlockattr_setpshared(&mAttr, pshared));
-        PthreadCall("rwlock_init", pthread_rwlock_init(&mRWlock, &mAttr));
+    explicit wMutexWrapper(const wMutex* mutex) : mMutex(mutex) {
+        mMutex->Lock();
+    }
+    ~wMutexWrapper() {
+        mMutex->Unlock();
     }
 
-    ~RWLock() {
-        PthreadCall("rwlockattr_destroy", pthread_rwlockattr_destroy(&mAttr));
-        PthreadCall("rwlock_destroy", pthread_rwlock_destroy(&mRWlock));
-    }
-
-    // 阻塞获取读锁
-    // 0 成功 EINVAL  锁不合法，mRWlock 未被初始化 EAGAIN   Mutex的lock count(锁数量)已经超过 递归索的最大值，无法再获得该mutex锁
-    int LockRD() {
-        return PthreadCall("rwlock_rdlock", pthread_rwlock_rdlock(&mRWlock));
-    }
-
-    // 阻塞获取写锁
-    // 0 成功 EINVAL  锁不合法，mRWlock 未被初始化 EAGAIN   Mutex的lock count(锁数量)已经超过 递归索的最大值，无法再获得该mutex锁
-    int LockWR() {
-        return PthreadCall("rwlock_rdlock", pthread_rwlock_wrlock(&mRWlock));
-    }
-
-    // 释放锁
-    // 0 成功 EPERM 当前线程不是该 mRWlock 锁的拥有者
-    int Unlock() {
-        return PthreadCall("rwlock_unlock", pthread_rwlock_unlock(&mRWlock));
-    }
-
-    // 非阻塞获取读锁
-    // 0 成功 EBUSY   锁正在使用 EAGAIN    Mutex的lock count(锁数量)已经超过 递归索的最大值，无法再获得该mutex锁
-    int TryLockRD() {
-        return pthread_rwlock_tryrdlock(&mRWlock);
-    }
-
-    // 非阻塞获取写锁
-    // 0 成功 EBUSY   锁正在使用 EAGAIN    Mutex的lock count(锁数量)已经超过 递归索的最大值，无法再获得该mutex锁
-    int TryLockWR() {
-        return pthread_rwlock_trywrlock(&mRWlock);
-    }
-
-protected:
-    pthread_rwlock_t mRWlock;
-    pthread_rwlockattr_t mAttr;
+private:
+    wMutex *mMutex;
 };
 
 class wCond : private wNoncopyable {

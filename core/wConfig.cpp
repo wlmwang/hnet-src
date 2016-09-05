@@ -5,12 +5,13 @@
  */
 
 #include "wConfig.h"
-#include "wProcTitle.h"
-#include "wLog.h"
 #include "wMisc.h"
+#include "wLog.h"
+#include "wProcTitle.h"
 #include "tinyxml.h"    //lib tinyxml
 
 namespace hnet {
+
 wConfig::~wConfig() {
     misc::SafeDelete(mProcTitle);
 }
@@ -19,8 +20,9 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
     for (int i = 1; i < argc; i++) {
         char* p = (char *) argv[i];
         if (*p++ != '-') {
-            LOG_ERROR(kErrLogKey, "[system] invalid option: \"%s\"", *(p + 1));
-            return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
+            mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
+            LOG_ERROR(kErrLogKey, mStatus.ToString().c_str());
+            return mStatus;
         }
 
         while (*p) {
@@ -41,8 +43,9 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
                     mHost = (char *) argv[i];
                     goto next;
                 }
-                LOG_ERROR(kErrLogKey, "[system] option \"-h\" requires ip address");
-                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-h\" requires ip address");
+                mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-h\" requires ip address");
+                LOG_ERROR(kErrLogKey, mStatus.ToString().c_str());
+                return mStatus;
 
             case 'p':
                 if (*p) {
@@ -53,8 +56,9 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
                     mPort = atoi(argv[i]);
                     goto next;
                 }
-                LOG_ERROR(kErrLogKey, "[system] option \"-p\" requires port number");
-                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires port number");
+                mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires port number");
+                LOG_ERROR(kErrLogKey, mStatus.ToString().c_str());
+                return mStatus;
 
             case 's':
                 if (*p) {
@@ -65,12 +69,14 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
                     mSignal = (char *) argv[i];
                     goto next;
                 }
-                LOG_ERROR(kErrLogKey, "[system] option \"-s\" requires signal number");
-                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires port number");
+                mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires signal");
+                LOG_ERROR(kErrLogKey, mStatus.ToString().c_str());
+                return mStatus;
             
             default:
-                LOG_ERROR(kErrLogKey, "[system] invalid option: \"%c\"", *(p - 1));
-                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
+                mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
+                LOG_ERROR(kErrLogKey, mStatus.ToString().c_str());
+                return mStatus;
             }
         }
     next:

@@ -10,7 +10,6 @@
 #include <map>
 #include <vector>
 #include <functional>
-
 #include "wCore.h"
 #include "wCommand.h"
 #include "wNoncopyable.h"
@@ -22,6 +21,7 @@
 
 namespace hnet {
 
+// 简单路由
 template<typename T, typename IDX = int16_t>
 class wDispatch : private wNoncopyable {
 public:

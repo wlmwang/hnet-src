@@ -10,45 +10,47 @@
 #include <signal.h>		//typedef void (*sighandler_t)(int);
 
 #include "wCore.h"
-#include "wLog.h"
+#include "wStatus.h"
 #include "wNoncopyable.h"
 
 namespace hnet {
 
-void SignalHandler(int signo);
-
 class wSignal : private wNoncopyable {
 public:
-    struct signal_t {
-        int     mSigno;
-        char   *mSigname;	//信号的字符串表现形式，如"SIGIO"
-        char   *mName;		//信号的名称，如"stop"
-        __sighandler_t mHandler;
+    struct Signal_t;
 
-        signal_t(int signo, const char *signame, const char *name, __sighandler_t func) {
-            mSigno = signo;
-            mSigname = (char *) signame;
-            mName = (char *) name;
-            mHandler = func;
-        }
-    };
+    wSignal();
+    // SIG_DFL(采用缺省的处理方式)，也可以为SIG_IGN
+    wSignal(__sighandler_t  func);
+    
+    // 添加信号处理
+    wStatus AddSigno(int signo, struct sigaction *oact = NULL);
+    wStatus AddHandler(const Signal_t *signal);
+    // 添加屏蔽集
+    wStatus AddMaskSet(int signo);
 
-    wSignal() {}
-    wSignal(__sighandler_t  func);	//SIG_DFL(采用缺省的处理方式)，也可以为SIG_IGN
-
-    int AddMaskSet(int signo);	//添加屏蔽集
-    int AddHandler(__sighandler_t  func);
-    //添加信号处理
-    int AddSigno(int signo, struct sigaction *oact = NULL);
-    int AddSig_t(const signal_t *pSig);
-
+    static void SignalHandler(int signo);
 protected:
+    wStatus mStatus;
     struct sigaction mSigAct;
 };
 
-//信号集
-extern wSignal::signal_t g_signals[];
+struct wSignal::Signal_t {
+    Signal_t(int signo, const char *signame, const char *name, __sighandler_t func) {
+        mSigno = signo;
+        mSigname = (char *) signame;
+        mName = (char *) name;
+        mHandler = func;
+    }
 
+    int     mSigno;
+    char   *mSigname;   // 信号的字符串表现形式，如"SIGIO"
+    char   *mName;      // 信号的名称，如"stop"
+    __sighandler_t mHandler;
+};
+
+// 信号集
+extern wSignal::Signal_t g_signals[];
 extern int g_quit;	//SIGQUIT
 extern int g_terminate;	//SIGTERM SIGINT
 extern int g_reconfigure;//SIGHUP
