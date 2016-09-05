@@ -74,7 +74,7 @@ wStatus wPing::SetRecvTimeout(float fTimeout) {
 
 wStatus wPing::Ping(const char *ip) {
     if (ip == NULL || mFD == kFDUnknown) {
-        return mStatus = wStatus::InvalidArgument("wPing::Ping failed", "ip is NULL");
+        return mStatus = wStatus::InvalidArgument("wPing::Ping failed", "ip is NULL or open was not called");
     }
 
     mStrIp = pIp;
@@ -90,7 +90,7 @@ wStatus wPing::Ping(const char *ip) {
         }
         memcpy((char *)&mDestAddr.sin_addr, host->h_addr, host->h_length);
         */
-        return wStatus::IOError("wPing::Ping, inet_addr failed", strerror(errno));
+        return wStatus::IOError("wPing::Ping, inet_addr failed, ip: " + string(ip), strerror(errno));
     } else {
         mDestAddr.sin_addr.s_addr = inaddr;
     }
@@ -143,12 +143,12 @@ wStatus wPing::RecvPacket() {
             if (errno == EINTR) {
                 continue;
             } else if(errno == EAGAIN) {
-                return wStatus::IOError("wPing::Ping, ping recvmsg timeout, err=EAGAIN", mStrIp);
+                return wStatus::IOError("wPing::Ping, ping recvmsg timeout, ip: " + mStrIp, strerror(errno));
             } else {
-                return wStatus::IOError("wPing::Ping, ping recvmsg error", strerror(errno));
+                return wStatus::IOError("wPing::Ping, ping recvmsg error, ip: " + mStrIp, strerror(errno));
             }
         } else if (iLen == 0) {
-            return wStatus::IOError("wPing::Ping, ping recvmsg return 0", mStrIp);
+            return wStatus::IOError("wPing::Ping, ping recvmsg return 0, ip: ", mStrIp);
         } else {
             struct ip *iphdr = (struct ip *)mRecvpacket;
             if (iphdr->ip_p == IPPROTO_ICMP && iphdr->ip_src.s_addr == mDestAddr.sin_addr.s_addr) {
@@ -158,10 +158,10 @@ wStatus wPing::RecvPacket() {
     }
 
     if (i >= kRetryTimes) {
-        return wStatus::IOError("wPing::Ping, ping recvmsg retry over times", mStrIp)
+        return wStatus::IOError("wPing::Ping, ping recvmsg retry over times, ip: ", mStrIp);
     }
     if (Unpack(mRecvpacket, iLen) < 0) {
-        return wStatus::Corruption("wPing::Ping, parse error", mStrIp);
+        return wStatus::Corruption("wPing::Ping, parse error, ip: ", mStrIp);
     }
     
     // LOG_DEBUG(ELOG_KEY, "[system] ping succ,ip=%s,retry=%u", mStrIp.c_str(), i);

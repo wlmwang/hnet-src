@@ -28,8 +28,8 @@ public:
     }
 
 private:
-    int mTimer;
-    int mTimeRecord;
+    int64_t mTimer;
+    int64_t mTimeRecord;
 };
 
 }	// namespace hnet

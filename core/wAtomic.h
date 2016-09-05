@@ -4,8 +4,8 @@
  * Copyright (C) Hupu, Inc.
  */
 
-#ifndef _W_ATOMIC_POINTER_H_
-#define _W_ATOMIC_POINTER_H_
+#ifndef _W_ATOMIC_H_
+#define _W_ATOMIC_H_
 
 #include <cstdint>
 #include <atomic>
@@ -13,30 +13,30 @@
 
 namespace hnet {
 
-class wAtomicPointer {
+class wAtomic {
 private:
-  std::atomic<void*> mRep;
+    std::atomic<void*> mRep;
 
 public:
-  wAtomicPointer() { }
+    wAtomic() { }
 
-  explicit wAtomicPointer(void* v) : mRep(v) { }
+    explicit wAtomic(void* v) : mRep(v) { }
 
-  inline void* Acquire_Load() const {
-    return mRep.load(std::memory_order_acquire);
-  }
+    inline void* Acquire_Load() const {
+        return mRep.load(std::memory_order_acquire);
+    }
 
-  inline void Release_Store(void* v) {
-    mRep.store(v, std::memory_order_release);
-  }
+    inline void Release_Store(void* v) {
+        mRep.store(v, std::memory_order_release);
+    }
 
-  inline void* NoBarrier_Load() const {
-    return mRep.load(std::memory_order_relaxed);
-  }
+    inline void* NoBarrier_Load() const {
+        return mRep.load(std::memory_order_relaxed);
+    }
 
-  inline void NoBarrier_Store(void* v) {
-    mRep.store(v, std::memory_order_relaxed);
-  }
+    inline void NoBarrier_Store(void* v) {
+        mRep.store(v, std::memory_order_relaxed);
+    }
 
 };
 

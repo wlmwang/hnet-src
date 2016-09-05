@@ -9,75 +9,80 @@
 
 #include <cstdarg>
 #include "wCore.h"
+#include "wNoncopyable.h"
 
 namespace hnet {
 
-class wSlice {
+class wSlice : private wNoncopyable {
 public:
-    wSlice() : data_(""), size_(0) { }
+    wSlice() : mData(""), mSize(0) { }
+    wSlice(const char* d, size_t n) : mData(d), mSize(n) { }
+    wSlice(const std::string& s) : data_(s.data()), mSize(s.size()) { }
+    wSlice(const char* s) : mData(s), mSize(strlen(s)) { }
+
+    const char* data() const { 
+	return mData; 
+    }
     
-    wSlice(const char* d, size_t n) : data_(d), size_(n) { }
-
-    wSlice(const std::string& s) : data_(s.data()), size_(s.size()) { }
-
-    wSlice(const char* s) : data_(s), size_(strlen(s)) { }
-
-    const char* data() const { return data_; }
-
-    size_t size() const { return size_; }
-
-    bool empty() const { return size_ == 0; }
-
+    size_t size() const { 
+	return mSize; 
+    }
+    
+    bool empty() const { 
+	return mSize == 0; 
+    }
+    
     char operator[](size_t n) const {
         assert(n < size());
-        return data_[n];
+        return mData[n];
+    }
+    
+    void clear() { 
+	mData = "";
+	mSize = 0; 
     }
 
-    // Change this slice to refer to an empty array
-    void clear() { data_ = ""; size_ = 0; }
-
-    // Drop the first "n" bytes from this slice.
-    void remove_prefix(size_t n) {
+    void removePrefix(size_t n) {
         assert(n <= size());
-        data_ += n;
-        size_ -= n;
+        mData += n;
+        mSize -= n;
     }
-
-    // Return a string that contains the copy of the referenced data.
-    std::string ToString() const { return std::string(data_, size_); }
-
-    // Three-way comparison.  Returns value:
+    
+    bool startsWith(const wSlice& x) const {
+        return ((mSize >= x.mSize) && (memcmp(mData, x.mData, x.mSize) == 0));
+    }
+    
+    std::string ToString() const { 
+	return std::string(mData, mSize);
+    }
+    
     //   <  0 iff "*this" <  "b",
     //   == 0 iff "*this" == "b",
     //   >  0 iff "*this" >  "b"
-    int compare(const Slice& b) const;
-
-    // Return true iff "x" is a prefix of "*this"
-    bool starts_with(const Slice& x) const {
-        return ((size_ >= x.size_) && (memcmp(data_, x.data_, x.size_) == 0));
-    }
+    int compare(const wSlice& b) const;
 
 private:
-    const char* data_;
-    size_t size_;
-
- // Intentionally copyable
+    const char* mData;
+    size_t mSize;
 };
 
-inline bool operator==(const Slice& x, const Slice& y) {
+inline bool operator==(const wSlice& x, const wSlice& y) {
     return ((x.size() == y.size()) && (memcmp(x.data(), y.data(), x.size()) == 0));
 }
 
-inline bool operator!=(const Slice& x, const Slice& y) {
+inline bool operator!=(const wSlice& x, const wSlice& y) {
     return !(x == y);
 }
 
-inline int Slice::compare(const Slice& b) const {
-    const size_t min_len = (size_ < b.size_) ? size_ : b.size_;
-    int r = memcmp(data_, b.data_, min_len);
+inline int wSlice::compare(const wSlice& b) const {
+    const size_t minLen = (mSize < b.mSize) ? mSize : b.mSize;
+    int r = memcmp(mData, b.mData, minLen);
     if (r == 0) {
-      if (size_ < b.size_) r = -1;
-      else if (size_ > b.size_) r = +1;
+        if (mSize < b.mSize) {
+	    r = -1;
+	} else if (mSize > b.mSize) {
+	    r = +1;
+	}
     }
     return r;
 }

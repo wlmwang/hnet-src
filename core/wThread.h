@@ -7,14 +7,15 @@
 #ifndef _W_THREAD_H_
 #define _W_THREAD_H_
 
-#include <cstdarg>
 #include <pthread.h>
-
+#include <cstdarg>
 #include "wCore.h"
-#include "wMutex.h"
 #include "wNoncopyable.h"
 
 namespace hnet {
+
+class wMutex;
+class wCond;
 
 static int PthreadCall(const char* label, int errNumber) {
     if (errNumber != 0) {

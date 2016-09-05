@@ -15,7 +15,7 @@
 #include <netdb.h>
 #include "wCore.h"
 #include "wStatus.h"
-#include "wNoncopyable.h"	
+#include "wNoncopyable.h"
 
 namespace hnet {
 

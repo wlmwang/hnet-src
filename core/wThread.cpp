@@ -5,15 +5,20 @@
  */
 
 #include "wThread.h"
+#include "wMutex.h"
 #include "wLog.h"
 
 namespace hnet {
 
 void* wThread::ThreadWrapper(void *pvArgs) {
-    if (!pvArgs) return NULL;
+    if (!pvArgs) {
+	return NULL;
+    }
 
     wThread *pThread = (wThread *)pvArgs;
-    if (pThread->PrepareRun()) pThread->Run();
+    if (pThread->PrepareRun()) {
+	pThread->Run();
+    }
 
     return NULL;
 }
