@@ -15,6 +15,7 @@
 #include "wSocket.h"
 
 namespace hnet {
+
 class wTask : private wNoncopyable {
 public:
     wTask();
@@ -88,8 +89,7 @@ protected:
     char *mSendRead {NULL};
     int  mSendLen {0};  //可发送数据长度
 };
- 
-}
+
+}	// namespace hnet
 
 #endif
-

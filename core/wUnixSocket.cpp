@@ -4,82 +4,51 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include <sys/un.h>
+#include <poll.h>
 #include "wUnixSocket.h"
 
 namespace hnet {
-int wUnixSocket::Open()
-{
-	if ((mFD = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
-	{
-		mErr = errno;
-		return -1;
+
+wStatus wUnixSocket::Open() {
+	if ((mFD = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+		return mStatus = wStatus::IOError("wUnixSocket::Open socket() AF_UNIX failed", strerror(errno));
 	}
-	return mFD;
+	return mStatus = wStatus::Nothing();
 }
 
-int wUnixSocket::Bind(string sHost, unsigned int nPort)
-{
-	if (mFD == FD_UNKNOWN)
-	{
-		return -1;
-	}
+wStatus wUnixSocket::Bind(string host, uint16_t port) {
 	struct sockaddr_un stSocketAddr;
 	memset(&stSocketAddr, 0, sizeof(stSocketAddr));
 	stSocketAddr.sun_family = AF_UNIX;
-	strncpy(stSocketAddr.sun_path, sHost.c_str(), sizeof(stSocketAddr.sun_path) - 1);
+	strncpy(stSocketAddr.sun_path, host.c_str(), sizeof(stSocketAddr.sun_path) - 1);
 
-	if (bind(mFD, (struct sockaddr *)&stSocketAddr, sizeof(stSocketAddr)) < 0)
-	{
-		mErr = errno;
-		Close();
-		return -1;
+	if (bind(mFD, (struct sockaddr *)&stSocketAddr, sizeof(stSocketAddr)) == -1) {
+		return mStatus = wStatus::IOError("wUnixSocket::Bind bind failed", strerror(errno));
 	}
-	return 0;
+	return mStatus = wStatus::Nothing();
 }
 
-int wUnixSocket::Listen(string sHost, unsigned int nPort)
-{
-	if (mFD == FD_UNKNOWN)
-	{
-		return -1;
-	}
-	mHost = sHost;
-
-	if (Bind(mHost) < 0)
-	{
-		mErr = errno;
-		Close();
-		return -1;
+wStatus wUnixSocket::Listen(string host, uint16_t port) {
+	mHost = host;
+	
+	if (!Bind(mHost).Ok()) {
+		return mStatus;
 	}
 
-	if (listen(mFD, LISTEN_BACKLOG) < 0)
-	{
-		mErr = errno;
-		Close();
-		return -1;
+	if (listen(mFD, kListenBacklog) < 0) {
+		return mStatus = wStatus::IOError("wUnixSocket::Listen listen failed", strerror(errno));
 	}
 	
-	if (SetNonBlock() < 0) 
-	{
-		LOG_ERROR(ELOG_KEY, "[system] Set listen socket nonblock failed, close it");
-	}
-	return 0;
+	return SetFL();
 }
 
-int wUnixSocket::Connect(string sHost, unsigned int nPort, float fTimeout)
-{
-	if (mFD == FD_UNKNOWN)
-	{
-		return -1;
-	}
-	mHost = sHost;
+int wUnixSocket::Connect(string host, uint16_t port, float fTimeout) {
+	mHost = host;
 
-	string sTmpSock = "unix_";
-	sTmpSock += Itos(getpid()) + ".sock";
-	if (Bind(sTmpSock) < 0)
-	{
-		mErr = errno;
-		Close();
+	string tmpsock = "unix_";
+	tmpsock += Itos(getpid()) + ".sock";
+	if (!Bind(mHost).Ok()) {
 		return -1;
 	}
 
@@ -89,105 +58,81 @@ int wUnixSocket::Connect(string sHost, unsigned int nPort, float fTimeout)
 	strncpy(stSockAddr.sun_path, mHost.c_str(), sizeof(stSockAddr.sun_path) - 1);
 
 	//超时设置
-	if (fTimeout > 0)
-	{
-		SetNonBlock();
-	}
-
-	int iRet = connect(mFD, (const struct sockaddr *)&stSockAddr, sizeof(stSockAddr));
-	if (fTimeout > 0 && iRet < 0)
-	{
-		if (errno == EINPROGRESS)	//建立启动但是尚未完成
-		{
-			int iLen, iVal, iRet;
-			struct pollfd stFD;
-			int iTimeout = fTimeout * 1000000;	//微妙
-			while (true)
-			{
-				stFD.fd = mFD;
-                stFD.events = POLLIN | POLLOUT;
-                iRet = poll(&stFD, 1, iTimeout);
-                if (iRet == -1)
-                {
-                	mErr = errno;
-                    if(mErr == EINTR)
-                    {
-                        continue;
-                    }
-                    Close();
-                    return -1;
-                }
-                else if(iRet == 0)
-                {
-                    Close();
-                    LOG_ERROR(ELOG_KEY, "[system] unix connect timeout millisecond=%d", iTimeout);
-                    return ERR_TIMEOUT;
-                }
-                else
-                {
-                    iLen = sizeof(iVal);
-                    iRet = getsockopt(mFD, SOL_SOCKET, SO_ERROR, (char*)&iVal, (socklen_t*)&iLen);
-                    if(iRet == -1)
-                    {
-                    	mErr = errno;
-                        Close();
-                        LOG_ERROR(ELOG_KEY, "[system] ip=%s:%d, unix connect getsockopt errno=%d,%s", mHost.c_str(), mPort, mErr, strerror(mErr));
-                        return -1;
-                    }
-                    if(iVal > 0)
-                    {
-                    	mErr = errno;
-                        LOG_ERROR(ELOG_KEY, "[system] ip=%s:%d, unix connect fail errno=%d,%s", mHost.c_str(), mPort, mErr, strerror(mErr));
-                        Close();
-                        return -1;
-                    }
-                    break;	//连接成功
-                }
-			}
-		}
-		else
-		{
-			mErr = errno;
-            LOG_ERROR(ELOG_KEY, "[system] ip=%s:%d, unix connect directly errno=%d,%s", mHost.c_str(), mPort, mErr, strerror(mErr));
-			Close();
+	if (fTimeout > 0) {
+		SetFL();
+		if (SetFL().Ok()) {	// todo
 			return -1;
 		}
 	}
+
+	int ret = connect(mFD, (const struct sockaddr *)&stSockAddr, sizeof(stSockAddr));
+	if (ret == -1 && timeout > 0) {
+		// 建立启动但是尚未完成
+		if (errno == EINPROGRESS) {
+			while (true) {
+				struct pollfd pfd;
+				pfd.fd = mFD;
+				pfd.events = POLLIN | POLLOUT;
+				int rt = poll(&pfd, 1, timeout * 1000000);	// 微妙
+
+				if (rt == -1) {
+					if (errno == EINTR) {
+					    continue;
+					}
+					mStatus = wStatus::IOError("wUnixSocket::Connect poll failed", strerror(errno));
+					return -1;
+
+				} else if(rt == 0) {
+					mStatus = wStatus::IOError("wUnixSocket::Connect connect timeout", timeout);
+					return kSeTimeout;
+
+				} else {
+					int val, len = sizeof(int);
+					if (getsockopt(mFD, SOL_SOCKET, SO_ERROR, (char*)&val, (socklen_t*)&len) == -1) {
+					    mStatus = wStatus::IOError("wUnixSocket::Connect getsockopt SO_ERROR failed", strerror(errno));
+					    return -1;
+					}
+
+					if (val > 0) {
+					    mStatus = wStatus::IOError("wUnixSocket::Connect connect failed", strerror(errno));
+					    return -1;
+					}
+					break;	// 连接成功
+				}
+			}
+		} else {
+			mStatus = wStatus::IOError("wUnixSocket::Connect connect directly failed", strerror(errno));
+			return -1;
+		}
+	}
+	
+	mStatus = wStatus::Nothing();
 	return 0;
 }
 
-int wUnixSocket::Accept(struct sockaddr* pClientSockAddr, socklen_t *pSockAddrSize)
-{
-	if (mFD == FD_UNKNOWN || mSockType != SOCK_TYPE_LISTEN)
-	{
+int wUnixSocket::Accept(struct sockaddr* clientaddr, socklen_t *addrsize) {
+	if (mSockType != kStListen) {
+		mStatus = wStatus::InvalidArgument("wUnixSocket::Accept", "is not listen socket");
 		return -1;
 	}
-
-	int iNewFD = 0;
-	do {
-		iNewFD = accept(mFD, pClientSockAddr, pSockAddrSize);
-		if (iNewFD < 0)
-		{
-			mErr = errno;
-			if (mErr == EINTR)	//中断
-			{
+	
+	int fd = 0;
+	while (true) {
+		fd = accept(mFD, clientaddr, addrsize);
+		if (fd == -1) {
+			if (errno == EINTR) {
 				continue;
 			}
-			if (mErr == EAGAIN || mErr == EWOULDBLOCK)	//没有新连接
-			{
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				return 0;
 			}
-			break;
-	    }
-	    break;
-	} while (true);
 
-	if (iNewFD <= 0)
-	{
-		return -1;
+			mStatus = wStatus::IOError("wUnixSocket::Accept, accept failed", strerror(errno));
+			return -1;
+	    }
 	}
 
-	return iNewFD;
+	return fd;
 }
 
 }	// namespace hnet

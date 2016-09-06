@@ -4,6 +4,10 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <poll.h>
 #include "wMisc.h"
 #include "wTcpSocket.h"
 
@@ -11,7 +15,7 @@ namespace hnet {
 
 wStatus wTcpSocket::Open() {
 	if ((mFD = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		return mStatus = wStatus::IOError("wTcpSocket::Open socket() failed", strerror(errno));
+		return mStatus = wStatus::IOError("wTcpSocket::Open socket() AF_INET failed", strerror(errno));
 	}
 
 	int flags = 1;
@@ -61,7 +65,6 @@ wStatus wTcpSocket::Listen(string host, uint16_t port) {
 	if (listen(mFD, kListenBacklog) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Listen listen failed", strerror(errno));
 	}
-
 	return SetFL();
 }
 
@@ -90,39 +93,39 @@ int wTcpSocket::Connect(string host, uint16_t port, float timeout) {
 	}
 
 	int ret = connect(mFD, (const struct sockaddr *)&stSockAddr, sizeof(stSockAddr));
-	if (timeout > 0 && ret == -1) {
+	if (ret == -1 && timeout > 0) {
 		// 建立启动但是尚未完成
 		if (errno == EINPROGRESS) {
 			while (true) {
 				struct pollfd pfd;
 				pfd.fd = mFD;
-                pfd.events = POLLIN | POLLOUT;
-                int rt = poll(&pfd, 1, timeout * 1000000);	// 微妙
+				pfd.events = POLLIN | POLLOUT;
+				int rt = poll(&pfd, 1, timeout * 1000000);	// 微妙
 
-                if (rt == -1) {
-                    if (errno == EINTR) {
-                        continue;
-                    }
-                    mStatus = wStatus::IOError("wTcpSocket::Connect poll failed", strerror(errno));
-                    return -1;
+				if (rt == -1) {
+					if (errno == EINTR) {
+					    continue;
+					}
+					mStatus = wStatus::IOError("wTcpSocket::Connect poll failed", strerror(errno));
+					return -1;
 
-                } else if(rt == 0) {
-                    mStatus = wStatus::IOError("wTcpSocket::Connect connect timeout", timeout);
-                    return kSeTimeout;
+				} else if(rt == 0) {
+					mStatus = wStatus::IOError("wTcpSocket::Connect connect timeout", timeout);
+					return kSeTimeout;
 
-                } else {
-                	int val, len = sizeof(int);
-                    if (getsockopt(mFD, SOL_SOCKET, SO_ERROR, (char*)&val, (socklen_t*)&len) == -1) {
-                        mStatus = wStatus::IOError("wTcpSocket::Connect getsockopt SO_ERROR failed", strerror(errno));
-                        return -1;
-                    }
+				} else {
+					int val, len = sizeof(int);
+					if (getsockopt(mFD, SOL_SOCKET, SO_ERROR, (char*)&val, (socklen_t*)&len) == -1) {
+					    mStatus = wStatus::IOError("wTcpSocket::Connect getsockopt SO_ERROR failed", strerror(errno));
+					    return -1;
+					}
 
-                    if (val > 0) {
-                        mStatus = wStatus::IOError("wTcpSocket::Connect connect failed", strerror(errno));
-                        return -1;
-                    }
-                    break;	// 连接成功
-                }
+					if (val > 0) {
+					    mStatus = wStatus::IOError("wTcpSocket::Connect connect failed", strerror(errno));
+					    return -1;
+					}
+					break;	// 连接成功
+				}
 			}
 		} else {
 			mStatus = wStatus::IOError("wTcpSocket::Connect connect directly failed", strerror(errno));
@@ -134,14 +137,15 @@ int wTcpSocket::Connect(string host, uint16_t port, float timeout) {
 	return 0;
 }
 
-int wTcpSocket::Accept(struct sockaddr* pClientSockAddr, socklen_t *pSockAddrSize) {
+int wTcpSocket::Accept(struct sockaddr* clientaddr, socklen_t *addrsize) {
 	if (mSockType != kStListen) {
+		mStatus = wStatus::InvalidArgument("wTcpSocket::Accept", "is not listen socket");
 		return -1;
 	}
 
 	int fd = 0;
 	while (true) {
-		fd = accept(mFD, pClientSockAddr, pSockAddrSize);
+		fd = accept(mFD, clientaddr, addrsize);
 		if (fd == -1) {
 			if (errno == EINTR) {
 				continue;
@@ -165,91 +169,69 @@ int wTcpSocket::Accept(struct sockaddr* pClientSockAddr, socklen_t *pSockAddrSiz
 	return fd;
 }
 
-int wTcpSocket::SetTimeout(float fTimeout)
+wStatus wTcpSocket::SetTimeout(float timeout)
 {
-	if (SetSendTimeout(fTimeout) < 0) {
-		return -1;
+	if (SetSendTimeout(timeout).Ok()) {
+		return mStatus;
 	}
-	if (SetRecvTimeout(fTimeout) < 0) {
-		return -1;
-	}
-	return 0;
+	return SetRecvTimeout(timeout);
 }
 
-int wTcpSocket::SetSendTimeout(float fTimeout) {
-	if (mFD == FD_UNKNOWN) {
-		return -1;
-	}
-
+wStatus wTcpSocket::SetSendTimeout(float timeout) {
 	struct timeval stTimetv;
-	stTimetv.tv_sec = (int)fTimeout>=0 ? (int)fTimeout : 0;
-	stTimetv.tv_usec = (int)((fTimeout - (int)fTimeout) * 1000000);
+	stTimetv.tv_sec = (int)timeout>=0 ? (int)timeout : 0;
+	stTimetv.tv_usec = (int)((timeout - (int)timeout) * 1000000);
 	if (stTimetv.tv_usec < 0 || stTimetv.tv_usec >= 1000000 || (stTimetv.tv_sec == 0 && stTimetv.tv_usec == 0)) {
 		stTimetv.tv_sec = 30;
 		stTimetv.tv_usec = 0;
 	}
 
 	if (setsockopt(mFD, SOL_SOCKET, SO_SNDTIMEO, &stTimetv, sizeof(stTimetv)) == -1) {
-    	mErr = errno;
-        return -1;  
-    }
-    return 0;
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDTIMEO failed", strerror(errno));
+	}
+	return mStatus = wStatus::Nothing();
 }
 
-int wTcpSocket::SetRecvTimeout(float fTimeout) {
-	if (mFD == FD_UNKNOWN) {
-		return -1;
-	}
-
+wStatus wTcpSocket::SetRecvTimeout(float timeout) {
 	struct timeval stTimetv;
-	stTimetv.tv_sec = (int)fTimeout>=0 ? (int)fTimeout : 0;
-	stTimetv.tv_usec = (int)((fTimeout - (int)fTimeout) * 1000000);
+	stTimetv.tv_sec = (int)timeout>=0 ? (int)timeout : 0;
+	stTimetv.tv_usec = (int)((timeout - (int)timeout) * 1000000);
 	if (stTimetv.tv_usec < 0 || stTimetv.tv_usec >= 1000000 || (stTimetv.tv_sec == 0 && stTimetv.tv_usec == 0)) {
 		stTimetv.tv_sec = 30;
 		stTimetv.tv_usec = 0;
 	}
 	
 	if (setsockopt(mFD, SOL_SOCKET, SO_RCVTIMEO, &stTimetv, sizeof(stTimetv)) == -1) {
-    	mErr = errno;
-        return -1;  
-    }
-    return 0;
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_RCVTIMEO failed", strerror(errno));
+	}
+	return mStatus = wStatus::Nothing();
 }
 
-int wTcpSocket::SetKeepAlive(int iIdle, int iIntvl, int iCnt) {
-	if (mFD == FD_UNKNOWN) {
-		return -1;
+wStatus wTcpSocket::SetKeepAlive(int idle, int intvl, int cnt) {
+	int flages = 1;
+	if (setsockopt(mFD, SOL_SOCKET, SO_KEEPALIVE, &flages, sizeof(flages)) == -1) {
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_KEEPALIVE failed", strerror(errno));
+	}
+	if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle)) == -1) {
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_KEEPIDLE failed", strerror(errno));
+	}
+	if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)) == -1) {
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_KEEPINTVL failed", strerror(errno));
+	}
+	if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt)) == -1) {
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_KEEPCNT failed", strerror(errno)); 
 	}
 
-	int iFlags = 1;
-	if (setsockopt(mFD, SOL_SOCKET, SO_KEEPALIVE, &iFlags, sizeof(iFlags)) == -1) {
-    	mErr = errno;
-        return -1;  
-    }
-	if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPIDLE, &iIdle, sizeof(iIdle)) == -1) {
-    	mErr = errno;
-        return -1;  
-    }
-	if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPINTVL, &iIntvl, sizeof(iIntvl)) == -1) {
-    	mErr = errno;
-        return -1;  
-    }
-	if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPCNT, &iCnt, sizeof(iCnt)) == -1) {
-    	mErr = errno;
-        return -1;  
-    }
+	// Linux Kernel 2.6.37
+	// 如果发送出去的数据包在十秒内未收到ACK确认，则下一次调用send或者recv，则函数会返回-1，errno设置为ETIMEOUT
+#	ifdef TCP_USER_TIMEOUT
+	unsigned int timeout = 10000;
+	if (setsockopt(mFD, IPPROTO_TCP, TCP_USER_TIMEOUT, &timeout, sizeof(timeout)) == -1) {
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_USER_TIMEOUT failed", strerror(errno)); 
+	}
+#	endif
 
-    //Linux Kernel 2.6.37
-    //如果发送出去的数据包在十秒内未收到ACK确认，则下一次调用send或者recv，则函数会返回-1，errno设置为ETIMEOUT
-#ifdef TCP_USER_TIMEOUT
-    unsigned int iTimeout = 10000;
-	if (setsockopt(mFD, IPPROTO_TCP, TCP_USER_TIMEOUT, &iTimeout, sizeof(iTimeout)) == -1) {
-    	mErr = errno;
-        return -1;
-    }
-#endif
-    
-    return 0;
+	return mStatus = wStatus::Nothing();
 }
 
 }	// namespace hnet

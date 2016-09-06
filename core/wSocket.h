@@ -49,22 +49,36 @@ public:
     // 发送客户端数据
     // return ：<0 对端发生错误 >=0 发送字符
     virtual ssize_t SendBytes(char *vArray, size_t vLen);
-
-    virtual wStatus Close();
-    virtual wStatus SetFL(bool bNonblock = true);
     
     // 从客户端接收连接
     // return ：<0 对端发生错误|对端关闭(FIN_WAIT) =0 稍后重试 >0 文件描述符
-    virtual int Accept(struct sockaddr* pClientSockAddr, socklen_t *pSockAddrSize) { return -1;}
-    virtual int Bind(string sHost, unsigned int nPort = 0) { return -1;}
-    virtual int Listen(string sHost, unsigned int nPort = 0) { return -1;}
-    virtual int Connect(string sHost, unsigned int nPort = 0, float fTimeout = 30) { return -1;}
-    virtual int Open() { return kFDUnknown;}
+    virtual int Accept(struct sockaddr* clientaddr, socklen_t *addrsize) { 
+	return -1;
+    }
+    
+    virtual int Connect(string host, uint16_t port = 0, float timeout = 30) { 
+	return -1;
+    }
+    
+    virtual wStatus Bind(string host, uint16_t port = 0) { 
+	return wStatus::Nothing();
+    }
+    
+    virtual wStatus Listen(string host, uint16_t port = 0) { 
+	return wStatus::Nothing();
+    }
+    
+    virtual wStatus Open() { 
+	return wStatus::Nothing();
+    }
+    
+    virtual wStatus Close();
+    virtual wStatus SetFL(bool nonblock = true);
 
 
-    virtual int SetTimeout(float fTimeout = 30) { return -1; }
-    virtual int SetSendTimeout(float fTimeout = 30) { return -1; } 
-    virtual int SetRecvTimeout(float fTimeout = 30) { return -1; }
+    virtual wStatus SetTimeout(float fTimeout = 30) { return -1; }
+    virtual wStatus SetSendTimeout(float fTimeout = 30) { return -1; } 
+    virtual wStatus SetRecvTimeout(float fTimeout = 30) { return -1; }
 
     /*
     int &Errno() { return mErr; }
