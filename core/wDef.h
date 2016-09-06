@@ -47,12 +47,6 @@ enum TASK_STATUS
     TASK_RUNNING
 };
 
-//socket errno
-#define ERR_NOBUFF -96    //socket buf写满 
-#define ERR_TIMEOUT -97	//connect连接超时
-#define ERR_MSGLEN -98	//接受消息长度不合法
-#define ERR_CLOSED -99	//socket对端close
-
 //进程相关
 #define MAX_PROCESSES         1024
 

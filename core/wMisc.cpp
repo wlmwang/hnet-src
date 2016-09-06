@@ -7,7 +7,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include "wMisc.h"
-#include "wStatus.h"
+#include "wSlice.h"
 
 namespace hnet {
 namespace coding {
@@ -60,7 +60,7 @@ void AppendNumberTo(std::string* str, uint64_t num) {
     str->append(buf);
 }
 
-void AppendEscapedStringTo(std::string* str, const std::string& value) {
+void AppendEscapedStringTo(std::string* str, const wSlice& value) {
     for (size_t i = 0; i < value.size(); i++) {
         char c = value[i];
         if (c >= ' ' && c <= '~') {		// 可见字符范围
@@ -80,13 +80,13 @@ std::string NumberToString(uint64_t num) {
     return r;
 }
 
-std::string EscapeString(const std::string& value) {
+std::string EscapeString(const wSlice& value) {
     std::string r;
     AppendEscapedStringTo(&r, value);
     return r;
 }
 
-bool ConsumeDecimalNumber(std::string* in, uint64_t* val) {
+bool ConsumeDecimalNumber(wSlice* in, uint64_t* val) {
     uint64_t v = 0;
     int digits = 0;
     while (!in->empty()) {

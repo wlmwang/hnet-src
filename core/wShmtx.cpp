@@ -4,6 +4,7 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include <new>
 #include "wShmtx.h"
 #include "wLog.h"
 #include "wShm.h"
@@ -17,9 +18,9 @@ wStatus wShmtx::Create(wShm *pShm, int iSpin) {
 		LOG_ERROR(ELOG_KEY, "[system] shm alloc failed for shmtx: %d", sizeof(wSem));
 		return -1;
 	}
-	mSem = (wSem *) pAddr;
+	mSem = new (*pAddr) wSem();
 	mSpin = iSpin;
-	return mSem->Initialize();
+	return mStatus = wStatus::Nothing();
 }
 
 int wShmtx::Lock() {

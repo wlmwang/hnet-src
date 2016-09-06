@@ -28,7 +28,7 @@ public:
     bool mDaemon;
     char *mSignal;
     char *mHost;
-    int mPort;
+    uint16_t mPort;
     wProcTitle *mProcTitle;
 };
 

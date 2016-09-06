@@ -16,20 +16,23 @@ namespace hnet {
 class wSlice : private wNoncopyable {
 public:
     wSlice() : mData(""), mSize(0) { }
+
     wSlice(const char* d, size_t n) : mData(d), mSize(n) { }
+
     wSlice(const std::string& s) : data_(s.data()), mSize(s.size()) { }
+    
     wSlice(const char* s) : mData(s), mSize(strlen(s)) { }
 
     const char* data() const { 
-	return mData; 
+	   return mData; 
     }
     
     size_t size() const { 
-	return mSize; 
+	   return mSize; 
     }
     
     bool empty() const { 
-	return mSize == 0; 
+	   return mSize == 0; 
     }
     
     char operator[](size_t n) const {
@@ -38,8 +41,8 @@ public:
     }
     
     void clear() { 
-	mData = "";
-	mSize = 0; 
+    	mData = "";
+    	mSize = 0; 
     }
 
     void removePrefix(size_t n) {
@@ -53,12 +56,12 @@ public:
     }
     
     std::string ToString() const { 
-	return std::string(mData, mSize);
+	   return std::string(mData, mSize);
     }
     
-    //   <  0 iff "*this" <  "b",
-    //   == 0 iff "*this" == "b",
-    //   >  0 iff "*this" >  "b"
+    // <  0 iff "*this" <  "b",
+    // == 0 iff "*this" == "b",
+    // >  0 iff "*this" >  "b"
     int compare(const wSlice& b) const;
 
 private:
@@ -79,10 +82,10 @@ inline int wSlice::compare(const wSlice& b) const {
     int r = memcmp(mData, b.mData, minLen);
     if (r == 0) {
         if (mSize < b.mSize) {
-	    r = -1;
-	} else if (mSize > b.mSize) {
-	    r = +1;
-	}
+            r = -1;
+    	} else if (mSize > b.mSize) {
+            r = +1;
+    	}
     }
     return r;
 }

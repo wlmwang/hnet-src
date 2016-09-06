@@ -5,54 +5,64 @@
  */
 
 #include "wSocket.h"
+#include "wLog.h"
+#include "wMisc.h"
 
 namespace hnet {
-wSocket::wSocket(SOCK_TYPE eType, SOCK_PROTO eProto, SOCK_FLAG eFlag) : mSockType(eType), mSockProto(eProto), mSockFlag(eFlag) {
-    mCreateTime = GetTickCount();
-}
+
+wSocket::wSocket(SockType type, SockProto proto, SockFlag flag) : mFD(kFDUnknown), mPort(0), mRecvTm(0), mSendTm(0), 
+mMakeTm(misc::GetTimeofday()), mSockType(type), mSockProto(proto), mSockFlag(flag) { }
 
 wSocket::~wSocket() {
     Close();
 }
 
-void wSocket::Close() {
-    mFD != kFDUnknown && close(mFD);
+wStatus wSocket::Close() {
+    if (close(mFD) == -1) {
+        return mStatus = wStatus::IOError("wSocket::Close failed", strerror(errno));
+    }
     mFD = kFDUnknown;
+    return mStatus = wStatus::Nothing();
 }
 
-int wSocket::SetNonBlock(bool bNonblock) {
-    if (mFD == kFDUnknown) return -1;
-
-    int iFlags = fcntl(mFD, F_GETFL, 0);
-    return fcntl(mFD, F_SETFL, (bNonblock == true ? iFlags | O_NONBLOCK : iFlags & ~O_NONBLOCK));
+wStatus wSocket::SetFL(bool bNonblock) {
+    int flags = fcntl(mFD, F_GETFL, 0);
+    if (flags == -1) {
+        return mStatus = wStatus::IOError("wSocket::SetFL F_GETFL failed", strerror(errno));
+    }
+    if (fcntl(mFD, F_SETFL, (bNonblock == true ? flags | O_NONBLOCK : flags & ~O_NONBLOCK)) == -1) {
+        return mStatus = wStatus::IOError("wSocket::SetFL F_SETFL failed", strerror(errno));
+    }
+    return mStatus = wStatus::Nothing();
 }
 
 ssize_t wSocket::RecvBytes(char *vArray, size_t vLen) {
-    mRecvTime = GetTickCount();
+    mRecvTm = misc::GetTimeofday();
 
     while (true) {
-        ssize_t iRecvLen = recv(mFD, vArray, vLen, 0);
-        if (iRecvLen > 0) {
-            return iRecvLen;
-        } else if (iRecvLen == 0) {
-            return ERR_CLOSED;	//FIN
+        ssize_t recvlen = recv(mFD, vArray, vLen, 0);
+        if (recvlen > 0) {
+            return recvlen;
+        } else if (recvlen == 0) {
+            return kSeClosed;	// FIN，对端关闭
         } else {
-            mErr = errno;
-            if (mErr == EINTR) {
+            if (errno == EINTR) {
                 continue;
             }
-            if (mErr == EAGAIN || mErr == EWOULDBLOCK) {
+
+            // 返回0，表示当前接受缓冲区已满，可以继续接受，但需等待下一轮epoll（水平触发）通知
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 return 0;
             }
 
-            LOG_ERROR(ELOG_KEY, "[system] recv fd(%d) error: %s", mFD, strerror(mErr));
-            return iRecvLen;
+            mStatus = wStatus::IOError("wSocket::RecvBytes, recv failed", strerror(errno));
+            return recvlen;
         }
     }
 }
 
 ssize_t wSocket::SendBytes(char *vArray, size_t vLen) {
-    mSendTime = GetTickCount();
+    mSendTm = misc::GetTimeofday();
 
     size_t iLeftLen = vLen;
     size_t iHaveSendLen = 0;
@@ -65,15 +75,16 @@ ssize_t wSocket::SendBytes(char *vArray, size_t vLen) {
                 return vLen;
             }
         } else {
-            mErr = errno;
-            if (mErr == EINTR) {
+            if (errno == EINTR) {
                 continue;
             }
-            if (iSendLen < 0 && (mErr == EAGAIN || mErr == EWOULDBLOCK)) {  //当前缓冲区写满，可以继续写，或者等待epoll的后续通知
+
+            // 返回0，表示当前发送缓冲区已满，可以继续发送，但需等待下一轮epoll（水平触发）通知
+            if (iSendLen < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
                 return 0;
             }
 
-            LOG_ERROR(ELOG_KEY, "[system] send fd(%d) error: %s", mFD, strerror(mErr));
+            mStatus = wStatus::IOError("wSocket::SendBytes, send failed", strerror(errno));
             return iSendLen;
         }
     }

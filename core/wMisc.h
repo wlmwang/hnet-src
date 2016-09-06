@@ -17,6 +17,7 @@
 #include <vector>
 #include <cstdarg>
 #include "wCore.h"
+#include "wStatus.h"
 #include "wCommand.h"
 #include "wSignal.h"
 
@@ -58,20 +59,22 @@ inline uint64_t DecodeFixed64(const char* ptr) {
 
 namespace logging {
 
+class wSlice;
+
 // 将整型按字符方式追加到str字符串结尾
 void AppendNumberTo(std::string* str, uint64_t num);
 
 // 在str后面添加value字符，并将value不可见字符转化为16进制表示的字符
-void AppendEscapedStringTo(std::string* str, const std::string& value);
+void AppendEscapedStringTo(std::string* str, const wSlice& value);
 
 // 返回整型字符串
 std::string NumberToString(uint64_t num);
 
 // 返回不可见字符被转化为16进制表示的字符的value字符串
-std::string EscapeString(const std::string& value);
+std::string EscapeString(const wSlice& value);
 
 // 消费转化in字符串前缀的十进制数字符串，返回是否转化正确
-bool ConsumeDecimalNumber(std::string* in, uint64_t* val);
+bool ConsumeDecimalNumber(wSlice* in, uint64_t* val);
 
 }   // namespace logging
 

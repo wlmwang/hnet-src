@@ -25,6 +25,7 @@ const int32_t   kPacketSize = 4096;
 const int32_t   kDataSize = 56;
 const int8_t    kRetryTimes = 4;
 const int8_t    kIcmpData = 4;
+
 }   // namespace hnet
 
 class wPing : private wNoncopyable {

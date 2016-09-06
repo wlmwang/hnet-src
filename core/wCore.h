@@ -39,10 +39,6 @@ const uint8_t   kMaxIpLen = 16;
 const uint32_t  kListenBacklog = 511;
 const int32_t   kFDUnknown = -1;
 
-// keep-alive 间隔 次数
-const uint32_t  kKeepAliveTime = 3000;
-const uint8_t   kKeepAliveCnt = 5;
-
 // 16m shm消息队列大小
 const uint32_t  kMsgQueueLen = 16777216;
 
