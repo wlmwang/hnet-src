@@ -148,8 +148,8 @@ inline T* SafeNew() {
 }
 
 template <typename T>
-inline T** SafeNewVec(size_t n) {
-    T** ptr = NULL;
+inline T* SafeNewVec(size_t n) {
+    T* ptr = NULL;
     try {
         ptr = new T[n];
     } catch (...) {
@@ -167,7 +167,7 @@ inline void SafeDelete(T* ptr) {
 }
 
 template <typename T>
-inline void SafeDeleteVec(T** ptr) {
+inline void SafeDeleteVec(T* ptr) {
     if (ptr) {
         delete[] ptr;
         ptr = NULL;

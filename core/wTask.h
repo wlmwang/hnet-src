@@ -8,33 +8,39 @@
 #define _W_TASK_H_
 
 #include "wCore.h"
-#include "wCommand.h"
-#include "wLog.h"
-#include "wMisc.h"
+#include "wStatus.h"
 #include "wNoncopyable.h"
-#include "wSocket.h"
 
 namespace hnet {
+
+class wSocket;
 
 class wTask : private wNoncopyable {
 public:
     wTask();
     wTask(wSocket *pSocket);
     virtual ~wTask();
-    void Initialize();
 
     wSocket *Socket() { return mSocket;}
-    TASK_STATUS &Status() { return mStatus;}
+    //TASK_STATUS &Status() { return mStatus;}
     bool IsRunning() { return mStatus == TASK_RUNNING;}
 
     virtual int VerifyConn() { return 0;}	//验证接收到连接
     virtual int Verify() {return 0;}		//发送连接验证请求
 
-    virtual void CloseTask(int iReason = 0) {}	//iReason关闭原因
+    // iReason关闭原因
+    virtual void CloseTask(int iReason = 0) { }
 
     virtual int Heartbeat();
-    virtual int HeartbeatOutTimes() { return mHeartbeatTimes > KEEPALIVE_CNT; }
-    virtual int ClearbeatOutTimes() { return mHeartbeatTimes = 0; }
+    
+    virtual int HeartbeatOutTimes() {
+        return mHeartbeat > kKeepAliveCnt;
+    }
+
+    virtual int ClearbeatOutTimes() {
+        return mHeartbeat = 0;
+    }
+
     /**
      *  处理接受到数据
      *  每条消息大小[1b,512k]
@@ -70,24 +76,22 @@ public:
     int SyncRecv(char vCmd[], int iLen, int iTimeout = 10/*s*/);
 
 protected:
-    wSocket	*mSocket {NULL};
-    TASK_STATUS mStatus {TASK_INIT};
-    int mHeartbeatTimes {0};
+    wStatus mStatus;
+    wSocket	*mSocket;
+    // TASK_STATUS mStatus {TASK_INIT};
+    uint8_t mHeartbeat;
 
-    //临时缓冲区
-    char mTmpBuff[MSG_BUFF_LEN] {'\0'};
+    char mSyncBuff[kPackageSize];    // 同步发送、接受消息缓冲
+    char mRecvBuff[kPackageSize];    // 异步接受消息缓冲
+    char mSendBuff[kPackageSize];    // 异步发送消息缓冲
+    
+    char *mRecvWrite;
+    char *mRecvRead;
+    int  mRecvLen;
 
-    //接收消息的缓冲区 512K
-    char mRecvBuff[MSG_BUFF_LEN] {'\0'};
-    char *mRecvWrite {NULL};
-    char *mRecvRead {NULL};
-    int  mRecvLen {0}; //已接收数据长度
-
-    //接收消息的缓冲区 512K
-    char mSendBuff[MSG_BUFF_LEN] {'\0'};
-    char *mSendWrite {NULL};
-    char *mSendRead {NULL};
-    int  mSendLen {0};  //可发送数据长度
+    char *mSendWrite;
+    char *mSendRead;
+    int  mSendLen;  //可发送数据长度
 };
 
 }	// namespace hnet

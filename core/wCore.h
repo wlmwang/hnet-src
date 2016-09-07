@@ -39,15 +39,17 @@ const uint8_t   kMaxIpLen = 16;
 const uint32_t  kListenBacklog = 511;
 const int32_t   kFDUnknown = -1;
 
+// keep-alive 间隔，次数
+const uint32_t  kKeepAliveTm = 3000;
+const uint8_t   kKeepAliveCnt = 5;
+
 // 16m shm消息队列大小
 const uint32_t  kMsgQueueLen = 16777216;
 
-// 512k 消息缓冲大小
-const uint32_t  kMsgBuffLen = 524288;
-
-// 512k-4 封包限制
-const uint32_t  kMaxPackageLen = 524284;
-const uint32_t  kMinPackageLen = 1; 
+// 512k 客户端task消息缓冲大小
+const uint32_t  kPackageSize = 524288;
+const uint32_t  kMaxPackageSize = 524284;
+const uint32_t  kMinPackageSize = 1;
 
 const u_char*   kSoftwareName   = "hnet";
 const u_char*   kSoftwareVer    = "0.0.1";

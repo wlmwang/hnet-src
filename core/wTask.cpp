@@ -5,71 +5,82 @@
  */
 
 #include "wTask.h"
+#include "wCommand.h"
+#include "wLog.h"
+#include "wMisc.h"
+#include "wSocket.h"
 
 namespace hnet {
-wTask::wTask() {
-    Initialize();
-}
 
-wTask::wTask(wSocket* pSocket) : mSocket(pSocket) {
-    Initialize();
-}
+wTask::wTask() : mSocket(NULL), mHeartbeat(0), mRecvLen(0), mSendLen(0),
+mRecvRead(mRecvBuff), mRecvWrite(mRecvBuff), mSendRead(mSendBuff), mSendWrite(mSendBuff) { }
+
+wTask::wTask(wSocket* pSocket) : mSocket(pSocket), mHeartbeat(0), mRecvLen(0), mSendLen(0),
+mRecvRead(mRecvBuff), mRecvWrite(mRecvBuff), mSendRead(mSendBuff), mSendWrite(mSendBuff) { }
 
 wTask::~wTask() {
-    SAFE_DELETE(mSocket);
-}
-
-void wTask::Initialize() {
-    mRecvRead = mRecvWrite = mRecvBuff;
-    mSendRead = mSendWrite = mSendBuff;
+    misc::SafeDelete<wSocket>(mSocket);
 }
 
 int wTask::Heartbeat() {
-    mHeartbeatTimes++;
-    struct wCommand vCmd;
-    int iRet = SyncSend((char *)&vCmd, sizeof(vCmd));
-    return iRet;
+    mHeartbeat++;
+    struct wCommand cmd;
+    return SyncSend((char *)&cmd, sizeof(cmd));
 }
 
 int wTask::TaskRecv() {
-    char *pBuffEnd = mRecvBuff + MSG_BUFF_LEN; //超尾指针
-    if (mRecvRead != mRecvBuff && mRecvWrite == pBuffEnd) mRecvWrite = mRecvBuff; //回退可写指针
+    // 超尾指针
+    char *pBuffEnd = mRecvBuff + kPackageSize;
+    
+    if (mRecvRead != mRecvBuff && mRecvWrite == pBuffEnd) {
+        // 回退可写指针
+        mRecvWrite = mRecvBuff;
+    }
 
     int iLeftLen;
     int iLen =  mRecvWrite - mRecvRead;
     if (iLen >= 0) {
-        iLeftLen = pBuffEnd - mRecvWrite;   //正向剩余
+        // 正向剩余
+        iLeftLen = pBuffEnd - mRecvWrite;
     } else {
-        iLeftLen = -iLen;   //分段，中间剩余
+        // 分段，中间剩余
+        iLeftLen = -iLen;
     }
 
     int iRecvLen = 0;
-    if (mRecvLen < MSG_BUFF_LEN) {
-        iRecvLen = mSocket->RecvBytes(mRecvWrite, iLeftLen);    //接受socket数据
-        if (iRecvLen <= 0) return iRecvLen;
+    if (mRecvLen < kPackageSize) {
+        // 接受socket数据
+        iRecvLen = mSocket->RecvBytes(mRecvWrite, iLeftLen);
+        if (iRecvLen <= 0) {
+            return iRecvLen;
+        }
 
         mRecvLen += iRecvLen;
         mRecvWrite += iRecvLen;
     }
 
-    LOG_DEBUG(ELOG_KEY, "[system] recv buf(%d-%d) rw(%d-%d) iLen(%d) leftlen(%d) movelen(%d) recvLen(%d) iRecvLen(%d)",
-        mRecvBuff, pBuffEnd, mRecvRead, mRecvWrite, iLen, iLeftLen, mRecvRead-mRecvBuff, mRecvLen, iRecvLen);
+    //LOG_DEBUG(ELOG_KEY, "[system] recv buf(%d-%d) rw(%d-%d) iLen(%d) leftlen(%d) movelen(%d) recvLen(%d) iRecvLen(%d)",
+    //    mRecvBuff, pBuffEnd, mRecvRead, mRecvWrite, iLen, iLeftLen, mRecvRead-mRecvBuff, mRecvLen, iRecvLen);
 
     for (int iRealLen = 0; mRecvLen > 0;) {
-        if (mRecvRead == pBuffEnd && mRecvWrite != mRecvBuff)  mRecvRead = mRecvBuff;
+        if (mRecvRead == pBuffEnd && mRecvWrite != mRecvBuff) {
+            mRecvRead = mRecvBuff;
+        }
         iLen =  mRecvWrite - mRecvRead;
         
-        if (iLen > 0) { //正向解析
+        if (iLen > 0) {
+            // 正向解析
             memcpy(&iRealLen, mRecvRead, sizeof(iRealLen));
-            if (iRealLen < MIN_PACKAGE_LEN || iRealLen > MAX_PACKAGE_LEN) {
-                LOG_ERROR(ELOG_KEY, "[system] recv message invalid len: %d , fd(%d)", iRealLen, mSocket->FD());
-                return ERR_MSGLEN;
+            if (iRealLen < kMinPackageSize || iRealLen > kMaxPackageSize) {
+                //LOG_ERROR(ELOG_KEY, "[system] recv message invalid len: %d , fd(%d)", iRealLen, mSocket->FD());
+                return kSeMsgLen;
             } else if (iRealLen > (int) (iLen - sizeof(int))) {
-                LOG_DEBUG(ELOG_KEY, "[system] recv a part of message: real len = %d, now len = %d", iRealLen, iLen - sizeof(int));
+                //LOG_DEBUG(ELOG_KEY, "[system] recv a part of message: real len = %d, now len = %d", iRealLen, iLen - sizeof(int));
                 return 0;
             }
 
-            HandleRecvMessage(mRecvRead + sizeof(int), iRealLen);   //消息解析，去除4字节消息长度标识位
+            // 消息解析，去除4字节消息长度标识位
+            HandleRecvMessage(mRecvRead + sizeof(int), iRealLen);
             mRecvLen -= iRealLen + sizeof(int);
             mRecvRead += iRealLen + sizeof(int);
         } else {
@@ -77,7 +88,6 @@ int wTask::TaskRecv() {
             if (iLeftLen >= (int)sizeof(int)) {
                 memcpy(&iRealLen, mRecvRead, sizeof(iRealLen));
             } else {
-                //小端序
                 int tmp;
                 iRealLen = 0;
                 for (int i = iLeftLen; i > 0; i--) {
@@ -90,23 +100,26 @@ int wTask::TaskRecv() {
                 }
             }
 
-            if (iRealLen < MIN_PACKAGE_LEN || iRealLen > MAX_PACKAGE_LEN) {
-                LOG_ERROR(ELOG_KEY, "[system] recv message invalid len: %d , fd(%d)", iRealLen, mSocket->FD());
-                return ERR_MSGLEN;
-            } else if (iRealLen > (int)(MSG_BUFF_LEN + iLen - sizeof(int))) {
-                LOG_DEBUG(ELOG_KEY, "[system] recv a part of message: real len = %d, now len = %d", iRealLen, MSG_BUFF_LEN + iLen - sizeof(int));
+            if (iRealLen < kMinPackageSize || iRealLen > kMaxPackageSize) {
+                //LOG_ERROR(ELOG_KEY, "[system] recv message invalid len: %d , fd(%d)", iRealLen, mSocket->FD());
+                return kSeMsgLen;
+            } else if (iRealLen > (int)(kPackageSize + iLen - sizeof(int))) {
+                //LOG_DEBUG(ELOG_KEY, "[system] recv a part of message: real len = %d, now len = %d", iRealLen, kPackageSize + iLen - sizeof(int));
                 return 0;
             }
             
-            if (iRealLen <= (int)(iLeftLen - sizeof(int))) {    //正向剩余
-                HandleRecvMessage(mRecvRead + sizeof(int), iRealLen);   //消息解析，去除4字节消息长度标识位
+            if (iRealLen <= (int)(iLeftLen - sizeof(int))) {
+                // 正向剩余
+                // 消息解析，去除4字节消息长度标识位
+                HandleRecvMessage(mRecvRead + sizeof(int), iRealLen);
                 mRecvLen -= iRealLen + sizeof(int);
                 mRecvRead += iRealLen + sizeof(int);
             } else {
                 memcpy(mTmpBuff, mRecvRead, iLeftLen);
                 memcpy(mTmpBuff + iLeftLen, mRecvBuff, iRealLen - iLeftLen + sizeof(int));
                 
-                HandleRecvMessage(mTmpBuff + sizeof(int), iRealLen);    //消息解析，去除4字节消息长度标识位
+                // 消息解析，去除4字节消息长度标识位
+                HandleRecvMessage(mTmpBuff + sizeof(int), iRealLen);
                 mRecvLen -= iRealLen + sizeof(int);
                 mRecvRead = mRecvBuff + (iRealLen - iLeftLen + sizeof(int));
             }
@@ -116,11 +129,10 @@ int wTask::TaskRecv() {
     return iRecvLen;
 }
 
-int wTask::TaskSend()
-{
-    char *pBuffEnd = mSendBuff + MSG_BUFF_LEN;
+int wTask::TaskSend() {
+    char *pBuffEnd = mSendBuff + kPackageSize;
     int iLen = 0, iSendLen = 0, iLeftLen = 0;
-    do {        
+    while (true) {
         iLen = mSendWrite - mSendRead;
         if (mSendLen == 0) {
             return 0;
@@ -141,26 +153,27 @@ int wTask::TaskSend()
             mSendRead = mSendBuff + mSendLen - iLeftLen;
         }
         
-        LOG_DEBUG(ELOG_KEY, "[system] send message len: %d, fd(%d)", iSendLen, mSocket->FD());
-    } while (true);
+        //LOG_DEBUG(ELOG_KEY, "[system] send message len: %d, fd(%d)", iSendLen, mSocket->FD());
+    }
     
     return iSendLen;
 }
 
-int wTask::Send2Buf(const char *pCmd, int iLen)
-{
+int wTask::Send2Buf(const char *pCmd, int iLen) {
     //判断消息长度
-    if (iLen < MIN_PACKAGE_LEN || iLen > MAX_PACKAGE_LEN) {
-        LOG_ERROR(ELOG_KEY, "[system] write message invalid len: %d , fd(%d)", iLen, mSocket->FD());
-        return ERR_MSGLEN;
-    } else if (iLen > (int)(MSG_BUFF_LEN - mSendLen - sizeof(int))) {
-        LOG_ERROR(ELOG_KEY, "[system] send buf not enough.left buf(%d) need(%d)", MSG_BUFF_LEN - mSendLen, iLen + sizeof(int));
-        return ERR_NOBUFF;
+    if (iLen < kMinPackageSize || iLen > kMaxPackageSize) {
+        //LOG_ERROR(ELOG_KEY, "[system] write message invalid len: %d , fd(%d)", iLen, mSocket->FD());
+        return kSeMsgLen;
+    } else if (iLen > (int)(kPackageSize - mSendLen - sizeof(int))) {
+        //LOG_ERROR(ELOG_KEY, "[system] send buf not enough.left buf(%d) need(%d)", kPackageSize - mSendLen, iLen + sizeof(int));
+        return kSeNobuff;
     }
 
-    char *pBuffEnd = mSendBuff + MSG_BUFF_LEN;
-    if (mSendRead != mSendBuff && mSendWrite == pBuffEnd) mSendWrite = mSendBuff; //回退可写指针
-    
+    char *pBuffEnd = mSendBuff + kPackageSize;
+    if (mSendRead != mSendBuff && mSendWrite == pBuffEnd) {
+        // 回退可写指针
+        mSendWrite = mSendBuff;
+    }
     
     int iWrLen =  mSendWrite - mSendRead;
     int iLeftLen = pBuffEnd - mSendWrite;
@@ -177,15 +190,15 @@ int wTask::Send2Buf(const char *pCmd, int iLen)
     }
     mSendLen += iLen + sizeof(int);
     
-    LOG_DEBUG(ELOG_KEY, "[system] write message to left buf(%d), message len(%d)", MSG_BUFF_LEN - mSendLen, iLen);
+    //LOG_DEBUG(ELOG_KEY, "[system] write message to left buf(%d), message len(%d)", kPackageSize - mSendLen, iLen);
     return iLen;
 }
 
 int wTask::SyncSend(const char *pCmd, int iLen) {
     //判断消息长度
-    if ((iLen < MIN_PACKAGE_LEN) || (iLen > MAX_PACKAGE_LEN)) {
-        LOG_ERROR(ELOG_KEY, "[system] write message invalid len: %d , fd(%d)", iLen, mSocket->FD());
-        return ERR_MSGLEN;
+    if ((iLen < kMinPackageSize) || (iLen > kMaxPackageSize)) {
+        //LOG_ERROR(ELOG_KEY, "[system] write message invalid len: %d , fd(%d)", iLen, mSocket->FD());
+        return kSeMsgLen;
     }
     
     memcpy(mTmpBuff, &iLen, sizeof(int));
@@ -193,15 +206,14 @@ int wTask::SyncSend(const char *pCmd, int iLen) {
     return mSocket->SendBytes(mTmpBuff, iLen + sizeof(int));
 }
 
-int wTask::SyncRecv(char vCmd[], int iLen, int iTimeout)
-{
+int wTask::SyncRecv(char vCmd[], int iLen, int iTimeout) {
     long long iSleep = 100;
     int iTryCount = iTimeout*1000000 / iSleep;
     int iCmdMsgLen = sizeof(int) + sizeof(struct wCommand);
     struct wCommand* pTmpCmd = 0;
     
     int iSize = 0, iRecvLen = 0;
-    do {
+    while (true) {
         iSize = mSocket->RecvBytes(mTmpBuff + iRecvLen, iLen + sizeof(int) - iRecvLen);
         if (iSize < 0) break;
         iRecvLen += iSize;
@@ -223,19 +235,19 @@ int wTask::SyncRecv(char vCmd[], int iLen, int iTimeout)
             continue;
         }
         break;
-    } while (true);
+    }
     
     int iMsgLen;
     memcpy(&iMsgLen, mTmpBuff, sizeof(iMsgLen));
-    if ((iRecvLen <= 0) || (iMsgLen < MIN_PACKAGE_LEN) || (iMsgLen > MAX_PACKAGE_LEN)) {
-        LOG_ERROR(ELOG_KEY, "[system] sync recv message invalid len: %d, fd(%d)", iMsgLen, mSocket->FD());
-        return ERR_MSGLEN;
+    if ((iRecvLen <= 0) || (iMsgLen < kMinPackageSize) || (iMsgLen > kMaxPackageSize)) {
+        //LOG_ERROR(ELOG_KEY, "[system] sync recv message invalid len: %d, fd(%d)", iMsgLen, mSocket->FD());
+        return kSeMsgLen;
     } else if (iMsgLen > (int)(iRecvLen - sizeof(int)))	{   //消息不完整 
-        LOG_DEBUG(ELOG_KEY, "[system] sync recv a part of message: real len = %d, now len = %d, call len = %d", iMsgLen, iRecvLen, iLen);
-        return ERR_MSGLEN;
+        //LOG_DEBUG(ELOG_KEY, "[system] sync recv a part of message: real len = %d, now len = %d, call len = %d", iMsgLen, iRecvLen, iLen);
+        return kSeMsgLen;
     } else if (iMsgLen != iLen) {
-        LOG_DEBUG(ELOG_KEY, "[system] sync recv error buffer len");
-        return ERR_MSGLEN;
+        //LOG_DEBUG(ELOG_KEY, "[system] sync recv error buffer len");
+        return kSeMsgLen;
     }
     
     memcpy(vCmd, mTmpBuff + sizeof(int), iLen);

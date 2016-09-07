@@ -68,7 +68,7 @@ wStatus wTcpSocket::Listen(string host, uint16_t port) {
 	return SetFL();
 }
 
-int wTcpSocket::Connect(string host, uint16_t port, float timeout) {
+wStatus wTcpSocket::Connect(int64_t *ret, string host, uint16_t port, float timeout) {
 	mHost = host;
 	mPort = port;
 
@@ -81,19 +81,20 @@ int wTcpSocket::Connect(string host, uint16_t port, float timeout) {
 	socklen_t iOptVal = 100*1024;
 	socklen_t iOptLen = sizeof(socklen_t);
 	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, (const void *)&iOptVal, iOptLen) == -1) {
-		mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDBUF failed", strerror(errno));
-		return -1;
+		*ret = -1;
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDBUF failed", strerror(errno));
 	}
 
 	// 超时设置
 	if (timeout > 0) {
-		if (SetFL().Ok()) {	// todo
-			SetSendTimeout(timeout);	// linux平台下可用
+		if (!SetFL().Ok()) {
+			*ret = static_cast<int64_t>(-1);
+			return mStatus;
 		}
 	}
 
-	int ret = connect(mFD, (const struct sockaddr *)&stSockAddr, sizeof(stSockAddr));
-	if (ret == -1 && timeout > 0) {
+	*ret = static_cast<int64_t>(connect(mFD, (const struct sockaddr *)&stSockAddr, sizeof(stSockAddr)));
+	if (*ret == -1 && timeout > 0) {
 		// 建立启动但是尚未完成
 		if (errno == EINPROGRESS) {
 			while (true) {
@@ -101,76 +102,74 @@ int wTcpSocket::Connect(string host, uint16_t port, float timeout) {
 				pfd.fd = mFD;
 				pfd.events = POLLIN | POLLOUT;
 				int rt = poll(&pfd, 1, timeout * 1000000);	// 微妙
-
 				if (rt == -1) {
 					if (errno == EINTR) {
 					    continue;
 					}
-					mStatus = wStatus::IOError("wTcpSocket::Connect poll failed", strerror(errno));
-					return -1;
-
+					return mStatus = wStatus::IOError("wTcpSocket::Connect poll failed", strerror(errno));
 				} else if(rt == 0) {
-					mStatus = wStatus::IOError("wTcpSocket::Connect connect timeout", timeout);
-					return kSeTimeout;
-
+					*ret = static_cast<int64_t>(kSeTimeout);
+					return mStatus = wStatus::IOError("wTcpSocket::Connect connect timeout", timeout);
 				} else {
 					int val, len = sizeof(int);
 					if (getsockopt(mFD, SOL_SOCKET, SO_ERROR, (char*)&val, (socklen_t*)&len) == -1) {
-					    mStatus = wStatus::IOError("wTcpSocket::Connect getsockopt SO_ERROR failed", strerror(errno));
-					    return -1;
+					    return mStatus = wStatus::IOError("wTcpSocket::Connect getsockopt SO_ERROR failed", strerror(errno));
+					}
+					if (val > 0) {
+					    return mStatus = wStatus::IOError("wTcpSocket::Connect connect failed", strerror(errno));
 					}
 
-					if (val > 0) {
-					    mStatus = wStatus::IOError("wTcpSocket::Connect connect failed", strerror(errno));
-					    return -1;
-					}
-					break;	// 连接成功
+					// 连接成功
+					*ret = 0;
+					break;
 				}
 			}
 		} else {
-			mStatus = wStatus::IOError("wTcpSocket::Connect connect directly failed", strerror(errno));
-			return -1;
+			return mStatus = wStatus::IOError("wTcpSocket::Connect connect directly failed", strerror(errno));
+		}
+	}
+	
+	return mStatus = wStatus::Nothing();
+}
+
+wStatus wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *addrsize) {
+	if (mSockType != kStListen) {
+		*fd = -1;
+		return mStatus = wStatus::InvalidArgument("wTcpSocket::Accept", "is not listen socket");
+	}
+
+	while (true) {
+		*fd = static_cast<int64_t>(accept(mFD, clientaddr, addrsize));
+		if (*fd > 0) {
+            mStatus = wStatus::Nothing();
+            break;
+		} else if (errno == EAGAIN) {
+            mStatus = wStatus::Nothing();
+            *size = static_cast<ssize_t>(0);
+            break;
+        } else if (errno == EINTR) {
+            // 操作被信号中断，中断后唤醒继续处理
+            // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
+            continue;
+        } else {
+            mStatus = wStatus::IOError("wSocket::Accept, accept failed", strerror(errno));
+            break;
+        }
+	}
+
+	if (mStatus.Ok()) {
+		// 设置发送缓冲大小3M
+		int iOptLen = sizeof(socklen_t);
+		int iOptVal = 0x300000;
+		if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (const void *)&iOptVal, iOptLen) == -1) {
+			mStatus = wStatus::IOError("wTcpSocket::Accept setsockopt() SO_SNDBUF failed", strerror(errno));
 		}
 	}
 
-	mStatus = wStatus::Nothing();
-	return 0;
+	return mStatus;
 }
 
-int wTcpSocket::Accept(struct sockaddr* clientaddr, socklen_t *addrsize) {
-	if (mSockType != kStListen) {
-		mStatus = wStatus::InvalidArgument("wTcpSocket::Accept", "is not listen socket");
-		return -1;
-	}
-
-	int fd = 0;
-	while (true) {
-		fd = accept(mFD, clientaddr, addrsize);
-		if (fd == -1) {
-			if (errno == EINTR) {
-				continue;
-			}
-			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-				return 0;
-			}
-
-			mStatus = wStatus::IOError("wTcpSocket::Accept, accept failed", strerror(errno));
-			return -1;
-	    }
-	}
-
-	// 设置发送缓冲大小3M
-	int iOptLen = sizeof(socklen_t);
-	int iOptVal = 0x300000;
-	if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (const void *)&iOptVal, iOptLen) == -1) {
-		mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDBUF failed", strerror(errno));
-		return -1;
-	}
-	return fd;
-}
-
-wStatus wTcpSocket::SetTimeout(float timeout)
-{
+wStatus wTcpSocket::SetTimeout(float timeout) {
 	if (SetSendTimeout(timeout).Ok()) {
 		return mStatus;
 	}

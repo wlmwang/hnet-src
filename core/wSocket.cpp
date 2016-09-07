@@ -36,58 +36,62 @@ wStatus wSocket::SetFL(bool nonblock) {
     return mStatus = wStatus::Nothing();
 }
 
-ssize_t wSocket::RecvBytes(char *vArray, size_t vLen) {
+wStatus wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     mRecvTm = misc::GetTimeofday();
-
+    
     while (true) {
-        ssize_t recvlen = recv(mFD, vArray, vLen, 0);
-        if (recvlen > 0) {
-            return recvlen;
-        } else if (recvlen == 0) {
-            return kSeClosed;	// FIN，对端关闭
+        *size = recv(mFD, buf, len, 0);
+        if (*size > 0) {
+            mStatus = wStatus::Nothing();
+            break;
+        } else if (*size == 0) {
+            mStatus = wStatus::IOError("wSocket::RecvBytes, client was closed", "");
+            *size = static_cast<ssize_t>(kSeClosed);
+            break;
+        } else if (errno == EAGAIN) {
+            mStatus = wStatus::Nothing();
+            *size = static_cast<ssize_t>(0);
+            break;
+        } else if (errno == EINTR) {
+            // 操作被信号中断，中断后唤醒继续处理
+            // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
+            continue;
         } else {
-            if (errno == EINTR) {
-                continue;
-            }
-
-            // 返回0，表示当前接受缓冲区已满，可以继续接受，但需等待下一轮epoll（水平触发）通知
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                return 0;
-            }
-
             mStatus = wStatus::IOError("wSocket::RecvBytes, recv failed", strerror(errno));
-            return recvlen;
+            break;
         }
     }
+    return mStatus;
 }
 
-ssize_t wSocket::SendBytes(char *vArray, size_t vLen) {
+wStatus wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     mSendTm = misc::GetTimeofday();
-
-    size_t iLeftLen = vLen;
-    size_t iHaveSendLen = 0;
+    
+    ssize_t sendedlen = 0, leftlen = len;
     while (true) {
-        ssize_t iSendLen = send(mFD, vArray + iHaveSendLen, iLeftLen, 0);
-        if (iSendLen >= 0) {
-            iLeftLen -= iSendLen;
-            iHaveSendLen += iSendLen;
-            if (iLeftLen == 0) {
-                return vLen;
+        sendlen = send(mFD, buf + sendedlen, leftlen, 0);
+        if (sendlen >= 0) {
+            sendedlen += sendlen;
+            if ((leftlen -= sendlen) == 0) {
+                mStatus = wStatus::Nothing();
+                *size = sendedlen;
+                break;
             }
+        } else if (errno == EAGAIN) {
+            mStatus = wStatus::Nothing();
+            *size = static_cast<ssize_t>(0);
+            break;
+        } else if (errno == EINTR) {
+            // 操作被信号中断，中断后唤醒继续处理
+            // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
+            continue;
         } else {
-            if (errno == EINTR) {
-                continue;
-            }
-
-            // 返回0，表示当前发送缓冲区已满，可以继续发送，但需等待下一轮epoll（水平触发）通知
-            if (iSendLen < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-                return 0;
-            }
-
+            *size = -1;
             mStatus = wStatus::IOError("wSocket::SendBytes, send failed", strerror(errno));
-            return iSendLen;
+            break;
         }
     }
+    return mStatus;
 }
 
 }   // namespace hnet

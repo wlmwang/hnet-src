@@ -13,7 +13,7 @@ namespace hnet {
 const char* wStatus::CopyState(const char* state) {
     uint32_t size;
     memcpy(&size, state, sizeof(size));
-    char* result = new char[size + 5];
+    char* result = misc::SafeNewVec<char>(size + 5);
     memcpy(result, state, size + 5);
     return result;
 }
@@ -23,7 +23,7 @@ wStatus::wStatus(Code code, const Slice& msg, const Slice& msg2) {
     const uint32_t len1 = msg.size();
     const uint32_t len2 = msg2.size();
     const uint32_t size = len1 + (len2 ? (2 + len2) : 0);
-    char* result = new char[size + 5];
+    char* result = misc::SafeNewVec<char>(size + 5);
     memcpy(result, &size, sizeof(size));
     result[4] = static_cast<char>(code);
     memcpy(result + 5, msg.data(), len1);

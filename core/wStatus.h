@@ -9,6 +9,7 @@
 
 #include "wCore.h"
 #include "wSlice.h"
+#include "wMisc.h"
 
 namespace hnet {
 
@@ -16,7 +17,9 @@ class wStatus {
 public:
     wStatus() : mState(NULL) { }
     wStatus(const wStatus& s);
-    ~wStatus() { delete[] mState; }
+    ~wStatus() {
+        misc::SafeDeleteVec<char>(mState);
+    }
 
     void operator=(const wStatus& s);
 
@@ -76,7 +79,6 @@ private:
     // mState[4]    == code
     // mState[5..]  == message
     const char* mState;
-
 };
 
 inline wStatus::wStatus(const wStatus& s) {
@@ -85,7 +87,7 @@ inline wStatus::wStatus(const wStatus& s) {
 
 inline void wStatus::operator=(const wStatus& s) {
     if (mState != s.mState) {
-        delete[] mState;
+        misc::SafeDeleteVec<char>(mState);
         mState = (s.mState == NULL) ? NULL : CopyState(s.mState);
     }
 }

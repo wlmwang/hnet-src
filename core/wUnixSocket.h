@@ -22,8 +22,8 @@ public:
 	virtual wStatus Open();
 	virtual wStatus Bind(string host, uint16_t port = 0);	//sHost为sock路径
 	virtual wStatus Listen(string host, uint16_t port = 0);
-	virtual int Connect(string host, uint16_t port = 0, float timeout = 30);
-	virtual int Accept(struct sockaddr* clientaddr, socklen_t *addrsize);	
+	virtual wStatus Connect(int64_t *fd, string host, uint16_t port = 0, float timeout = 30);
+	virtual wStatus Accept(int64_t *ret, struct sockaddr* clientaddr, socklen_t *addrsize);
 };
 
 }	// namespace hnet
