@@ -53,12 +53,7 @@ wStatus wUnixSocket::Connect(int64_t *ret, string host, uint16_t port, float tim
 		*ret = static_cast<int64_t>(-1);
 		return mStatus;
 	}
-
-	struct sockaddr_un stSockAddr;
-	memset(&stSockAddr, 0, sizeof(stSockAddr));
-	stSockAddr.sun_family = AF_UNIX;
-	strncpy(stSockAddr.sun_path, mHost.c_str(), sizeof(stSockAddr.sun_path) - 1);
-
+	
 	// 超时设置
 	if (timeout > 0) {
 		if (!SetFL().Ok()) {
@@ -66,12 +61,16 @@ wStatus wUnixSocket::Connect(int64_t *ret, string host, uint16_t port, float tim
 			return mStatus;
 		}
 	}
+	
+	struct sockaddr_un stSockAddr;
+	memset(&stSockAddr, 0, sizeof(stSockAddr));
+	stSockAddr.sun_family = AF_UNIX;
+	strncpy(stSockAddr.sun_path, mHost.c_str(), sizeof(stSockAddr.sun_path) - 1);
 
 	*ret = static_cast<int64_t>(connect(mFD, (const struct sockaddr *)&stSockAddr, sizeof(stSockAddr)));
 	if (ret == -1 && timeout > 0) {
 		// 建立启动但是尚未完成
 		if (errno == EINPROGRESS) {
-
 			while (true) {
 				struct pollfd pfd;
 				pfd.fd = mFD;
@@ -83,7 +82,6 @@ wStatus wUnixSocket::Connect(int64_t *ret, string host, uint16_t port, float tim
 					}
 					return mStatus = wStatus::IOError("wUnixSocket::Connect poll failed", strerror(errno));
 				} else if(rt == 0) {
-					*ret = static_cast<int64_t>(kSeTimeout);
 					return mStatus = wStatus::IOError("wUnixSocket::Connect connect timeout", timeout);
 				} else {
 					int val, len = sizeof(int);

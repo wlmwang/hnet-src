@@ -4,7 +4,11 @@
  * Copyright (C) Hupu, Inc.
  */
 
-#include "wChannel.h"
+#include <sys/un.h>
+#include <sys/uio.h>
+#include "wMisc.h"
+#include "wLog.h"
+#include "wChannelSocket.h"
 #include "wChannelCmd.h"
 
 namespace hnet {

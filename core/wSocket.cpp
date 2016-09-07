@@ -46,11 +46,9 @@ wStatus wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
             break;
         } else if (*size == 0) {
             mStatus = wStatus::IOError("wSocket::RecvBytes, client was closed", "");
-            *size = static_cast<ssize_t>(kSeClosed);
             break;
         } else if (errno == EAGAIN) {
             mStatus = wStatus::Nothing();
-            *size = static_cast<ssize_t>(0);
             break;
         } else if (errno == EINTR) {
             // 操作被信号中断，中断后唤醒继续处理
@@ -69,24 +67,22 @@ wStatus wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     
     ssize_t sendedlen = 0, leftlen = len;
     while (true) {
-        sendlen = send(mFD, buf + sendedlen, leftlen, 0);
-        if (sendlen >= 0) {
-            sendedlen += sendlen;
-            if ((leftlen -= sendlen) == 0) {
+        *size = send(mFD, buf + sendedlen, leftlen, 0);
+        if (*size >= 0) {
+            sendedlen += *size;
+            if ((leftlen -= *size) == 0) {
                 mStatus = wStatus::Nothing();
                 *size = sendedlen;
                 break;
             }
         } else if (errno == EAGAIN) {
             mStatus = wStatus::Nothing();
-            *size = static_cast<ssize_t>(0);
             break;
         } else if (errno == EINTR) {
             // 操作被信号中断，中断后唤醒继续处理
             // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
             continue;
         } else {
-            *size = -1;
             mStatus = wStatus::IOError("wSocket::SendBytes, send failed", strerror(errno));
             break;
         }

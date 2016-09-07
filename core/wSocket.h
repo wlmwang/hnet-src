@@ -43,27 +43,41 @@ public:
     virtual ~wSocket();
 
     // 从客户端接收数据
-    // ret <0 对端发生错误|消息超长|对端关闭(FIN_WAIT) =0 稍后重试 >0 接受字符
+    // wStatus返回不为空，则需关闭socket
+    // size = -1 对端发生错误|稍后重试
+    // size = 0  对端关闭
+    // size > 0  接受字符
     virtual wStatus RecvBytes(char buf[], size_t len, ssize_t *size);
 
     // 发送到客户端数据
-    // return ：<0 对端发生错误 >=0 发送字符
+    // wStatus返回不为空，则需关闭socket
+    // size = -1 对端发生错误|稍后重试|对端关闭
+    // size >= 0 发送字符
     virtual wStatus SendBytes(char buf[], size_t len, ssize_t *size);
     
     // 从客户端接收连接
-    // ret <0 对端发生错误|对端关闭(FIN_WAIT) =0 稍后重试 >0 文件描述符
-    virtual wStatus Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *addrsize) = 0;
+    // fd = -1 发生错误|稍后重试
+    // fd > 0 新文件描述符
+    virtual wStatus Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *addrsize) {
+	return mStatus = wStatus::IOError("wSocket::Accept failed", "method should be inherit");
+    }
     
     // 连接服务器
-    // ret <0 对端发生错误|对端关闭(FIN_WAIT) =0 稍后重试 >0 文件描述符
-    virtual wStatus Connect(int64_t *ret, string host, uint16_t port = 0, float timeout = 30) = 0;
+    // ret = -1 发生错误
+    // ret = 0 连接成功
+    virtual wStatus Connect(int64_t *ret, string host, uint16_t port = 0, float timeout = 30) {
+	return mStatus = wStatus::IOError("wSocket::Connect failed", "method should be inherit");
+    }
     
-    virtual wStatus Open() = 0;
-    virtual wStatus Bind(string host, uint16_t port = 0) = 0;
-    virtual wStatus Listen(string host, uint16_t port = 0) = 0;
-
-    virtual wStatus SetFL(bool nonblock = true);
+    virtual wStatus Listen(string host, uint16_t port = 0) {
+	return mStatus = wStatus::IOError("wSocket::Listen failed", "method should be inherit");
+    }
+    
+    virtual wStatus Open() {
+	return mStatus = wStatus::IOError("wSocket::Open failed", "method should be inherit");
+    }
     virtual wStatus Close();
+    virtual wStatus SetFL(bool nonblock = true);
 
     virtual wStatus SetTimeout(float fTimeout = 30) {
         return mStatus = wStatus::IOError("wSocket::SetTimeout failed", "method should be inherit");
@@ -97,6 +111,8 @@ public:
     */
    
 protected:
+    virtual wStatus Bind(string host, uint16_t port = 0) = 0;
+    
     wStatus mStatus;
     
     SockType mSockType;

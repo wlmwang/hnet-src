@@ -71,20 +71,7 @@ wStatus wTcpSocket::Listen(string host, uint16_t port) {
 wStatus wTcpSocket::Connect(int64_t *ret, string host, uint16_t port, float timeout) {
 	mHost = host;
 	mPort = port;
-
-	struct sockaddr_in stSockAddr;
-	memset(&stSockAddr, 0, sizeof(sockaddr_in));
-	stSockAddr.sin_family = AF_INET;
-	stSockAddr.sin_port = htons((short)mPort);
-	stSockAddr.sin_addr.s_addr = inet_addr(mHost.c_str());
-
-	socklen_t iOptVal = 100*1024;
-	socklen_t iOptLen = sizeof(socklen_t);
-	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, (const void *)&iOptVal, iOptLen) == -1) {
-		*ret = -1;
-		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDBUF failed", strerror(errno));
-	}
-
+	
 	// 超时设置
 	if (timeout > 0) {
 		if (!SetFL().Ok()) {
@@ -92,6 +79,12 @@ wStatus wTcpSocket::Connect(int64_t *ret, string host, uint16_t port, float time
 			return mStatus;
 		}
 	}
+	
+	struct sockaddr_in stSockAddr;
+	memset(&stSockAddr, 0, sizeof(sockaddr_in));
+	stSockAddr.sin_family = AF_INET;
+	stSockAddr.sin_port = htons((unsigned short)port);
+	stSockAddr.sin_addr.s_addr = inet_addr(host.c_str());
 
 	*ret = static_cast<int64_t>(connect(mFD, (const struct sockaddr *)&stSockAddr, sizeof(stSockAddr)));
 	if (*ret == -1 && timeout > 0) {
@@ -108,7 +101,6 @@ wStatus wTcpSocket::Connect(int64_t *ret, string host, uint16_t port, float time
 					}
 					return mStatus = wStatus::IOError("wTcpSocket::Connect poll failed", strerror(errno));
 				} else if(rt == 0) {
-					*ret = static_cast<int64_t>(kSeTimeout);
 					return mStatus = wStatus::IOError("wTcpSocket::Connect connect timeout", timeout);
 				} else {
 					int val, len = sizeof(int);
@@ -129,6 +121,13 @@ wStatus wTcpSocket::Connect(int64_t *ret, string host, uint16_t port, float time
 		}
 	}
 	
+	socklen_t iOptVal = 100*1024;
+	socklen_t iOptLen = sizeof(socklen_t);
+	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, (const void *)&iOptVal, iOptLen) == -1) {
+		*ret = -1;
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDBUF failed", strerror(errno));
+	}
+	
 	return mStatus = wStatus::Nothing();
 }
 
@@ -141,20 +140,19 @@ wStatus wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *
 	while (true) {
 		*fd = static_cast<int64_t>(accept(mFD, clientaddr, addrsize));
 		if (*fd > 0) {
-            mStatus = wStatus::Nothing();
-            break;
+			mStatus = wStatus::Nothing();
+			break;
 		} else if (errno == EAGAIN) {
-            mStatus = wStatus::Nothing();
-            *size = static_cast<ssize_t>(0);
-            break;
-        } else if (errno == EINTR) {
-            // 操作被信号中断，中断后唤醒继续处理
-            // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
-            continue;
-        } else {
-            mStatus = wStatus::IOError("wSocket::Accept, accept failed", strerror(errno));
-            break;
-        }
+			mStatus = wStatus::Nothing();
+			break;
+		} else if (errno == EINTR) {
+		    // 操作被信号中断，中断后唤醒继续处理
+		    // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
+		    continue;
+		} else {
+		    mStatus = wStatus::IOError("wSocket::Accept, accept failed", strerror(errno));
+		    break;
+		}
 	}
 
 	if (mStatus.Ok()) {

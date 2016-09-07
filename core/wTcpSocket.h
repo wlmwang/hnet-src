@@ -21,7 +21,6 @@ public:
 
     virtual wStatus Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *addrsize);
     virtual wStatus Connect(int64_t *ret, string host, uint16_t port = 0, float timeout = 30);
-    virtual wStatus Bind(string host, uint16_t port = 0);
     virtual wStatus Listen(string host, uint16_t port = 0);
     virtual wStatus Open();
 
@@ -30,6 +29,7 @@ public:
     virtual wStatus SetRecvTimeout(float timeout = 30);
 
 protected:
+    virtual wStatus Bind(string host, uint16_t port = 0);
     wStatus SetKeepAlive(int idle = 5, int intvl = 1, int cnt = 10);	// tcp保活
 
     bool mIsKeepAlive;
