@@ -8,30 +8,28 @@
 #define _W_CHANNEL_TASK_H_
 
 #include "wCore.h"
-#include "wAssert.h"
-#include "wLog.h" 
-#include "wCommand.h"
-#include "wDispatch.h"
 #include "wTask.h"
 
 namespace hnet {
 
 class wWorker;
+
 class wChannelTask : public wTask {
 public:
-	wChannelTask(wSocket *pSocket, wWorker *pWorker = NULL);
-
-	virtual int HandleRecvMessage(char *pBuffer, int nLen);
-	int ParseRecvMessage(struct wCommand* pCommand, char *pBuffer, int iLen);
-
-	DEC_FUNC(ChannelOpen);
-	DEC_FUNC(ChannelClose);
-	DEC_FUNC(ChannelQuit);
-	DEC_FUNC(ChannelTerminate);
+    //wChannelTask() { }
+    wChannelTask(wSocket *pSocket, wWorker *worker = NULL);
+    
+    virtual const char* Name() const {
+	return "wChannelTask";
+    }
+    
+    DEC_FUNC(ChannelOpen);
+    DEC_FUNC(ChannelClose);
+    DEC_FUNC(ChannelQuit);
+    DEC_FUNC(ChannelTerminate);
 
 protected:
-	wWorker *mWorker {NULL};
-	DEC_DISP(mDispatch);
+    wWorker *mWorker;
 };
 
 }	// namespace hnet

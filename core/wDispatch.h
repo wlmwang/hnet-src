@@ -14,15 +14,16 @@
 #include "wCommand.h"
 #include "wNoncopyable.h"
 
-#define DEC_DISP(dispatch) hnet::wDispatch<function<int(char*, int)>, int16_t> dispatch
-#define DEC_FUNC(func) int func(char *pBuffer, int iLen)
-#define REG_FUNC(ActIdx, vFunc) hnet::wDispatch<function<int(char*, int)>, int16_t>::Func_t {ActIdx, std::bind(vFunc, this, std::placeholders::_1, std::placeholders::_2)}
-#define REG_DISP(dispatch, classname, cmdid, paraid, func) dispatch.Register(classname, hnet::CmdId(cmdid, paraid), REG_FUNC(hnet::CmdId(cmdid, paraid), func));
+typedef int (*DispatchFunc)(char*, uint32_t);
+#define DEC_DISP(dispatch) hnet::wDispatch<function<int(char*, uint32_t)>, uint16_t> dispatch
+#define DEC_FUNC(func) int func(char *buf, uint32_t len)
+#define REG_FUNC(ActIdx, vFunc) hnet::wDispatch<function<int(char*, uint32_t)>, uint16_t>::Func_t {ActIdx, std::bind(vFunc, this, std::placeholders::_1, std::placeholders::_2)}
+#define REG_DISP(dispatch, classname, cmd, para, func) dispatch.Register(classname, hnet::CmdId(cmd, para), REG_FUNC(hnet::CmdId(cmd, para), func));
 
 namespace hnet {
 
 // 简单路由
-template<typename T, typename IDX = int16_t>
+template<typename T, typename IDX = uint16_t>
 class wDispatch : private wNoncopyable {
 public:
     struct Func_t;

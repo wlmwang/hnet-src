@@ -5,6 +5,8 @@
  */
 
 #include "wChannelTask.h"
+#include "wLog.h" 
+#include "wCommand.h"
 #include "wMaster.h"
 #include "wWorker.h"
 #include "wChannelCmd.h"
@@ -12,38 +14,14 @@
 
 namespace hnet {
 
-wChannelTask::wChannelTask(wSocket *pSocket, wWorker *pWorker) : wTask(pSocket), mWorker(pWorker) {
-	REG_DISP(mDispatch, "wChannelTask", CMD_CHANNEL_REQ, CHANNEL_REQ_OPEN, &wChannelTask::ChannelOpen);
-	REG_DISP(mDispatch, "wChannelTask", CMD_CHANNEL_REQ, CHANNEL_REQ_CLOSE, &wChannelTask::ChannelClose);
-	REG_DISP(mDispatch, "wChannelTask", CMD_CHANNEL_REQ, CHANNEL_REQ_QUIT, &wChannelTask::ChannelQuit);
-	REG_DISP(mDispatch, "wChannelTask", CMD_CHANNEL_REQ, CHANNEL_REQ_TERMINATE, &wChannelTask::ChannelTerminate);
-}
-
-int wChannelTask::HandleRecvMessage(char *pBuffer, int nLen) {
-	W_ASSERT(pBuffer != NULL, return -1);
-
-	struct wCommand *pCommand = (struct wCommand*) pBuffer;
-	return ParseRecvMessage(pCommand, pBuffer, nLen);
-}
-
-int wChannelTask::ParseRecvMessage(struct wCommand* pCommand, char *pBuffer, int iLen) {
-	if (pCommand->GetId() == W_CMD(CMD_NULL, PARA_NULL)) {
-		//空消息(心跳返回)
-		mHeartbeatTimes = 0;
-	} else {
-		auto pF = mDispatch.GetFuncT("wChannelTask", pCommand->GetId());
-		if (pF != NULL) {
-			pF->mFunc(pBuffer, iLen);
-		} else {
-			LOG_ERROR(ELOG_KEY, "[system] client send a invalid msg fd(%d) id(%d)", mSocket->FD(), pCommand->GetId());
-		}
-	}
-	return 0;
+wChannelTask::wChannelTask(wSocket *pSocket, wWorker *worker) : wTask(pSocket), mWorker(worker) {
+    RegisterFunc(CMD_CHANNEL_REQ, CHANNEL_REQ_OPEN, &wChannelTask::ChannelOpen);
+    RegisterFunc(CMD_CHANNEL_REQ, CHANNEL_REQ_CLOSE, &wChannelTask::ChannelClose);
+    RegisterFunc(CMD_CHANNEL_REQ, CHANNEL_REQ_QUIT, &wChannelTask::ChannelQuit);
+    RegisterFunc(CMD_CHANNEL_REQ, CHANNEL_REQ_TERMINATE, &wChannelTask::ChannelTerminate);
 }
 
 int wChannelTask::ChannelOpen(char *pBuffer, int iLen) {
-	W_ASSERT(mWorker != NULL, return -1);
-
 	struct ChannelReqOpen_t *pCh = (struct ChannelReqOpen_t* )pBuffer;
 	if (mWorker->mWorkerPool != NULL && mWorker->mWorkerPool[pCh->mSlot]) {
 		LOG_DEBUG(ELOG_KEY, "[system] get channel solt:%i pid:%d fd:%d", pCh->mSlot, pCh->mPid, pCh->mFD);
@@ -55,8 +33,6 @@ int wChannelTask::ChannelOpen(char *pBuffer, int iLen) {
 }
 
 int wChannelTask::ChannelClose(char *pBuffer, int iLen) {
-	W_ASSERT(mWorker != NULL, return -1);
-
 	struct ChannelReqClose_t *pCh = (struct ChannelReqClose_t* )pBuffer;
 	if (mWorker->mWorkerPool != NULL && mWorker->mWorkerPool[pCh->mSlot]) {
 		LOG_DEBUG(ELOG_KEY, "[system] close channel s:%i pid:%d our:%d fd:%d", pCh->mSlot, pCh->mPid, 

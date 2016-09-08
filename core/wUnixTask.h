@@ -12,13 +12,11 @@
 #include "wTask.h"
 
 namespace hnet {
+
 class wUnixTask : public wTask {
 public:
-	wUnixTask() {}
-	wUnixTask(wSocket *pSocket) : wTask(pSocket) {}
-	
-	virtual int VerifyConn() { return 0;}
-	virtual int Verify() { return 0;}
+    //wUnixTask() { }
+    wUnixTask(wSocket *socket) : wTask(socket) { }
 };
 
 }	// namespace hnet
