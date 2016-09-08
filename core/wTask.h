@@ -20,78 +20,90 @@ public:
     wTask();
     wTask(wSocket *pSocket);
     virtual ~wTask();
-
-    wSocket *Socket() { return mSocket;}
-    //TASK_STATUS &Status() { return mStatus;}
-    bool IsRunning() { return mStatus == TASK_RUNNING;}
-
-    virtual int VerifyConn() { return 0;}	//验证接收到连接
-    virtual int Verify() {return 0;}		//发送连接验证请求
-
-    // iReason关闭原因
-    virtual void CloseTask(int iReason = 0) { }
-
-    virtual int Heartbeat();
     
-    virtual int HeartbeatOutTimes() {
-        return mHeartbeat > kKeepAliveCnt;
+    // 验证接收到登录请求
+    virtual int Verify() {
+        return 0;
     }
 
-    virtual int ClearbeatOutTimes() {
+    // 发送登录验证请求
+    virtual int Login() {
+        return 0;
+    }
+    
+    // 处理接受到数据，转发给业务处理函数 Handlemsg 处理。每条消息大小[1b,512k]
+    // wStatus返回不为空，则task被关闭；Handlemsg处理出错返回，task也被关闭
+    // size = -1 对端发生错误|稍后重试
+    // size = 0  对端关闭
+    // size > 0  接受字符
+    virtual wStatus TaskRecv(ssize_t *size);
+
+    // 处理接受到数据
+    // wStatus返回不为空，则task被关闭
+    // size = -1 对端发生错误|稍后重试|对端关闭
+    // size >= 0 发送字符
+    virtual wStatus TaskSend(ssize_t *size);
+    
+    // 解析消息，当发生错误时即关闭该连接
+    virtual wStatus Handlemsg(char *buf[], uint32_t len) {
+        return mStatus = wStatus::IOError("wTask::Handlemsg, socket will be closed", "method should be inherit");
+    }
+    
+    // 异步发送：将待发送客户端消息写入buf，等待TaskSend发送
+    // -1 ：消息长度不合法
+    // -2 ：发送缓冲剩余空间不足，请稍后重试
+    // 0 : 发送成功
+    wStatus Send2Buf(const char buf[], size_t len);
+
+    // 同步发送确切长度消息
+    wStatus SyncSend(const char buf[], size_t len, ssize_t *size);
+    
+    // 同步接受确切长度消息(需保证此sock未加入epoll中，防止出现竞争！！)
+    // 调用者确保vCmd有足够长的空间接受自此同步消息
+    wStatus SyncRecv(char buf[], size_t len, size_t *size, uint32_t timeout /*s*/);
+
+    size_t WritableLen() {
+        return mSendLen;
+    }
+
+    wSocket *Socket() {
+        return mSocket;
+    }
+   
+    wStatus HeartbeatSend();
+
+    void HeartbeatReset() {
         return mHeartbeat = 0;
     }
 
-    /**
-     *  处理接受到数据
-     *  每条消息大小[1b,512k]
-     *  核心逻辑：接受整条消息，然后进入用户定义的业务函数HandleRecvMessage
-     *  return ：<0 对端发生错误|消息超长|对端关闭(FIN_WAIT) =0 稍后重试 >0 接受字符
-     */
-    virtual int TaskRecv();
-    virtual int TaskSend();
-    /**
-     * 业务逻辑入口函数
-     */
-    virtual int HandleRecvMessage(char *pBuffer, int nLen) { return -1;}
-    /**
-     * 发送缓冲区是否有数据
-     */
-    int WritableLen() { return mSendLen;}
-    /**
-     *  将待发送客户端消息写入buf，等待TaskSend发送
-     *  return 
-     *  -1 ：消息长度不合法
-     *  -2 ：发送缓冲剩余空间不足，请稍后重试
-     *   0 : 发送成功
-     */
-    int Send2Buf(const char *pCmd, int iLen);
-    /**
-     *  同步发送确切长度消息
-     */
-    int SyncSend(const char *pCmd, int iLen);
-    /**
-     *  同步接受确切长度消息(需保证此sock未加入epoll中，防止出现竞争！！)
-     *  确保pCmd有足够长的空间接受自此同步消息
-     */
-    int SyncRecv(char vCmd[], int iLen, int iTimeout = 10/*s*/);
-
+    bool HeartbeatOuttimes() {
+        return mHeartbeat > kHeartbeat;
+    }
+   
+    /*
+    bool IsRunning() {
+        return mStatus == TASK_RUNNING;
+    }
+    */
+   
+    //TASK_STATUS &Status() { return mStatus;}
 protected:
+    int8_t mState;
     wStatus mStatus;
     wSocket	*mSocket;
-    // TASK_STATUS mStatus {TASK_INIT};
     uint8_t mHeartbeat;
 
-    char mSyncBuff[kPackageSize];    // 同步发送、接受消息缓冲
+    char mTempBuff[kPackageSize];    // 同步发送、接受消息缓冲
     char mRecvBuff[kPackageSize];    // 异步接受消息缓冲
     char mSendBuff[kPackageSize];    // 异步发送消息缓冲
     
     char *mRecvWrite;
     char *mRecvRead;
-    int  mRecvLen;
+    size_t  mRecvLen;  // 已接受数据长度
 
     char *mSendWrite;
     char *mSendRead;
-    int  mSendLen;  //可发送数据长度
+    size_t  mSendLen;  // 可发送数据长度
 };
 
 }	// namespace hnet
