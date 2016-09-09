@@ -4,6 +4,11 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/ip_icmp.h>
+#include <netdb.h>
 #include "wPing.h"
 #include "wMisc.h"
 
@@ -98,11 +103,10 @@ wStatus wPing::Ping(const char *ip) {
     // 发送所有ICMP报文
     mStatus = SendPacket();
     if (!mStatus.Ok()) {
-        //Close();
         return mStatus;
     }
 
-    mStatus = RecvPacket(); //Close();
+    mStatus = RecvPacket();
     return mStatus;
 }
 
@@ -143,7 +147,8 @@ wStatus wPing::RecvPacket() {
             if (errno == EINTR) {
                 continue;
             } else if(errno == EAGAIN) {
-                return wStatus::IOError("wPing::Ping, ping recvmsg timeout, ip: " + mStrIp, strerror(errno));
+                continue;
+                //return wStatus::IOError("wPing::Ping, ping recvmsg timeout, ip: " + mStrIp, strerror(errno));
             } else {
                 return wStatus::IOError("wPing::Ping, ping recvmsg error, ip: " + mStrIp, strerror(errno));
             }
@@ -164,7 +169,6 @@ wStatus wPing::RecvPacket() {
         return wStatus::Corruption("wPing::Ping, parse error, ip: ", mStrIp);
     }
     
-    // LOG_DEBUG(ELOG_KEY, "[system] ping succ,ip=%s,retry=%u", mStrIp.c_str(), i);
     return wStatus::Nothing();
 }
 

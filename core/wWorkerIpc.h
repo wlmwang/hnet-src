@@ -7,59 +7,62 @@
 #ifndef _W_WORKER_IPC_H_
 #define _W_WORKER_IPC_H_
 
-#include <algorithm>
 #include <vector>
-#include <sys/epoll.h>
-
 #include "wCore.h"
-#include "wLog.h"
-#include "wMisc.h"
+#include "wStatus.h"
 #include "wThread.h"
 
 namespace hnet {
 
 class wTask;
 class wWorker;
-class wWorkerIpc : public wThread
-{
-	public:
-		wWorkerIpc(wWorker *pWorker);
+class wChannelSocket;
 
-		virtual int PrepareRun();
-		virtual int Run();
-		
-		void Recv();
-		int InitEpoll();
-		void CleanEpoll();
-		int AddToEpoll(wTask* pTask, int iEvents = EPOLLIN, int iOp = EPOLL_CTL_ADD);
-        int RemoveEpoll(wTask* pTask);
-		
-		vector<wTask*>::iterator RemoveTaskPool(wTask *pTask);
-		int AddToTaskPool(wTask *pTask);
-		void CleanTaskPool();
-		int PoolNum() { return mTaskPool.size();}
-		
-		bool IsRunning() { return mStatus == SERVER_RUNNING; }
-		SERVER_STATUS &Status() { return mStatus; }
+class wWorkerIpc : public wThread {
+public:
+	wWorkerIpc(wWorker *pWorker);
+	~wWorkerIpc();
 
-	protected:
-		int mErr;
-		wWorker *mWorker {NULL};
-		
-		SERVER_STATUS mStatus {SERVER_INIT};	//服务器当前状态
-		int mEpollFD {FD_UNKNOWN};
-		int mTimeout {10};
+	wStatus PrepareRun();
+	wStatus Run();
+	
+	wStatus NewChannelTask(wChannelSocket* sock, wWorker* worker, wTask** ptr);
 
-		//epoll_event
-		struct epoll_event mEpollEvent;
-		vector<struct epoll_event> mEpollEventPool; //epoll_event已发生事件池（epoll_wait）
-		int mTaskCount {0};	//mTcpTaskPool.size();
-		
-		//task|pool
-		wTask *mTask {NULL};		//temp task
-		vector<wTask*> mTaskPool;
+	void Recv();
+	int InitEpoll();
+	void CleanEpoll();
+	int AddToEpoll(wTask* pTask, int iEvents = EPOLLIN, int iOp = EPOLL_CTL_ADD);
+    int RemoveEpoll(wTask* pTask);
+	
+	vector<wTask*>::iterator RemoveTaskPool(wTask *pTask);
+	int AddToTaskPool(wTask *pTask);
+	void CleanTaskPool();
+
+	int PoolNum() {
+		return mTaskPool.size();
+	}
+	
+	//bool IsRunning() { return mStatus == SERVER_RUNNING; }
+	//SERVER_STATUS &Status() { return mStatus; }
+
+protected:
+	wStatus mStatus;
+	wWorker *mWorker;
+	
+	//SERVER_STATUS mStatus {SERVER_INIT};	//服务器当前状态
+	int32_t mEpollFD;
+	uint64_t mTimeout;
+
+	//epoll_event
+	struct epoll_event mEpollEvent;
+	vector<struct epoll_event> mEpollEventPool; //epoll_event已发生事件池（epoll_wait）
+	size_t mTaskCount;
+	
+	//task|pool
+	wTask *mTask;
+	vector<wTask*> mTaskPool;
 };
 
-}
+}	// namespace hnet
 
 #endif

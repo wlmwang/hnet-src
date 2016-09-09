@@ -9,27 +9,16 @@
 
 #include <map>
 #include <vector>
-
 #include "wCore.h"
-#include "wLog.h"
-#include "wMisc.h"
-#include "wSingleton.h"
-#include "wFile.h"
-#include "wShm.h"
-#include "wShmtx.h"
-#include "wSigSet.h"
-#include "wSignal.h"
-#include "wWorker.h"
-#include "wChannelCmd.h"	//*channel*_t
+#include "wStatus.h"
+#include "wNoncopyable.h"
 
 namespace hnet {
 
+class wEnv;
 class wWorker;
-template <typename T>
-class wMaster : public wSingleton<T>
-{
-//TODO.
-string mWorkerProcessTitle = "worker process";
+
+class wMaster : private wNoncopyable {
 public:
 	wMaster();
 	virtual ~wMaster();
@@ -43,16 +32,14 @@ public:
 	pid_t SpawnWorker(string sTitle, int type = PROCESS_RESPAWN);
 	void PassOpenChannel(struct ChannelReqOpen_t *pCh);
 	void PassCloseChannel(struct ChannelReqClose_t *pCh);
-	virtual wWorker* NewWorker(int iSlot = 0);
-	virtual void HandleSignal();
-	/**
-	 *  如果有worker异常退出，则重启
-	 *  如果所有的worker都退出了，则返回0
-	 */
+	virtual wStatus HandleSignal();
+	virtual wStatus NewWorker(const char* title, uint32_t slot, wWorker** ptr);
+
+	// 如果有worker异常退出，则重启
+	// 如果所有的worker都退出了，则返回0
 	int ReapChildren();
-	/**
-	 *  给所有worker进程发送信号
-	 */
+	
+	// 给所有worker进程发送信号
 	void SignalWorker(int iSigno);
 
 	/**
@@ -67,44 +54,43 @@ public:
 	virtual void Run() {}
 	virtual void ReloadMaster() {}
 
-	/**
-	 *  注册信号回调
-	 *  可重写全局变量g_signals，实现自定义信号处理
-	 */
+	// 注册信号回调
+	// 可重写全局变量g_signals，实现自定义信号处理
 	void InitSignals();
-	/**
-	 *  回收退出进程状态（waitpid以防僵尸进程）
-	 *  更新进程表
-	 */
+
+	// 回收退出进程状态（waitpid以防僵尸进程）
+	// 更新进程表
 	void ProcessGetStatus();
 	int CreatePidFile();
 	void DeletePidFile();
 
-public:
-	int mErr;
-	MASTER_STATUS mStatus {MASTER_INIT};
-	int mProcess {PROCESS_SINGLE};	//进程类别（master、worker、单进程）
+protected:
+	friend class wWorker;
+	wStatus mStatus;
+	
+	//MASTER_STATUS mStatus {MASTER_INIT};
+	
+	// 进程类别（master、worker、单进程）
+	//int8_t mProcess;
+	
+	wEnv *mEnv;
+	string mPidPath;
 	
 	//master相关
-	wFile mPidFile;	//pid文件
-	int mNcpu {0};		//cpu个数
-	pid_t mPid {0};		//master进程id
+	//wFile mPidFile;	//pid文件
 	
-	//进程表
-	wWorker **mWorkerPool {NULL};
-	int mWorkerNum {0};	//worker总数量
-	int mSlot {0};		//进程表分配到索引
+	uint8_t mNcpu;	// cpu个数
+	pid_t mPid;		// master进程id
 	
-	//主进程master构建惊群锁（进程共享）
-	int mDelay {500};	//延时时间。默认500ms
-	int mUseMutex {0};	//惊群锁标识
-	int mMutexHeld {0};	//是否持有锁
-	wShm *mShmAddr {NULL};	//共享内存
-	wShmtx *mMutex {NULL};	//accept mutex
+	// 进程表
+	wWorker *mWorkerPool[kMaxPorcess];
+	uint32_t mWorkerNum; // worker数量
+	uint32_t mSlot;		// worker分配索引
+	
+	// 主进程master构建惊群锁（进程共享）
+	uint32_t mDelay;	// 延时时间,默认500ms
 };
 
-#include "wMaster.inl"
-
-}
+}	// namespace hnet
 
 #endif

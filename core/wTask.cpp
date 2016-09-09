@@ -21,7 +21,7 @@ wTask::wTask(wSocket* socket) : mSocket(socket), mHeartbeat(0), mRecvLen(0), mSe
 mRecvRead(mRecvBuff), mRecvWrite(mRecvBuff), mSendRead(mSendBuff), mSendWrite(mSendBuff) { }
 
 wTask::~wTask() {
-    misc::SafeDelete<wSocket>(mSocket);
+    misc::SafeDelete(mSocket);
 }
 
 wStatus wTask::HeartbeatSend() {

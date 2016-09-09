@@ -16,7 +16,6 @@ class wWorker;
 
 class wChannelTask : public wTask {
 public:
-    //wChannelTask() { }
     wChannelTask(wSocket *pSocket, wWorker *worker = NULL);
     
     virtual const char* Name() const {

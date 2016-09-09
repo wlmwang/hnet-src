@@ -18,7 +18,7 @@ public:
     wStatus() : mState(NULL) { }
     wStatus(const wStatus& s);
     ~wStatus() {
-        misc::SafeDeleteVec<char>(mState);
+        misc::SafeDeleteVec(mState);
     }
 
     void operator=(const wStatus& s);
@@ -87,7 +87,7 @@ inline wStatus::wStatus(const wStatus& s) {
 
 inline void wStatus::operator=(const wStatus& s) {
     if (mState != s.mState) {
-        misc::SafeDeleteVec<char>(mState);
+        misc::SafeDeleteVec(mState);
         mState = (s.mState == NULL) ? NULL : CopyState(s.mState);
     }
 }

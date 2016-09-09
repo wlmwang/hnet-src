@@ -37,6 +37,8 @@ enum SockStatus {
 enum SockProto  { kSpUnknown = 0, kSpTcp, kSpUdp, kSpUnix, kSpChannel, kSpHttp};
 enum SockFlag   { kSfUnknown = 0, kSfRvsd, kSfRecv, kSfSend};
 
+class wTask;
+
 class wSocket : private wNoncopyable {
 public:
     wSocket(SockType type = kStListen, SockProto proto = kSpTcp, SockFlag flag = kSfRvsd);
@@ -76,6 +78,7 @@ public:
     virtual wStatus Open() {
         return mStatus = wStatus::IOError("wSocket::Open failed", "method should be inherit");
     }
+
     virtual wStatus Close();
     virtual wStatus SetFL(bool nonblock = true);
 
@@ -90,27 +93,9 @@ public:
     virtual wStatus SetRecvTimeout(float fTimeout = 30) {
         return mStatus = wStatus::IOError("wSocket::SetRecvTimeout failed", "method should be inherit");
     }
-
-    /*
-    int &Errno() { return mErr; }
-    int &FD() { return mFD; }
-
-    SOCK_TYPE &SockType() { return mSockType;}
-    SOCK_STATUS &SockStatus() { return mSockStatus;}
-    SOCK_PROTO &SockProto() { return mSockProto;}
-    SOCK_FLAG &SockFlag() { return mSockFlag; }
-    */
-   
-    /*
-    unsigned long long &RecvTime() { return mRecvTime; }
-    unsigned long long &SendTime() { return mSendTime; }
-    unsigned long long &CreateTime() { return mCreateTime; }
-
-    virtual string &Host() { return mHost; }
-    virtual unsigned short &Port() { return mPort; }
-    */
    
 protected:
+    friend class wTask;
     virtual wStatus Bind(string host, uint16_t port = 0) = 0;
     
     wStatus mStatus;

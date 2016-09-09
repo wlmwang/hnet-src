@@ -131,6 +131,4 @@ protected:
 
 }	// namespace hnet
 
-//#include "wServer.inl"
-
 #endif

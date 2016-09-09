@@ -89,11 +89,6 @@ public:
         return mSendLen;
     }
     
-    /*
-    bool IsRunning() {
-        return mStatus == TASK_RUNNING;
-    }
-    */
 protected:
     int8_t mState;
     wStatus mStatus;

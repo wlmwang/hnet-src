@@ -141,7 +141,7 @@ inline T* SafeNew() {
     T* ptr = NULL;
     try {
         ptr = new T();
-    } catch (...) {
+    } catch (const std::bad_alloc& e) {
         ptr = NULL;
     }
     return ptr;
@@ -152,7 +152,7 @@ inline T* SafeNewVec(size_t n) {
     T* ptr = NULL;
     try {
         ptr = new T[n];
-    } catch (...) {
+    } catch (const std::bad_alloc& e) {
         ptr = NULL;
     }
     return ptr;

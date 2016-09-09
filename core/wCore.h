@@ -62,6 +62,23 @@ const u_char*   kPidPath = "../log/hnet.pid";
 const u_char*   kLockPath = "../log/hnet.lock";
 const u_char*   kAcceptMutex = "../log/hnet.mutex.bin";
 
+
+//进程相关
+const uint32_t	kMaxPorcess = 1024;
+
+const int8_t	kPorcessNoRespawn = -1;		// 子进程退出时，父进程不再创建
+const int8_t	kPorcessJustSpawn = -2;		// 子进程正在重启，该进程创建之后，再次退出时，父进程不再创建
+const int8_t	kPorcessRespawn = -3;		// 子进程异常退出时，父进程会重新创建它
+const int8_t	kPorcessJustRespawn = -4;	// 子进程正在重启，该进程创建之后，再次退出时，父进程会重新创建它
+const int8_t	kPorcessDetached = -5;		// 分离进程（热代码替换）
+
+#define MAX_PROCESSES         1024
+
+#define PROCESS_SINGLE     0 	//单独进程
+#define PROCESS_MASTER     1 	//主进程
+#define PROCESS_SIGNALLER  2 	//信号进程
+#define PROCESS_WORKER     3 	//工作进程
+
 }   // namespace hnet
 
 #endif

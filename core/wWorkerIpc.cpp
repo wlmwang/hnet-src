@@ -4,116 +4,129 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include <algorithm>
+#include <sys/epoll.h>
 #include "wWorkerIpc.h"
-#include "wChannel.h"
-#include "wChannelTask.h"
 #include "wWorker.h"
-#include "wTask.h"
+#include "wMisc.h"
+#include "wChannelSocket.h"
+#include "wChannelTask.h"
 
 namespace hnet {
-wWorkerIpc::wWorkerIpc(wWorker *pWorker) : mWorker(pWorker) {
-	mEpollEventPool.reserve(LISTEN_BACKLOG);
+
+wWorkerIpc::wWorkerIpc(wWorker *pWorker) : mWorker(pWorker), mEpollFD(kFDUnknown), mTimeout(10), mTaskCount(0), mTask(NULL) {
+	mEpollEventPool.reserve(kListenBacklog);
 	memset((void *)&mEpollEvent, 0, sizeof(mEpollEvent));
 }
 
-int wWorkerIpc::PrepareRun() {
-	LOG_INFO(ELOG_KEY, "[system] worker process sync-channel's thread prepare start");
-
-	if (InitEpoll() < 0) exit(2);
-
-	//worker自身channel[1]被监听
-	if (mWorker != NULL && mWorker->mWorkerPool != NULL) {
-		wChannel *pChannel = &mWorker->mWorkerPool[mWorker->mSlot]->mCh;	//当前worker进程表项
-		if (pChannel != NULL) {
-			wTask *pTask = new wChannelTask(pChannel, mWorker);
-			if (NULL != pTask) {
-				pTask->Status() = TASK_RUNNING;
-				if (AddToEpoll(pTask) >= 0) {
-					AddToTaskPool(pTask);
-				} else {
-					SAFE_DELETE(pTask);
-					exit(2);
-				}
-			}
-		} else {
-			LOG_ERROR(ELOG_KEY, "[system] worker pool slot(%d) illegal", mWorker->mSlot);
-			exit(2);
-		}
-	}
-
-	return 0;
+wWorkerIpc::~wWorkerIpc() {
+	CleanEpoll();
+	CleanTaskPool();
 }
 
-int wWorkerIpc::Run()
-{
-	LOG_INFO(ELOG_KEY, "[system] worker process sync-channel's thread start");
-	mStatus = SERVER_RUNNING;
+wStatus wWorkerIpc::NewChannelTask(wChannelSocket* sock, wWorker* worker, wTask** ptr) {
+	try {
+		*ptr = new wChannelTask(sock, worker);
+	} catch (...) {
+		return mStatus = wStatus::IOError("wWorkerIpc::NewChannelTask", "new failed");
+	}
+	return mStatus = wStatus::Nothing();
+}
+
+wStatus wWorkerIpc::PrepareRun() {
+	//LOG_INFO(ELOG_KEY, "[system] worker process sync-channel's thread prepare start");
+
+	if (!InitEpoll().Ok()) {
+		return mStatus;
+		exit(2);
+	}
+
+	// worker自身channel[1]被监听
+	if (mWorker != NULL && mWorker->mWorkerPool[mWorker->mSlot] != NULL) {
+		wChannel *channel = mWorker->mWorkerPool[mWorker->mSlot]->mChannel;
+		if (channel != NULL) {
+			wTask *pTask;
+			mStatus = NewChannelTask(channel, mWorker, &pTask);
+			if (!mStatus.Ok()) {
+				return mStatus;
+			}
+
+			if (AddToEpoll(pTask) >= 0) {
+				AddToTaskPool(pTask);
+			} else {
+				misc::SafeDelete(pTask);
+				exit(2);
+			}
+		} else {
+			mStatus = wStatus::IOError("wWorkerIpc::PrepareRun, channel invalid", "");
+			exit(2);
+		}
+	} else {
+		mStatus = wStatus::IOError("wWorkerIpc::PrepareRun, worker start thread failed", "worker channel fd invalid");
+	}
+
+	return mStatus;
+}
+
+wStatus wWorkerIpc::Run() {
+	//LOG_INFO(ELOG_KEY, "[system] worker process sync-channel's thread start");
+	//mStatus = SERVER_RUNNING;
 
 	do {
 		Recv();
 	} while (IsRunning());
 
-	return 0;
+	return mStatus = wStatus::Nothing();
 }
 
-int wWorkerIpc::InitEpoll()
-{
-	if ((mEpollFD = epoll_create(LISTEN_BACKLOG)) < 0) {
-		mErr = errno;
-		LOG_ERROR(ELOG_KEY, "[system] sync-channel's epoll_create failed:%s", strerror(mErr));
-		return -1;
+wStatus wWorkerIpc::InitEpoll() {
+	if ((mEpollFD = epoll_create(kListenBacklog)) == -1) {
+		return mStatus = wStatus::IOError("wWorkerIpc::InitEpoll, epoll_create() failed", strerror(errno));
 	}
-	return mEpollFD;
+	return mStatus = wStatus::Nothing();
 }
 
-void wWorkerIpc::CleanEpoll()
-{
-	if (mEpollFD != -1) close(mEpollFD);
+wStatus wWorkerIpc::AddToEpoll(wTask* task, int ev, int op) {
+	mEpollEvent.events = ev | EPOLLERR | EPOLLHUP; // |EPOLLET
+	mEpollEvent.data.fd = task->mSocket->mFD;
+	mEpollEvent.data.ptr = task;
+	if (epoll_ctl(mEpollFD, op, task->mSocket->mFD, &mEpollEvent) < 0) {
+		return mStatus = wStatus::IOError("wWorkerIpc::AddToEpoll, epoll_ctl() failed", strerror(errno));
+	}
+	return mStatus = wStatus::Nothing();
+}
+
+wStatus wWorkerIpc::AddToTaskPool(wTask* task) {
+	mTaskPool.push_back(task);
+	mTaskCount = mTaskPool.size();
+	if (mTaskCount > mEpollEventPool.capacity()) {
+		mEpollEventPool.reserve(mTaskCount * 2);
+	}
+	return mStatus = wStatus::Nothing();
+}
+
+wStatus wWorkerIpc::CleanEpoll() {
+	if (close(mEpollFD) == -1) {
+		return mStatus = wStatus::IOError("wWorkerIpc::CleanEpoll, close() failed", strerror(errno));
+	}
 	mEpollFD = -1;
 	memset((void *)&mEpollEvent, 0, sizeof(mEpollEvent));
 	mEpollEventPool.clear();
 }
 
-int wWorkerIpc::AddToEpoll(wTask* pTask, int iEvents, int iOp)
-{
-	mEpollEvent.events = iEvents | EPOLLERR | EPOLLHUP; //|EPOLLET
-	mEpollEvent.data.fd = pTask->Socket()->FD();
-	mEpollEvent.data.ptr = pTask;
-	if (epoll_ctl(mEpollFD, iOp, pTask->Socket()->FD(), &mEpollEvent) < 0) {
-		mErr = errno;
-		LOG_ERROR(ELOG_KEY, "[system] sync-channel's fd(%d) add into epoll failed: %s", pTask->Socket()->FD(), strerror(mErr));
-		return -1;
-	}
-	return 0;
-}
-
-int wWorkerIpc::AddToTaskPool(wTask* pTask)
-{
-	W_ASSERT(pTask != NULL, return -1);
-
-	mTaskPool.push_back(pTask);
-	//epoll_event大小
-	mTaskCount = mTaskPool.size();
-	if (mTaskCount > (int)mEpollEventPool.capacity()) {
-		mEpollEventPool.reserve(mTaskCount * 2);
-	}
-	return 0;
-}
-
-void wWorkerIpc::CleanTaskPool()
-{
+wStatus wWorkerIpc::CleanTaskPool() {
 	if (mTaskPool.size() > 0) {
 		for (vector<wTask*>::iterator it = mTaskPool.begin(); it != mTaskPool.end(); it++) {
-			(*it)->CloseTask();
+			misc::SafeDelete(*it);
 		}
 	}
 	mTaskPool.clear();
 	mTaskCount = 0;
+	return mStatus = wStatus::Nothing();
 }
 
-int wWorkerIpc::RemoveEpoll(wTask* pTask)
-{
-	int iFD = pTask->Socket()->FD();
+wStatus wWorkerIpc::RemoveEpoll(wTask* task) {
+	int iFD = task->Socket()->FD();
 	mEpollEvent.data.fd = iFD;
 	if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, iFD, &mEpollEvent) < 0) {
 		mErr = errno;
@@ -123,9 +136,9 @@ int wWorkerIpc::RemoveEpoll(wTask* pTask)
 	return 0;
 }
 
-std::vector<wTask*>::iterator wWorkerIpc::RemoveTaskPool(wTask* pTask)
+std::vector<wTask*>::iterator wWorkerIpc::RemoveTaskPool(wTask* task)
 {
-    std::vector<wTask*>::iterator it = std::find(mTaskPool.begin(), mTaskPool.end(), pTask);
+    std::vector<wTask*>::iterator it = std::find(mTaskPool.begin(), mTaskPool.end(), task);
     if (it != mTaskPool.end()) {
     	(*it)->CloseTask();
         it = mTaskPool.erase(it);

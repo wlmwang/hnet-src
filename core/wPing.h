@@ -8,11 +8,6 @@
 #define _W_PING_H_
 
 #include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <netinet/ip_icmp.h>
-#include <netdb.h>
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
