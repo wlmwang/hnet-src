@@ -37,7 +37,6 @@ public:
     inline void NoBarrier_Store(void* v) {
         mRep.store(v, std::memory_order_relaxed);
     }
-
 };
 
 } // namespace hnet

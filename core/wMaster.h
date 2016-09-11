@@ -20,27 +20,27 @@ class wWorker;
 
 class wMaster : private wNoncopyable {
 public:
-	wMaster();
-	virtual ~wMaster();
-	
-	void PrepareStart();
-	void SingleStart();		//单进程模式启动
-	void MasterStart();		//master-worker模式启动
-	void MasterExit();
-	
-	void WorkerStart(int n, int type = PROCESS_RESPAWN);
-	pid_t SpawnWorker(string sTitle, int type = PROCESS_RESPAWN);
-	void PassOpenChannel(struct ChannelReqOpen_t *pCh);
-	void PassCloseChannel(struct ChannelReqClose_t *pCh);
-	virtual wStatus HandleSignal();
-	virtual wStatus NewWorker(const char* title, uint32_t slot, wWorker** ptr);
+    wMaster();
+    virtual ~wMaster();
+    
+    wStatus PrepareStart();
+    wStatus SingleStart();		//单进程模式启动
+    wStatus MasterStart();		//master-worker模式启动
+    wStatus MasterExit();
+    
+    void WorkerStart(int n, int type = PROCESS_RESPAWN);
+    pid_t SpawnWorker(string sTitle, int type = PROCESS_RESPAWN);
+    void PassOpenChannel(struct ChannelReqOpen_t *pCh);
+    void PassCloseChannel(struct ChannelReqClose_t *pCh);
+    virtual wStatus HandleSignal();
+    virtual wStatus NewWorker(const char* title, uint32_t slot, wWorker** ptr);
 
-	// 如果有worker异常退出，则重启
-	// 如果所有的worker都退出了，则返回0
-	int ReapChildren();
+    // 如果有worker异常退出，则重启
+    // 如果所有的worker都退出了，则返回0
+    int ReapChildren();
 	
-	// 给所有worker进程发送信号
-	void SignalWorker(int iSigno);
+    // 给所有worker进程发送信号
+    void SignalWorker(int iSigno);
 
 	/**
 	 * master-worker工作模式主要做一下事情：
@@ -50,9 +50,9 @@ public:
 	 * 4. 设置自定义信号处理结构
 	 * 5. 初始化服务器（创建、bind、listen套接字） 
 	 */
-	virtual void PrepareRun() {}
-	virtual void Run() {}
-	virtual void ReloadMaster() {}
+	virtual wStatus PrepareRun() {}
+	virtual wStatus Run() {}
+	virtual wStatus ReloadMaster() {}
 
 	// 注册信号回调
 	// 可重写全局变量g_signals，实现自定义信号处理
@@ -61,8 +61,8 @@ public:
 	// 回收退出进程状态（waitpid以防僵尸进程）
 	// 更新进程表
 	void ProcessGetStatus();
-	int CreatePidFile();
-	void DeletePidFile();
+	wStatus CreatePidFile();
+	wStatus DeletePidFile();
 
 protected:
 	friend class wWorker;

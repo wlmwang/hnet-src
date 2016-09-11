@@ -10,59 +10,58 @@
 #include "wLog.h"
 #include "wSigSet.h"
 #include "wSignal.h"
-#include "wShm.h"
-#include "wShmtx.h"
 #include "wWorker.h"
 #include "wChannelCmd.h"	//*channel*_t
+//#include "wShm.h"
+//#include "wShmtx.h"
 
 namespace hnet {
 
 wMaster::wMaster() : mPidPath(kPidPath), mWorkerNum(0), mSlot(kMaxPorcess), mDelay(500) {
-	mPid = getpid();
-	mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
+    mPid = getpid();
+    mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
 }
 
 wMaster::~wMaster() {
-	for (uint32_t i = 0; i < mWorkerNum; ++i) {
-		misc::SafeDelete(mWorkerPool[i]);
-	}
+    for (uint32_t i = 0; i < mWorkerNum; ++i) {
+	SAFE_DELETE(mWorkerPool[i]);
+    }
 }
 
 wStatus wMaster::NewWorker(const char* title, uint32_t slot, wWorker** ptr) {
-	try {
-		*ptr = new wWorker(title, slot, this);
-	} catch (...) {
-		return mStatus = wStatus::IOError("wMaster::NewWorker", "new failed");
-	}
-	return mStatus = wStatus::Nothing();
+    SAFE_NEW(wWorker(title, slot, this), *ptr);
+    if (*ptr == NULL) {
+	return mStatus = wStatus::IOError("wMaster::NewWorker", "new failed");
+    }
+    return mStatus = wStatus::Nothing();
 }
 
 wStatus wMaster::PrepareStart() {
-	mWorkerNum = mNcpu;
-	
-	// 初始化服务器
-	PrepareRun();
+    mWorkerNum = mNcpu;
+    
+    // 初始化服务器
+    return PrepareRun();
 }
 
 wStatus wMaster::SingleStart() {
-	//mProcess = PROCESS_SINGLE;
-	
-	if (!CreatePidFile().Ok()) {
-		return mStatus;
-	}
-
-	// 恢复默认信号处理
-	wSignal snl(SIG_DFL);
-	snl.AddSigno(SIGINT);
-	snl.AddSigno(SIGHUP);
-	snl.AddSigno(SIGQUIT);
-	snl.AddSigno(SIGTERM);
-	snl.AddSigno(SIGCHLD);
-	snl.AddSigno(SIGPIPE);
-	snl.AddSigno(SIGTTIN);
-	snl.AddSigno(SIGTTOU);
-	
-	return Run();
+    //mProcess = PROCESS_SINGLE;
+    
+    if (!CreatePidFile().Ok()) {
+	return mStatus;
+    }
+    
+    // 恢复默认信号处理
+    wSignal snl(SIG_DFL);
+    snl.AddSigno(SIGINT);
+    snl.AddSigno(SIGHUP);
+    snl.AddSigno(SIGQUIT);
+    snl.AddSigno(SIGTERM);
+    snl.AddSigno(SIGCHLD);
+    snl.AddSigno(SIGPIPE);
+    snl.AddSigno(SIGTTIN);
+    snl.AddSigno(SIGTTOU);
+    
+    return Run();
 }
 
 wStatus wMaster::MasterStart() {

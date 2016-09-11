@@ -21,7 +21,9 @@ public:
     wChannelSocket(SockType type = kStListen, SockProto proto = kSpChannel, SockFlag flag = kSfRvsd) : wSocket(type, proto, flag) {
         mChannel[0] = mChannel[1] = kFDUnknown;
     }
-
+    
+    virtual ~wChannelSocket();
+    
     virtual wStatus Open();
 
     virtual wStatus RecvBytes(char buf[], size_t len, ssize_t *size);
@@ -30,15 +32,14 @@ public:
 
     virtual void Close();
 
-    int &operator[](uint8_t i);
+    int64_t &operator[](uint8_t i);
 
 protected:
-	// 0:传递给其他进程，供写入数据 
-	// 1:当前进程读去其他进程写入0中的数据
-	int64_t mChannel[2];
+    // 0:传递给其他进程，供写入数据 
+    // 1:当前进程读去其他进程写入0中的数据
+    int64_t mChannel[2];
 };
 
-}	// namespace hnet
-
+}   // namespace hnet
 
 #endif

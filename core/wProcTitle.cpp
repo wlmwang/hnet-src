@@ -8,45 +8,51 @@
 #include "wMisc.h"
 
 namespace hnet {
+
 extern char **environ;
 
-wProcTitle::wProcTitle(int argc, const char *argv[]) {
-    mArgc = argc;
-    mOsArgv = (char **) argv;
-    mOsArgvLast = (char *)argv[0];
-    mOsEnv = environ;
-
+wProcTitle::wProcTitle(int argc, const char *argv[]) : mOsEnv(environ), mArgc(argc) {
+    mOsArgv = reinterpret_cast<char **>(argv);
+    mOsArgvLast = reinterpret_cast<char*>(argv[0]);
     SaveArgv();
 }
 
 wProcTitle::~wProcTitle() {
     for (int i = 0; i < mArgc; ++i) {
-        misc::SafeDeleteVec(mArgv[i]);
+        SAFE_DELETE_VEC(mArgv[i]);
     }
-    misc::SafeDeleteVec(mArgv);
+    SAFE_DELETE_VEC(mArgv);
 }
 
-void wProcTitle::SaveArgv() {
+wStatus wProcTitle::SaveArgv() {
     // 初始化argv内存空间
     size_t size = 0;
-    mArgv = new char*[mArgc];
+    SAFE_NEW_VEC(mArgc, char*, mArgv);
+    if (mArgv == NULL) {
+	return mStatus = wStatus::IOError("wProcTitle::SaveArgv", "new failed");
+    }
     for(int i = 0; i < mArgc; ++i) {
         size = strlen(mOsArgv[i]) + 1;  // 包含\0结尾
-        mArgv[i] = new char[size];
+	SAFE_NEW_VEC(size, char, mArgv[i]);
+	if (mArgv[i] == NULL) {
+	    return mStatus = wStatus::IOError("wProcTitle::SaveArgv", "new failed");
+	}
         memcpy(mArgv[i], mOsArgv[i], size);
     }
+    return mStatus;
 }
 
-int wProcTitle::InitSetproctitle() {
+wStatus wProcTitle::InitSetproctitle() {
     // environ字符串总长度
     size_t size = 0;
     for (int i = 0; environ[i]; i++) {
         size += strlen(environ[i]) + 1;
     }
 
-    u_char* p = new u_char[size];
+    u_char* p;
+    SAFE_NEW_VEC(size, u_char, p);
     if (p == NULL) {
-        return -1;
+        return mStatus = wStatus::IOError("wProcTitle::InitSetproctitle", "new failed");
     }
 
     // argv字符总长度
@@ -70,16 +76,16 @@ int wProcTitle::InitSetproctitle() {
 
     // 是原始argv和environ的总体大小。去除结尾一个NULL字符
     mOsArgvLast--;     
-    return 0;
+    return mStatus;
 }
 
-void wProcTitle::Setproctitle(const char *title, const char *preTitle) {
+wStatus wProcTitle::Setproctitle(const char *title, const char *pretitle) {
     // 标题
     u_char pre[512];
-    if (preTitle == NULL) {
+    if (pretitle == NULL) {
         misc::Cpystrn(pre, (u_char *) "hnet: ", sizeof(pre));
     } else {
-        misc::Cpystrn(pre, (u_char *) preTitle, sizeof(pre));
+        misc::Cpystrn(pre, (u_char *) pretitle, sizeof(pre));
     }
 
     mOsArgv[1] = NULL;
@@ -90,6 +96,7 @@ void wProcTitle::Setproctitle(const char *title, const char *preTitle) {
     if(mOsArgvLast - (char *) p) {
         memset(p, kSetProcTitlePad, mOsArgvLast - (char *) p);
     }
+    return mStatus;
 }
 
 }   // namespace hnet

@@ -11,8 +11,8 @@
 #include <vector>
 #include <functional>
 #include "wCore.h"
-#include "wCommand.h"
 #include "wNoncopyable.h"
+#include "wCommand.h"
 
 typedef int (*DispatchFunc)(char*, uint32_t);
 #define DEC_DISP(dispatch) hnet::wDispatch<function<int(char*, uint32_t)>, uint16_t> dispatch

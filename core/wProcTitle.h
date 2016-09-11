@@ -8,6 +8,7 @@
 #define _W_PROC_TITLE_H_
 
 #include "wCore.h"
+#include "wStatus.h"
 #include "wNoncopyable.h"
 
 namespace hnet {
@@ -18,16 +19,18 @@ public:
     ~wProcTitle();
 
     // 务必在设置进程标题之前调用
-    void SaveArgv();
+    wStatus SaveArgv();
 
     // 移动**environ到堆上，为进程标题做准备。计算**environ指针结尾地址
     // tips：*argv[]与**environ两个变量所占的内存是连续的，并且是**environ紧跟在*argv[]后面
-    int InitSetproctitle();
+    wStatus InitSetproctitle();
 
     // 设置进程标题
-    void Setproctitle(const char *title, const char *preTitle = NULL);
+    wStatus Setproctitle(const char *title, const char *pretitle = NULL);
 
 public:
+    wStatus mStatus;
+    
     int mArgc;
     char *mOsArgvLast;
     char **mOsArgv;	//原生参数

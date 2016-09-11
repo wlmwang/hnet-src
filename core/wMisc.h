@@ -136,44 +136,6 @@ inline void Swap(T a, T b) {
     T tmp = a; a = b; b = tmp;
 }
 
-template <typename T>
-inline T* SafeNew() {
-    T* ptr = NULL;
-    try {
-        ptr = new T();
-    } catch (const std::bad_alloc& e) {
-        ptr = NULL;
-    }
-    return ptr;
-}
-
-template <typename T>
-inline T* SafeNewVec(size_t n) {
-    T* ptr = NULL;
-    try {
-        ptr = new T[n];
-    } catch (const std::bad_alloc& e) {
-        ptr = NULL;
-    }
-    return ptr;
-}
-
-template <typename T>
-inline void SafeDelete(T* ptr) {
-    if (ptr) {
-        delete ptr;
-        ptr = NULL;
-    }
-}
-
-template <typename T>
-inline void SafeDeleteVec(T* ptr) {
-    if (ptr) {
-        delete[] ptr;
-        ptr = NULL;
-    }
-}
-
 }   // namespace misc
 }   // namespace hnet
 

@@ -14,6 +14,7 @@
 namespace hnet {
 
 class wProcTitle;
+
 class wConfig : private wNoncopyable {
 public:
     wConfig() : mStatus(), mShowVer(false), mShowHelp(false), mDaemon(false), mSignal(NULL), mHost(NULL), mPort(0), mProcTitle(NULL) { }
@@ -32,6 +33,6 @@ public:
     wProcTitle *mProcTitle;
 };
 
-}	// namespace hnet
+}    // namespace hnet
 
 #endif

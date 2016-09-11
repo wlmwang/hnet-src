@@ -81,4 +81,38 @@ const int8_t	kPorcessDetached = -5;		// 分离进程（热代码替换）
 
 }   // namespace hnet
 
+#define SAFE_NEW(type, ptr) \
+do { \
+       try { \
+            ptr = NULL; \
+            ptr = new type; \
+        } catch (...) { \
+            ptr = NULL; \
+        } \
+} while (0)
+
+#define SAFE_NEW_VEC(n, type, ptr) \
+do { \
+       try { \
+            ptr = NULL; \
+            ptr = new type[n]; \
+        } catch (...) { \
+            ptr = NULL; \
+        } \
+} while(0)
+
+#define SAFE_DELETE(ptr) \
+do { \
+       if(ptr) { \
+           delete ptr; \
+	   ptr = NULL; \
+    	} \
+} while(0)
+
+#define SAFE_DELETE_VEC(ptr) \
+do { \
+       delete[] ptr; \
+       ptr = NULL; \
+} while(0)
+
 #endif

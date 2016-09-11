@@ -6,11 +6,15 @@
 
 #include <sys/un.h>
 #include <sys/uio.h>
-#include "wMisc.h"
 #include "wChannelSocket.h"
 #include "wChannelCmd.h"
+#include "wMisc.h"
 
 namespace hnet {
+
+wChannelSocket::~wChannelSocket() {
+    Close();
+}
 
 wStatus wChannelSocket::Close() {
     if (close(mChannel[0]) == -1) {
@@ -33,8 +37,7 @@ wStatus wChannelSocket::Open() {
         return mStatus = wStatus::IOError("wChannelSocket::Open [1] fcntl() O_NONBLOCK failed", strerror(errno));
     }
     
-    // 不返回错误 
-    // todo
+    // 不返回错误 todo
     if (fcntl(mChannel[0], F_SETFD, FD_CLOEXEC) == -1) {
         // mStatus = wStatus::IOError("wChannelSocket::Open [0] fcntl() FD_CLOEXEC failed", strerror(errno));
     } else if (fcntl(mChannel[1], F_SETFD, FD_CLOEXEC) == -1) {
@@ -51,7 +54,7 @@ wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     mSendTm = misc::GetTimeofday();
     
     // 去除消息头
-    struct ChannelReqCmd_s *pChannel = reinterpret_cast<struct ChannelReqCmd_s*>(buf + sizeof(int));
+    struct ChannelReqCmd_s *channel = reinterpret_cast<struct ChannelReqCmd_s*>(buf + sizeof(int));
     // msghdr.msg_control 缓冲区必须与 cmsghdr 结构对齐
     union {
         struct cmsghdr  cm;
@@ -60,7 +63,7 @@ wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     
     // 附属信息，一般为同步进程间文件描述符
     struct msghdr msg;
-    if (pChannel->mFD == kFDUnknown) {
+    if (channel->mFD == kFDUnknown) {
         msg.msg_control = NULL;
         msg.msg_controllen = 0;
     } else {
@@ -73,7 +76,7 @@ wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
         // 附属数据对象是文件描述符
         cmsg.cm.cmsg_type = SCM_RIGHTS;
 
-        memcpy(CMSG_DATA(&cmsg.cm), &pChannel->mFD, sizeof(int));
+        memcpy(CMSG_DATA(&cmsg.cm), &channel->mFD, sizeof(int));
     }
     
     // 套接口地址，msg_name指向要发送或是接收信息的套接口地址，仅当是数据包UDP是才需要
@@ -96,7 +99,6 @@ wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     } else {
         mStatus = wStatus::IOError("wChannelSocket::SendBytes, sendmsg failed", strerror(errno));
     }
-
     return mStatus;
 }
 
@@ -135,28 +137,25 @@ wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
         if (msg.msg_flags & (MSG_TRUNC|MSG_CTRUNC)) {
             // [system] recvmsg() truncated data
         }
-
         // 是否是同步 打开fd文件描述符 的channel
         if (*size == sizeof(struct ChannelReqOpen_t) + sizeof(int)) {
-
-            struct ChannelReqOpen_t *pChannel = reinterpret_cast<struct ChannelReqOpen_t*> (buf + sizeof(int));
-            if (pChannel->GetCmd() == CMD_CHANNEL_REQ && pChannel->GetPara() == CHANNEL_REQ_OPEN) {
+            struct ChannelReqOpen_t *channel = reinterpret_cast<struct ChannelReqOpen_t*> (buf + sizeof(int));
+            if (channel->GetCmd() == CMD_CHANNEL_REQ && channel->GetPara() == CHANNEL_REQ_OPEN) {
                 if (cmsg.cm.cmsg_len < static_cast<socklen_t>(CMSG_LEN(sizeof(int)))) {
                     mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", "returned too small ancillary data");
                 } else if (cmsg.cm.cmsg_level != SOL_SOCKET || cmsg.cm.cmsg_type != SCM_RIGHTS) {
                     mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", "returned invalid ancillary data");
                 } else {
                     // 文件描述符
-                    memcpy(&pChannel->mFD, CMSG_DATA(&cmsg.cm), sizeof(int));
+                    memcpy(&channel->mFD, CMSG_DATA(&cmsg.cm), sizeof(int));
                 }
             }
         }
     }
-    
     return mStatus;
 }
 
-int& wChannelSocket::operator[](uint8_t i) {
+int64_t& wChannelSocket::operator[](uint8_t i) {
     assert(i == 0 || i == 1);
     return mChannel[i];
 }
