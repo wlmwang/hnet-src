@@ -28,19 +28,21 @@ public:
     
     // 单进程模式启动
     wStatus SingleStart();
-    wStatus SingleExit();
+    void SingleExit();
 
-    // master-worker模式启动
+    // m-w模式启动(master-worker)
     wStatus MasterStart();
-    wStatus MasterExit();
+    void MasterExit();
     
     // 启动n个worker进程
     wStatus WorkerStart(uint32_t n, int8_t type = kPorcessRespawn);
+    // 创建一个worker进程
     wStatus SpawnWorker(const char* title, int8_t type = kPorcessRespawn);
 
     // 向所有已启动worker传递刚启动worker的channel描述符
-    void PassOpenChannel(struct ChannelReqOpen_t *pCh);
-    void PassCloseChannel(struct ChannelReqClose_t *pCh);
+    void PassOpenChannel(struct ChannelReqOpen_t *ch);
+    // 向所有已启动worker传递关闭worker的channel消息
+    void PassCloseChannel(struct ChannelReqClose_t *ch);
     // 给所有worker进程发送信号
     void SignalWorker(int signo);
 
@@ -49,7 +51,7 @@ public:
 
     // 如果有worker异常退出，则重启
     // 如果所有的worker都退出了，则返回0
-    wStatus ReapChildren();
+    wStatus ReapChildren(int* live);
 
 	// master-worker模式
 	// 设置进程标题
@@ -69,38 +71,31 @@ public:
 		return mStatus = wStatus::IOError("wMaster::ReloadMaster failed", "method should be inherit");
 	}
 
+	wStatus CreatePidFile();
+	wStatus DeletePidFile();
+	
 	// 注册信号回调
 	// 可覆盖全局变量g_signals，实现自定义信号处理
 	wStatus InitSignals();
 
 	// 回收退出进程状态（waitpid以防僵尸进程）
 	// 更新进程表
-	void ProcessGetStatus();
-	wStatus CreatePidFile();
-	wStatus DeletePidFile();
+	void ProcessExitStat();
 
 protected:
 	friend class wWorker;
+	
 	wStatus mStatus;
-	
-	//MASTER_STATUS mStatus {MASTER_INIT};
-	
-	// 进程类别（master、worker、单进程）
-	//int8_t mProcess;
-	
 	wEnv *mEnv;
+	uint8_t mNcpu;
 	string mPidPath;
 	
-	//master相关
-	//wFile mPidFile;	//pid文件
-	
-	uint8_t mNcpu;	// cpu个数
 	pid_t mPid;		// master进程id
 	
 	// 进程表
-	wWorker *mWorkerPool[kMaxPorcess];
 	uint32_t mWorkerNum; // worker数量
 	uint32_t mSlot;		// worker分配索引
+	wWorker *mWorkerPool[kMaxPorcess];
 	
 	// 主进程master构建惊群锁（进程共享）
 	uint32_t mDelay;	// 延时时间,默认500ms

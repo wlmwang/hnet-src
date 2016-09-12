@@ -253,7 +253,7 @@ public:
             *result = NULL;
             return IOError(fname, errno);
         } else {
-            *result = new wPosixSequentialFile(fname, f);
+            SAFE_NEW(wPosixSequentialFile(fname, f), *result);
             return wStatus::Nothing();
         }
     }
@@ -272,7 +272,7 @@ public:
                 // 对文件写入，相当于输出到文件。实际上直到调用msync()或者munmap()，文件才被更新
                 void* base = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
                 if (base != MAP_FAILED) {
-                    *result = new wPosixMmapReadableFile(fname, base, size, &mmap_limit_);
+                    SAFE_NEW(wPosixMmapReadableFile(fname, base, size, &mmap_limit_), *result);
                 } else {
                     s = IOError(fname, errno);
                 }
@@ -282,7 +282,7 @@ public:
                 mmap_limit_.Release();
             }
         } else {
-            *result = new wPosixRandomAccessFile(fname, fd);
+            SAFE_NEW(wPosixRandomAccessFile(fname, fd), *result);
         }
         return s;
     }
@@ -294,7 +294,7 @@ public:
             *result = NULL;
             s = IOError(fname, errno);
         } else {
-            *result = new wPosixWritableFile(fname, f);
+            SAFE_NEW(wPosixWritableFile(fname, f), *result);
         }
         return s;
     }
@@ -377,7 +377,8 @@ public:
             close(fd);
             locks_.Remove(fname);
         } else {
-            wPosixFileLock* my_lock = new wPosixFileLock;
+            wPosixFileLock* my_lock;
+            SAFE_NEW(wPosixFileLock(), my_lock);
             my_lock->fd_ = fd;
             my_lock->name_ = fname;
             *lock = my_lock;
@@ -394,7 +395,7 @@ public:
         }
         locks_.Remove(my_lock->name_);
         close(my_lock->fd_);
-        delete my_lock;
+        SAFE_DELETE(my_lock);
         return result;
     }
 
@@ -416,7 +417,7 @@ public:
             *result = NULL;
             return IOError(fname, errno);
         } else {
-            *result = new wPosixLogger(f, &wPosixEnv::gettid);
+            SAFE_NEW(wPosixLogger(f, &wPosixEnv::gettid), *result);
             return Status::Nothing();
         }
     }
@@ -523,14 +524,15 @@ struct StartThreadState_t { void (*user_function)(void*);	void* arg;};
 static void* StartThreadWrapper(void* arg) {
     StartThreadState_t* state = reinterpret_cast<StartThreadState_t*>(arg);
     state->user_function(state->arg);
-    delete state;
+    SAFE_DELETE(state);
     return NULL;
 }
 
 // 启动线程
 void wPosixEnv::StartThread(void (*function)(void* arg), void* arg) {
     pthread_t t;
-    StartThreadState_t* state = new StartThreadState_t();
+    StartThreadState_t* state;
+    SAFE_NEW(StartThreadState_t(), state);
     state->user_function = function;
     state->arg = arg;
     PthreadCall("start thread", pthread_create(&t, NULL,  &StartThreadWrapper, state));
@@ -551,7 +553,7 @@ static wStatus DoWriteStringToFile(wEnv* env, const wSlice& data, const std::str
     if (s.Ok()) {
         s = file->Close();
     }
-    delete file;
+    SAFE_DELETE(file);
 
     if (!s.Ok()) {
         env->DeleteFile(fname);
@@ -578,7 +580,8 @@ wStatus ReadFileToString(wEnv* env, const std::string& fname, std::string* data)
         return s;
     }
     static const int kBufferSize = 8192;
-    char* space = new char[kBufferSize];
+    char* space;
+    SAFE_NEW_VEC(kBufferSize, char, space);
     while (true) {
         wSlice fragment;
         s = file->Read(kBufferSize, &fragment, space);
@@ -590,8 +593,8 @@ wStatus ReadFileToString(wEnv* env, const std::string& fname, std::string* data)
             break;
         }
     }
-    delete[] space;
-    delete file;
+    SAFE_DELETE_VEC(space);
+    SAFE_DELETE(file);
     return s;
 }
 
@@ -601,7 +604,9 @@ wStatus ReadFileToString(wEnv* env, const std::string& fname, std::string* data)
 // 实例化env对象
 static pthread_once_t once = PTHREAD_ONCE_INIT;
 static wEnv* defaultEnv;
-static void InitDefaultEnv() { defaultEnv = new wPosixEnv();}
+static void InitDefaultEnv() {
+    SAFE_NEW(wPosixEnv(), defaultEnv);
+}
 
 wEnv* wEnv::Default() {
     pthread_once(&once, InitDefaultEnv);

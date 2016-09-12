@@ -37,15 +37,11 @@ public:
 	vector<wTask*>::iterator RemoveTaskPool(wTask *pTask);
 	wStatus AddToTaskPool(wTask *pTask);
 	wStatus CleanTaskPool();
-	
-	//bool IsRunning() { return mStatus == SERVER_RUNNING; }
-	//SERVER_STATUS &Status() { return mStatus; }
 
 protected:
 	wStatus mStatus;
 	wWorker *mWorker;
 	
-	//SERVER_STATUS mStatus {SERVER_INIT};	//服务器当前状态
 	int32_t mEpollFD;
 	uint64_t mTimeout;
 

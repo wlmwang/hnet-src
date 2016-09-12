@@ -58,14 +58,10 @@ wStatus wWorkerIpc::PrepareRun() {
 }
 
 wStatus wWorkerIpc::Run() {
-	//LOG_INFO(ELOG_KEY, "[system] worker process sync-channel's thread start");
-	//mStatus = SERVER_RUNNING;
-
-	do {
+	while (mStatus.Ok()) {
 		Recv();
-	} while (IsRunning());
-
-	return mStatus = wStatus::Nothing();
+	}
+	return mStatus;
 }
 
 wStatus wWorkerIpc::InitEpoll() {
@@ -106,7 +102,7 @@ wStatus wWorkerIpc::CleanEpoll() {
 wStatus wWorkerIpc::CleanTaskPool() {
 	if (mTaskPool.size() > 0) {
 		for (vector<wTask*>::iterator it = mTaskPool.begin(); it != mTaskPool.end(); it++) {
-			misc::SafeDelete(*it);
+			SAFE_DELETE(*it);
 		}
 	}
 	mTaskPool.clear();
@@ -118,18 +114,15 @@ wStatus wWorkerIpc::RemoveEpoll(wTask* task) {
 	int iFD = task->Socket()->FD();
 	mEpollEvent.data.fd = iFD;
 	if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, iFD, &mEpollEvent) < 0) {
-		mErr = errno;
-		LOG_ERROR(ELOG_KEY, "[system] sync-channel's epoll remove socket fd(%d) error : %s", iFD, strerror(mErr));
-		return -1;
+		return mStatus = wStatus::IOError("wWorkerIpc::RemoveEpoll, epoll_ctl() failed", strerror(errno));
 	}
-	return 0;
+	return mStatus = wStatus::Nothing();
 }
 
-std::vector<wTask*>::iterator wWorkerIpc::RemoveTaskPool(wTask* task)
-{
+std::vector<wTask*>::iterator wWorkerIpc::RemoveTaskPool(wTask* task) {
     std::vector<wTask*>::iterator it = std::find(mTaskPool.begin(), mTaskPool.end(), task);
     if (it != mTaskPool.end()) {
-    	(*it)->CloseTask();
+    	SAFE_DELETE(*it);
         it = mTaskPool.erase(it);
     }
     mTaskCount = mTaskPool.size();
@@ -142,20 +135,19 @@ wStatus wWorkerIpc::Recv() {
 		return mStatus = wStatus::IOError("wWorkerIpc::Recv, epoll_wait() failed", strerror(errno));
 	}
 	
-	wTask *pTask = NULL;
+	wTask *task = NULL;
 	for (int i = 0 ; i < iRet ; i++) {
-		pTask = (wTask *)mEpollEventPool[i].data.ptr;
-		int64_t fd = pTask->Socket()->FD();
+		task = (wTask *)mEpollEventPool[i].data.ptr;
+		int64_t fd = task->Socket()->FD();
 		
 		if (fd == kFDUnknown) {
-			if (!RemoveEpoll(pTask).Ok() || !RemoveTaskPool(pTask).Ok()) {
+			if (!RemoveEpoll(task).Ok() || !RemoveTaskPool(task).Ok()) {
 				return mStatus;
 			}
 			continue;
 		}
-		if (!pTask->IsRunning()) {	// 多数是超时设置
-			//LOG_DEBUG(ELOG_KEY, "[system] sync-channel's task status is quit, fd(%d), close it", fd);
-			if (!RemoveEpoll(pTask).Ok() || !RemoveTaskPool(pTask).Ok()) {
+		if (!task->IsRunning()) {	// 多数是超时设置
+			if (!RemoveEpoll(task).Ok() || !RemoveTaskPool(task).Ok()) {
 				return mStatus;
 			}
 			continue;
@@ -163,8 +155,7 @@ wStatus wWorkerIpc::Recv() {
 
 		// 出错(多数为sock已关闭)
 		if (mEpollEventPool[i].events & (EPOLLERR | EPOLLPRI)) {
-			//LOG_ERROR(ELOG_KEY, "[system] sync-channel's epoll event recv error from fd(%d), close it: %s", fd, strerror(mErr));
-			if (!RemoveEpoll(pTask).Ok() || !RemoveTaskPool(pTask).Ok()) {
+			if (!RemoveEpoll(task).Ok() || !RemoveTaskPool(task).Ok()) {
 				return mStatus;
 			}
 			continue;
@@ -172,23 +163,23 @@ wStatus wWorkerIpc::Recv() {
 		
 		if (mEpollEventPool[i].events & EPOLLIN) {
 			// 套接口准备好了读取操作
-			mStatus = pTask->TaskRecv();
+			mStatus = task->TaskRecv();
 			if (!mStatus.Ok()) {
-				if (!RemoveEpoll(pTask).Ok() || !RemoveTaskPool(pTask).Ok()) {
+				if (!RemoveEpoll(task).Ok() || !RemoveTaskPool(task).Ok()) {
 					return mStatus;
 				}
 			}
 		} else if (mEpollEventPool[i].events & EPOLLOUT) {
 			// 清除写事件
-			if (pTask->WritableLen() <= 0) {
-				AddToEpoll(pTask, EPOLLIN, EPOLL_CTL_MOD);
+			if (task->WritableLen() <= 0) {
+				AddToEpoll(task, EPOLLIN, EPOLL_CTL_MOD);
 				continue;
 			}
 			// 套接口准备好了写入操作
 			// 写入失败，半连接，对端读关闭
-			mStatus = pTask->TaskSend();
+			mStatus = task->TaskSend();
 			if (!mStatus.Ok()) {
-				if (!RemoveEpoll(pTask).Ok() || !RemoveTaskPool(pTask).Ok()) {
+				if (!RemoveEpoll(task).Ok() || !RemoveTaskPool(task).Ok()) {
 					return mStatus;
 				}
 			}

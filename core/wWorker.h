@@ -43,14 +43,21 @@ protected:
 	friend class wWorkerIpc;
 	
 	wStatus mStatus;
+	wMaster *mMaster;
 	int mPriority;	// 进程优先级
 	int mRlimitCore;// 连接限制
 
-	//pid_t mPid;
-	//const char* mTitle;
-	uint32_t mSlot;		// 进程表分配到索引
-	wMaster *mMaster;
-	wWorkerIpc *mIpc;	// worker通信 主要通过channel同步个fd，填充进程表
+	int mDetached;	// 是否已分离
+	int mExited;	// 已退出 进程表mWorkerPool已回收
+	int mExiting;	// 正在退出
+	int mStat;		// waitpid子进程退出状态
+	int mRespawn;	// worker启动模式。退出是否重启
+	int mJustSpawn;
+
+	pid_t mPid;
+	uint32_t mSlot;	// 进程表中索引
+	const char* mTitle;	// 进程名
+	wWorkerIpc *mIpc;	// worker通信,主要通过channel同步个fd
 	wChannelSocket *mChannel;	// worker进程channel
 };
 
