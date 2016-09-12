@@ -30,7 +30,7 @@ public:
 
     virtual wStatus SendBytes(char buf[], size_t len, ssize_t *size);
 
-    virtual void Close();
+    virtual wStatus Close();
 
     int64_t &operator[](uint8_t i);
 

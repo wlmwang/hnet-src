@@ -9,13 +9,8 @@
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <sys/file.h>	//int flock(int fd,int operation);
-#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <net/if.h>
-#include <sstream>
-#include <vector>
-#include <cstdarg>
 #include "wCore.h"
 #include "wStatus.h"
 #include "wCommand.h"

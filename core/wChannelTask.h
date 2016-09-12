@@ -20,7 +20,7 @@ public:
     wChannelTask(wSocket *pSocket, wWorker *worker = NULL);
     
     virtual const char* Name() const {
-	return "wChannelTask";
+		return "wChannelTask";
     }
     
     DEC_FUNC(ChannelOpen);
@@ -33,4 +33,5 @@ protected:
 };
 
 }	// namespace hnet
+
 #endif

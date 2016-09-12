@@ -8,7 +8,6 @@
 #define _W_SIGNAL_H_
 
 #include <signal.h>		//typedef void (*sighandler_t)(int);
-
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
@@ -20,16 +19,20 @@ public:
     struct Signal_t;
 
     wSignal();
+
     // SIG_DFL(采用缺省的处理方式)，也可以为SIG_IGN
     wSignal(__sighandler_t  func);
     
     // 添加信号处理
     wStatus AddSigno(int signo, struct sigaction *oact = NULL);
+
     wStatus AddHandler(const Signal_t *signal);
+
     // 添加屏蔽集
     wStatus AddMaskSet(int signo);
 
     static void SignalHandler(int signo);
+    
 protected:
     wStatus mStatus;
     struct sigaction mSigAct;

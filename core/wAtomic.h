@@ -39,6 +39,6 @@ public:
     }
 };
 
-} // namespace hnet
+}   // namespace hnet
 
 #endif

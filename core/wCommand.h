@@ -14,6 +14,7 @@ namespace hnet {
 const uint8_t kCmdNull = 0;
 const uint8_t kParaNull = 0;
 
+// 消息ID
 inline uint16_t CmdId(uint8_t cmd, uint8_t para) {
     if (kLittleEndian) {
         return (static_cast<uint16_t>(para) << 8) | (static_cast<uint16_t>(cmd));

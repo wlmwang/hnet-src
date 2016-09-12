@@ -17,21 +17,21 @@ int g_reconfigure;
 
 // 信号集
 wSignal::Signal_t g_signals[] = {
-    {SIGHUP, "SIGHUP", "reload", &wSignal::SignalHandler},
-    {SIGTERM, "SIGTERM", "stop", &wSignal::SignalHandler},
-    {SIGINT, "SIGINT", "", &wSignal::SignalHandler},
-    {SIGQUIT, "SIGQUIT", "quit", &wSignal::SignalHandler},
-    {SIGALRM, "SIGALRM", "", &wSignal::SignalHandler},
-    {SIGIO, "SIGIO", "", &wSignal::SignalHandler},
-    {SIGCHLD, "SIGCHLD", "", &wSignal::SignalHandler},
-    {SIGSYS, "SIGSYS", "", SIG_IGN},
-    {SIGPIPE, "SIGPIPE", "", SIG_IGN},
-    {0, NULL, "", NULL}
+    { SIGHUP, "SIGHUP", "reload", &wSignal::SignalHandler},
+    { SIGTERM, "SIGTERM", "stop", &wSignal::SignalHandler},
+    { SIGINT, "SIGINT", "", &wSignal::SignalHandler},
+    { SIGQUIT, "SIGQUIT", "quit", &wSignal::SignalHandler},
+    { SIGALRM, "SIGALRM", "", &wSignal::SignalHandler},
+    { SIGIO, "SIGIO", "", &wSignal::SignalHandler},
+    { SIGCHLD, "SIGCHLD", "", &wSignal::SignalHandler},
+    { SIGSYS, "SIGSYS", "", SIG_IGN},
+    { SIGPIPE, "SIGPIPE", "", SIG_IGN},
+    { 0, NULL, "", NULL}
 };
 
-wSignal::wSignal() : mStatus() { }
+wSignal::wSignal() { }
 
-wSignal::wSignal(__sighandler_t  func) : mStatus() {
+wSignal::wSignal(__sighandler_t  func) {
     mSigAct.sa_handler = func;
     mSigAct.sa_flags = 0;
     if (sigemptyset(&mSigAct.sa_mask) == -1) {
@@ -105,7 +105,6 @@ void wSignal::SignalHandler(int signo) {
         break;
     }
     
-    // LOG_DEBUG(ELOG_KEY, "[system] signal %d (%s) received%s", signo, signal->mSigname, action.c_str());
     errno = err;
 }
 

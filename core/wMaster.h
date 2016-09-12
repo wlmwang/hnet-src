@@ -23,40 +23,55 @@ public:
     wMaster();
     virtual ~wMaster();
     
+    // 准备工作
     wStatus PrepareStart();
-    wStatus SingleStart();		//单进程模式启动
-    wStatus MasterStart();		//master-worker模式启动
+    
+    // 单进程模式启动
+    wStatus SingleStart();
+    wStatus SingleExit();
+
+    // master-worker模式启动
+    wStatus MasterStart();
     wStatus MasterExit();
     
-    void WorkerStart(int n, int type = PROCESS_RESPAWN);
-    pid_t SpawnWorker(string sTitle, int type = PROCESS_RESPAWN);
+    // 启动n个worker进程
+    wStatus WorkerStart(uint32_t n, int8_t type = kPorcessRespawn);
+    wStatus SpawnWorker(const char* title, int8_t type = kPorcessRespawn);
+
+    // 向所有已启动worker传递刚启动worker的channel描述符
     void PassOpenChannel(struct ChannelReqOpen_t *pCh);
     void PassCloseChannel(struct ChannelReqClose_t *pCh);
-    virtual wStatus HandleSignal();
+    // 给所有worker进程发送信号
+    void SignalWorker(int signo);
+
     virtual wStatus NewWorker(const char* title, uint32_t slot, wWorker** ptr);
+    virtual wStatus HandleSignal();
 
     // 如果有worker异常退出，则重启
     // 如果所有的worker都退出了，则返回0
-    int ReapChildren();
-	
-    // 给所有worker进程发送信号
-    void SignalWorker(int iSigno);
+    wStatus ReapChildren();
 
-	/**
-	 * master-worker工作模式主要做一下事情：
-	 * 1. 设置进程标题 
-	 * 2. 设置pid文件名
-	 * 3. 设置启动worker个数
-	 * 4. 设置自定义信号处理结构
-	 * 5. 初始化服务器（创建、bind、listen套接字） 
-	 */
-	virtual wStatus PrepareRun() {}
-	virtual wStatus Run() {}
-	virtual wStatus ReloadMaster() {}
+	// master-worker模式
+	// 设置进程标题
+	// 设置pid文件名（默认hnet.pid）
+	// 设置启动worker个数（默认cpu个数）
+	// 设置自定义信号处理结构（默认定义在wSignal.cpp文件中）
+	// 初始化服务器（创建、bind、listen套接字）
+	virtual wStatus PrepareRun() {
+		return mStatus = wStatus::IOError("wMaster::PrepareRun failed", "method should be inherit");
+	}
+
+	virtual wStatus Run() {
+		return mStatus = wStatus::IOError("wMaster::Run failed", "method should be inherit");
+	}
+
+	virtual wStatus ReloadMaster() {
+		return mStatus = wStatus::IOError("wMaster::ReloadMaster failed", "method should be inherit");
+	}
 
 	// 注册信号回调
-	// 可重写全局变量g_signals，实现自定义信号处理
-	void InitSignals();
+	// 可覆盖全局变量g_signals，实现自定义信号处理
+	wStatus InitSignals();
 
 	// 回收退出进程状态（waitpid以防僵尸进程）
 	// 更新进程表

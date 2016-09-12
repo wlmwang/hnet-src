@@ -14,7 +14,7 @@
 
 namespace hnet {
 
-wWorkerIpc::wWorkerIpc(wWorker *pWorker) : mWorker(pWorker), mEpollFD(kFDUnknown), mTimeout(10), mTaskCount(0), mTask(NULL) {
+wWorkerIpc::wWorkerIpc(wWorker *worker) : mWorker(worker), mEpollFD(kFDUnknown), mTimeout(10), mTaskCount(0), mTask(NULL) {
 	mEpollEventPool.reserve(kListenBacklog);
 	memset((void *)&mEpollEvent, 0, sizeof(mEpollEvent));
 }
@@ -24,37 +24,25 @@ wWorkerIpc::~wWorkerIpc() {
 	CleanTaskPool();
 }
 
-wStatus wWorkerIpc::NewChannelTask(wChannelSocket* sock, wWorker* worker, wTask** ptr) {
-	try {
-		*ptr = new wChannelTask(sock, worker);
-	} catch (...) {
-		return mStatus = wStatus::IOError("wWorkerIpc::NewChannelTask", "new failed");
-	}
-	return mStatus = wStatus::Nothing();
-}
-
 wStatus wWorkerIpc::PrepareRun() {
-	//LOG_INFO(ELOG_KEY, "[system] worker process sync-channel's thread prepare start");
-
 	if (!InitEpoll().Ok()) {
-		return mStatus;
+		//return mStatus;
 		exit(2);
 	}
 
 	// worker自身channel[1]被监听
 	if (mWorker != NULL && mWorker->mWorkerPool[mWorker->mSlot] != NULL) {
-		wChannel *channel = mWorker->mWorkerPool[mWorker->mSlot]->mChannel;
+		wChannelSocket *channel = mWorker->mWorkerPool[mWorker->mSlot]->mChannel;
 		if (channel != NULL) {
-			wTask *pTask;
-			mStatus = NewChannelTask(channel, mWorker, &pTask);
-			if (!mStatus.Ok()) {
-				return mStatus;
+			wTask *task;
+			SAFE_NEW(wChannelTask(channel, mWorker), task);
+			if (task == NULL) {
+				//return mStatus = wStatus::IOError("wWorkerIpc::PrepareRun failed", "new failed");
+				exit(2);
 			}
 
-			if (AddToEpoll(pTask) >= 0) {
-				AddToTaskPool(pTask);
-			} else {
-				misc::SafeDelete(pTask);
+			if (!AddToEpoll(task).Ok() || !AddToTaskPool(task).Ok()) {
+				SAFE_DELETE(task);
 				exit(2);
 			}
 		} else {
@@ -63,6 +51,7 @@ wStatus wWorkerIpc::PrepareRun() {
 		}
 	} else {
 		mStatus = wStatus::IOError("wWorkerIpc::PrepareRun, worker start thread failed", "worker channel fd invalid");
+		exit(2);
 	}
 
 	return mStatus;
@@ -147,71 +136,60 @@ std::vector<wTask*>::iterator wWorkerIpc::RemoveTaskPool(wTask* task)
     return it;
 }
 
-void wWorkerIpc::Recv()
-{
+wStatus wWorkerIpc::Recv() {
 	int iRet = epoll_wait(mEpollFD, &mEpollEventPool[0], mTaskCount, mTimeout);
-	if (iRet < 0) {
-		mErr = errno;
-		LOG_ERROR(ELOG_KEY, "[system] sync-channel's epoll_wait failed: %s", strerror(mErr));
-		return;
+	if (iRet == -1) {
+		return mStatus = wStatus::IOError("wWorkerIpc::Recv, epoll_wait() failed", strerror(errno));
 	}
 	
-	int iFD = FD_UNKNOWN;
-	int iLenOrErr;
 	wTask *pTask = NULL;
 	for (int i = 0 ; i < iRet ; i++) {
 		pTask = (wTask *)mEpollEventPool[i].data.ptr;
-		iFD = pTask->Socket()->FD();
+		int64_t fd = pTask->Socket()->FD();
 		
-		if (iFD == FD_UNKNOWN) {
-			LOG_DEBUG(ELOG_KEY, "[system] sync-channel's socket FD is error, fd(%d), close it", iFD);
-			if (RemoveEpoll(pTask) >= 0) {
-				RemoveTaskPool(pTask);
+		if (fd == kFDUnknown) {
+			if (!RemoveEpoll(pTask).Ok() || !RemoveTaskPool(pTask).Ok()) {
+				return mStatus;
 			}
 			continue;
 		}
 		if (!pTask->IsRunning()) {	// 多数是超时设置
-			LOG_DEBUG(ELOG_KEY, "[system] sync-channel's task status is quit, fd(%d), close it", iFD);
-			if (RemoveEpoll(pTask) >= 0) {
-				RemoveTaskPool(pTask);
+			//LOG_DEBUG(ELOG_KEY, "[system] sync-channel's task status is quit, fd(%d), close it", fd);
+			if (!RemoveEpoll(pTask).Ok() || !RemoveTaskPool(pTask).Ok()) {
+				return mStatus;
 			}
 			continue;
 		}
-		if (mEpollEventPool[i].events & (EPOLLERR | EPOLLPRI)) { //出错(多数为sock已关闭)
-			mErr = errno;
-			LOG_ERROR(ELOG_KEY, "[system] sync-channel's epoll event recv error from fd(%d), close it: %s", iFD, strerror(mErr));
-			if (RemoveEpoll(pTask) >= 0) {
-				RemoveTaskPool(pTask);
+
+		// 出错(多数为sock已关闭)
+		if (mEpollEventPool[i].events & (EPOLLERR | EPOLLPRI)) {
+			//LOG_ERROR(ELOG_KEY, "[system] sync-channel's epoll event recv error from fd(%d), close it: %s", fd, strerror(mErr));
+			if (!RemoveEpoll(pTask).Ok() || !RemoveTaskPool(pTask).Ok()) {
+				return mStatus;
 			}
 			continue;
 		}
 		
 		if (mEpollEventPool[i].events & EPOLLIN) {
-			//套接口准备好了读取操作
-			if ((iLenOrErr = pTask->TaskRecv()) < 0) {
-				if (iLenOrErr == ERR_CLOSED) {
-					LOG_DEBUG(ELOG_KEY, "[system] sync-channel's socket closed by client");
-				} else if (iLenOrErr == ERR_MSGLEN) {
-					LOG_ERROR(ELOG_KEY, "[system] sync-channel's recv message invalid len");
-				} else {
-					LOG_ERROR(ELOG_KEY, "[system] EPOLLIN(read) failed or sync-channel's socket closed: %s", strerror(pTask->Socket()->Errno()));
-				}
-				if (RemoveEpoll(pTask) >= 0) {
-					RemoveTaskPool(pTask);
+			// 套接口准备好了读取操作
+			mStatus = pTask->TaskRecv();
+			if (!mStatus.Ok()) {
+				if (!RemoveEpoll(pTask).Ok() || !RemoveTaskPool(pTask).Ok()) {
+					return mStatus;
 				}
 			}
 		} else if (mEpollEventPool[i].events & EPOLLOUT) {
-			//清除写事件
+			// 清除写事件
 			if (pTask->WritableLen() <= 0) {
 				AddToEpoll(pTask, EPOLLIN, EPOLL_CTL_MOD);
 				continue;
 			}
-			//套接口准备好了写入操作
-			if (pTask->TaskSend() < 0) {	//写入失败，半连接，对端读关闭
-				LOG_ERROR(ELOG_KEY, "[system] EPOLLOUT(write) failed or sync-channel's socket closed: %s", strerror(pTask->Socket()->Errno()));
-				if (RemoveEpoll(pTask) >= 0)
-				{
-					RemoveTaskPool(pTask);
+			// 套接口准备好了写入操作
+			// 写入失败，半连接，对端读关闭
+			mStatus = pTask->TaskSend();
+			if (!mStatus.Ok()) {
+				if (!RemoveEpoll(pTask).Ok() || !RemoveTaskPool(pTask).Ok()) {
+					return mStatus;
 				}
 			}
 		}

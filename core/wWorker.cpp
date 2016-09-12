@@ -22,8 +22,8 @@ mPriority(0), mRlimitCore(kRlimitCore), mSlot(slot), mMaster(master) {
 }
 
 wWorker::~wWorker() {
-	misc::SafeDelete(mIpc);
-	misc::SafeDelete(mChannel);
+	SAFE_DELETE(mIpc);
+	SAFE_DELETE(mChannel);
 }
 
 wStatus wWorker::PrepareStart() {
@@ -74,8 +74,9 @@ wStatus wWorker::PrepareStart() {
 void wWorker::Start(bool daemon) {
 	//mStatus = WORKER_RUNNING;
 	
+	// 开启worker进程通信线程
 	mIpc->StartThread();
-	Run();
+	return Run();
 }
 
 }	// namespace hnet

@@ -6,6 +6,8 @@
 
 #include <pwd.h>
 #include <grp.h>
+#include <sys/file.h>
+#include <sys/ioctl.h>
 #include "wMisc.h"
 #include "wSlice.h"
 

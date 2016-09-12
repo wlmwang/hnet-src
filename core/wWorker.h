@@ -43,11 +43,11 @@ protected:
 	friend class wWorkerIpc;
 	
 	wStatus mStatus;
-	const char* mTitle;
-	pid_t mPid;
 	int mPriority;	// 进程优先级
 	int mRlimitCore;// 连接限制
-	
+
+	//pid_t mPid;
+	//const char* mTitle;
 	uint32_t mSlot;		// 进程表分配到索引
 	wMaster *mMaster;
 	wWorkerIpc *mIpc;	// worker通信 主要通过channel同步个fd，填充进程表

@@ -20,7 +20,7 @@ class wChannelSocket;
 
 class wWorkerIpc : public wThread {
 public:
-	wWorkerIpc(wWorker *pWorker);
+	wWorkerIpc(wWorker *worker);
 	~wWorkerIpc();
 
 	wStatus PrepareRun();
@@ -28,19 +28,15 @@ public:
 	
 	wStatus NewChannelTask(wChannelSocket* sock, wWorker* worker, wTask** ptr);
 
-	void Recv();
-	int InitEpoll();
-	void CleanEpoll();
-	int AddToEpoll(wTask* pTask, int iEvents = EPOLLIN, int iOp = EPOLL_CTL_ADD);
-    int RemoveEpoll(wTask* pTask);
+	wStatus Recv();
+	wStatus InitEpoll();
+	wStatus CleanEpoll();
+	wStatus AddToEpoll(wTask* pTask, int iEvents = EPOLLIN, int iOp = EPOLL_CTL_ADD);
+    wStatus RemoveEpoll(wTask* pTask);
 	
 	vector<wTask*>::iterator RemoveTaskPool(wTask *pTask);
-	int AddToTaskPool(wTask *pTask);
-	void CleanTaskPool();
-
-	int PoolNum() {
-		return mTaskPool.size();
-	}
+	wStatus AddToTaskPool(wTask *pTask);
+	wStatus CleanTaskPool();
 	
 	//bool IsRunning() { return mStatus == SERVER_RUNNING; }
 	//SERVER_STATUS &Status() { return mStatus; }
