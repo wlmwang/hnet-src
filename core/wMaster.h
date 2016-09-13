@@ -15,7 +15,11 @@
 
 namespace hnet {
 
+const char*	kMasterTitle = "HNET: master process";
+
 class wEnv;
+class wServer;
+class wConfig;
 class wWorker;
 
 class wMaster : private wNoncopyable {
@@ -86,10 +90,9 @@ protected:
 	friend class wWorker;
 	
 	wStatus mStatus;
-	wEnv *mEnv;
 	uint8_t mNcpu;
 	string mPidPath;
-	
+	string mTitle;	// 进程名
 	pid_t mPid;		// master进程id
 	
 	// 进程表
@@ -99,6 +102,10 @@ protected:
 	
 	// 主进程master构建惊群锁（进程共享）
 	uint32_t mDelay;	// 延时时间,默认500ms
+
+	wEnv *mEnv;
+	wServer* mServer;
+	wConfig* mConfig;
 };
 
 }	// namespace hnet

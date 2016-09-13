@@ -4,8 +4,7 @@
  * Copyright (C) Hupu, Inc.
  */
 
-#include "wChannelTask.h"
-#include "wLog.h" 
+#include "wChannelTask.h" 
 #include "wCommand.h"
 #include "wMaster.h"
 #include "wWorker.h"

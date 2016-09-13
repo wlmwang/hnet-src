@@ -28,9 +28,8 @@ public:
     // 设置进程标题
     wStatus Setproctitle(const char *title, const char *pretitle = NULL);
 
-public:
+protected:
     wStatus mStatus;
-    
     int mArgc;
     char *mOsArgvLast;
     char **mOsArgv;	//原生参数

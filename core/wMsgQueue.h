@@ -8,7 +8,7 @@
 #define _W_MSG_QUEUE_
 
 #include "wCore.h"
-#include "wAssert.h"
+#include "wStatus.h"
 #include "wNoncopyable.h"
 
 namespace hnet {

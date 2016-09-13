@@ -16,7 +16,7 @@
 namespace hnet {
 
 const uint32_t	kRlimitCore = 65535;
-const char*		kProcessTitle = "worker process";
+const char*		kWorkerTitle = "worker process";
 
 class wMaster;
 class wWorkerIpc;
@@ -56,7 +56,7 @@ protected:
 
 	pid_t mPid;
 	uint32_t mSlot;	// 进程表中索引
-	const char* mTitle;	// 进程名
+	string mTitle;	// 进程名
 	wWorkerIpc *mIpc;	// worker通信,主要通过channel同步个fd
 	wChannelSocket *mChannel;	// worker进程channel
 };

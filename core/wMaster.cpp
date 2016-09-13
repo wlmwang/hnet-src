@@ -12,12 +12,16 @@
 #include "wSignal.h"
 #include "wWorker.h"
 #include "wChannelCmd.h"	//*channel*_t
+#include "wConfig.h"
+#include "wServer.h"
 
 namespace hnet {
 
-wMaster::wMaster() : mEnv(wEnv::Default()), mPidPath(kPidPath), mWorkerNum(0), mSlot(kMaxPorcess), mDelay(500) {
+wMaster::wMaster() : mTitle(kMasterTitle), mPidPath(kPidPath), mWorkerNum(0), mSlot(kMaxPorcess), mDelay(500),
+mEnv(wEnv::Default()), mServer(NULL), mConfig(NULL) {
     mPid = getpid();
     mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
+    mWorkerNum = mNcpu;
 }
 
 wMaster::~wMaster() {
@@ -35,11 +39,30 @@ wStatus wMaster::NewWorker(const char* title, uint32_t slot, wWorker** ptr) {
 }
 
 wStatus wMaster::PrepareStart() {
-    mWorkerNum = mNcpu;
-    return PrepareRun();
+    if (!PrepareRun().Ok()) {
+    	return mStatus;
+    }
+
+    // 进程标题
+    if (mConfig == NULL) {
+    	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mConfig is null");
+    } else if (mTitle.size() > 0) {
+    	return mStatus = mConfig->mProcTitle->Setproctitle(mTitle.c_str(), "");
+    }
+    return mStatus;
 }
 
 wStatus wMaster::SingleStart() {
+    if (mServer == NULL) {
+    	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mServer is null");
+    } else if (mConfig->mIPAddr != NULL && mConfig->mPort != 0) {
+    	// 初始化服务器
+    	mStatus = mServer->PrepareSingle(mConfig->mIPAddr, mConfig->mPort);
+    	if (!mStatus.Ok()) {
+    		return mStatus;
+    	}
+    }
+
     if (!CreatePidFile().Ok()) {
 		return mStatus;
     }
@@ -55,10 +78,23 @@ wStatus wMaster::SingleStart() {
     snl.AddSigno(SIGTTIN);
     snl.AddSigno(SIGTTOU);
     
-    return Run();
+    if (!Run().Ok()) {
+    	return mStatus;
+    }
+    return mStatus = mServer->SingleStart();
 }
 
 wStatus wMaster::MasterStart() {
+    if (mServer == NULL) {
+    	return mStatus = wStatus::IOError("wMaster::MasterStart failed", "mServer is null");
+    } else if (mConfig->mIPAddr != NULL && mConfig->mPort != 0) {
+    	// 创建、绑定服务器Listen Socket
+    	mStatus = mServer->PrepareMaster(mConfig->mIPAddr, mConfig->mPort);
+    	if (!mStatus.Ok()) {
+    		return mStatus;
+    	}
+    }
+
 	if (mWorkerNum > kMaxPorcess) {
 		return mStatus = wStatus::IOError("wMaster::MasterStart, processes can be spawned", "worker number is overflow");
 	} else if (!InitSignals().Ok()) {

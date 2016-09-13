@@ -12,8 +12,8 @@ namespace hnet {
 extern char **environ;
 
 wProcTitle::wProcTitle(int argc, const char *argv[]) : mOsEnv(environ), mArgc(argc) {
-    mOsArgv = reinterpret_cast<char **>(argv);
-    mOsArgvLast = reinterpret_cast<char*>(argv[0]);
+    mOsArgv = argv;
+    mOsArgvLast = argv[0];
     SaveArgv();
 }
 

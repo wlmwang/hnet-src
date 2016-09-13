@@ -74,6 +74,13 @@ wStatus wWorker::PrepareStart() {
 		//return mStatus;
 		exit(2);
 	}
+	
+    // 进程标题
+    if (mMaster->mConfig == NULL) {
+    	return mStatus = wStatus::IOError("wWorker::PrepareStart failed", "mConfig is null");
+    } else if (mTitle.size() > 0) {
+    	return mStatus = mMaster->mConfig->mProcTitle->Setproctitle(mTitle.c_str(), "");
+    }
 	return mStatus;
 }
 

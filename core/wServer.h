@@ -20,6 +20,7 @@ namespace hnet {
 class wTimer;
 class wTask;
 class wSocket;
+class wMaster;
 
 // 服务基础类
 class wServer : private wNoncopyable {
@@ -103,6 +104,7 @@ public:
 protected:
 	//int mErr;
 	//int mExiting {0};
+	friend class wServer;
 	string mServerName;
 	vector<wSocket *> mListenSock;	//多监听服务
 

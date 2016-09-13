@@ -7,9 +7,8 @@
 #include "wConfig.h"
 #include "wMisc.h"
 #include "wSlice.h"
-#include "wLog.h"
-#include "wProcTitle.h"
 #include "tinyxml.h"    //lib tinyxml
+#include "wProcTitle.h"
 
 namespace hnet {
 
@@ -17,13 +16,16 @@ wConfig::~wConfig() {
     SAFE_DELETE(mProcTitle);
 }
 
-// 参数形式 ./bin/server -? -d  -h127.0.0.1  -h 127.0.0.1
+// 参数形式 
+// ./bin/server -?
+// ./bin/server -d
+// ./bin/server -h127.0.0.1  
+// ./bin/server -h 127.0.0.1
 wStatus wConfig::GetOption(int argc, const char *argv[]) {
     for (int i = 1; i < argc; i++) {
-        char* p = (char *) argv[i];
+        char* p = argv[i];
         if (*p++ != '-') {
-            mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
-            return mStatus;
+            return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
         }
 
         while (*p) {
@@ -42,13 +44,12 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
                     goto next;
                 }
 
-                p = (char *) argv[++i]; // 多一个空格
+                p = argv[++i]; // 多一个空格
                 if (*p) {
                     mHost = p;
                     goto next;
                 }
-                mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-h\" requires ip address");
-                return mStatus;
+                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-h\" requires ip address");
 
             case 'p':
                 uint64_t val;
@@ -59,15 +60,14 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
                     }
                 }
 
-                p = (char *) argv[++i]; // 多一个空格
+                p = argv[++i]; // 多一个空格
                 if (*p) {
                     if (misc::ConsumeDecimalNumber(&wSlice(p, strlen(p)), &val)) {
                         mPort = static_cast<uint16_t>(val);
                         goto next;
                     }
                 }
-                mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires port number");
-                return mStatus;
+                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires port number");
 
             case 's':
                 if (*p) {
@@ -75,17 +75,15 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
                     goto next;
                 }
 
-                p = (char *) argv[++i]; // 多一个空格
+                p = argv[++i]; // 多一个空格
                 if (*p) {
                     mSignal = p;
                     goto next;
                 }
-                mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires signal");
-                return mStatus;
+                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires signal");
             
             default:
-                mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
-                return mStatus;
+                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
             }
         }
     next:
@@ -97,10 +95,7 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
 
 wStatus wConfig::InitProcTitle(int argc, const char *argv[]) {
     mProcTitle = new wProcTitle(argc, argv);
-    if (mProcTitle->InitSetproctitle() != 0) {
-        return wStatus::Corruption("wConfig::InitProcTitle", "Unkown error");
-    }
-    return wStatus::Nothing();
+    return mStatus = mProcTitle->InitSetproctitle();
 }
 
 }   // namespace hnet
