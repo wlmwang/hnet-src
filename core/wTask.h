@@ -23,13 +23,8 @@ public:
     virtual ~wTask();
     
     virtual const char* Name() const = 0;
-    
-    // 验证接收到登录请求
-    virtual wStatus Verify() {
-        return mStatus = wStatus::Nothing();
-    }
 
-    // 发送登录验证请求
+    // 登录验证
     virtual wStatus Login() {
         return mStatus = wStatus::Nothing();
     }

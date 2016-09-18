@@ -278,7 +278,7 @@ wStatus wServer::Listener2Epoll() {
 			mStatus = NewTcpTask(*it, mTask);
 			break;
 		default:
-			mStatus = wStatus::IOError("wServer::Listener2Epoll", "unknown task")
+			mStatus = wStatus::IOError("wServer::Listener2Epoll", "unknown task");
 		}
 
 		if (mStatus.Ok()) {
@@ -292,65 +292,62 @@ wStatus wServer::Listener2Epoll() {
 	return mStatus;
 }
 
-int wServer::AcceptConn(wTask *pTask) {
-	mTask = NULL;
-	int iNewFD = FD_UNKNOWN;
-	if (pTask->Socket()->SockProto() == kSpUnix) {
-		struct sockaddr_un stSockAddr;
-		socklen_t iSockAddrSize = sizeof(stSockAddr);
-		iNewFD = pTask->Socket()->Accept((struct sockaddr*)&stSockAddr, &iSockAddrSize);
-		if (iNewFD <= 0) {
-			if (iNewFD < 0) LOG_ERROR(ELOG_KEY, "[system] unix client connect failed:%s", strerror(pTask->Socket()->Errno()));
-		    return iNewFD;
-	    }
+wStatus wServer::AcceptConn(wTask *task) {
+	int64_t fd;
+	if (task->Socket()->SockProto() == kSpUnix) {
+		struct sockaddr_un sockAddr;
+		socklen_t sockAddrSize = sizeof(sockAddr);
+		mStatus = task->Socket()->Accept(fd, (struct sockaddr*)&sockAddr, &sockAddrSize);
+		if (!mStatus.Ok()) {
+			return mStatus;
+		}
+	    
 	    //unix socket
-		wUnixSocket *pSocket = new wUnixSocket(SOCK_TYPE_CONNECT);
-		pSocket->FD() = iNewFD;
-		pSocket->Host() = stSockAddr.sun_path;
-		pSocket->SockStatus() = SOCK_STATUS_CONNECTED;
-		if (pSocket->SetNonBlock() < 0) {
-			//SAFE_DELETE(pSocket);
-			//return -1;
+		wUnixSocket *socket;
+		SAFE_NEW(wUnixSocket(kStConnect), socket);
+		socket->FD() = fd;
+		socket->Host() = sockAddr.sun_path;
+		socket->SockStatus() = kSsConnected;
+		mStatus = socket->SetFL();
+		if (!mStatus.Ok()) {
+			return mStatus;
 		}
-		mTask = NewUnixTask(pSocket);
-	} else if(pTask->Socket()->SockProto() == kSpTcp) {
-		struct sockaddr_in stSockAddr;
-		socklen_t iSockAddrSize = sizeof(stSockAddr);	
-		iNewFD = pTask->Socket()->Accept((struct sockaddr*)&stSockAddr, &iSockAddrSize);
-		if (iNewFD <= 0) {
-			if (iNewFD < 0) LOG_ERROR(ELOG_KEY, "[system] client connect failed:%s", strerror(pTask->Socket()->Errno()));
-		    return iNewFD;
-	    }
+		mStatus = NewUnixTask(socket, mTask);
+
+	} else if(task->Socket()->SockProto() == kSpTcp) {
+		struct sockaddr_in sockAddr;
+		socklen_t sockAddrSize = sizeof(sockAddr);	
+		mStatus = task->Socket()->Accept(fd, (struct sockaddr*)&sockAddr, &sockAddrSize);
+		if (!mStatus.Ok()) {
+			return mStatus;
+		}
+
 		//tcp socket
-		wTcpSocket *pSocket = new wTcpSocket(SOCK_TYPE_CONNECT);
-		pSocket->FD() = iNewFD;
-		pSocket->Host() = inet_ntoa(stSockAddr.sin_addr);
-		pSocket->Port() = stSockAddr.sin_port;
-		pSocket->SockStatus() = SOCK_STATUS_CONNECTED;
-		if (pSocket->SetNonBlock() < 0) {
-			//SAFE_DELETE(pSocket);
-			//return -1;
+		wTcpSocket *socket;
+		SAFE_NEW(wTcpSocket(kStConnect), socket);
+		socket->FD() = fd;
+		socket->Host() = inet_ntoa(sockAddr.sin_addr);
+		socket->Port() = sockAddr.sin_port;
+		socket->SockStatus() = kSsConnected;
+		mStatus = socket->SetFL();
+		if (!mStatus.Ok()) {
+			return mStatus;
 		}
-		mTask = NewTcpTask(pSocket);
+		mStatus = NewTcpTask(socket, mTask);
+	} else {
+		mStatus = wStatus::IOError("wServer::Listener2Epoll", "unknown task")
 	}
 	
-	if (NULL != mTask) {
-		if (mTask->VerifyConn() < 0 || mTask->Verify()) {
-			LOG_ERROR(ELOG_KEY, "[system] connect illegal or verify timeout: %d, close it", iNewFD);
+	if (mStatus.Ok()) {
+		if (!mTask->Login().Ok()) {
 			SAFE_DELETE(mTask);
-			return -1;
-		}
-		
-		mTask->Status() = TASK_RUNNING;
-		if (AddToEpoll(mTask) >= 0) {
-			AddToTaskPool(mTask);
+		} else if (!AddToEpoll(mTask).Ok() || !AddToTaskPool(mTask).Ok()) {
+			SAFE_DELETE(mTask);
 		} else {
-			SAFE_DELETE(mTask);
-			return -1;
+			mStatus = wStatus::Nothing();
 		}
-		LOG_DEBUG(ELOG_KEY, "[system] client connect succeed: Host(%s)", mTask->Socket()->Host().c_str());
 	}
-	return iNewFD;
+	return mStatus;
 }
 
 wStatus wServer::CleanEpoll() {
