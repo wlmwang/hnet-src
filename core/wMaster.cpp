@@ -239,12 +239,12 @@ wStatus wMaster::HandleSignal() {
 }
 
 wStatus wMaster::ReapChildren(int* live) {
-	int live = 0;
+	*live = 0;
 	for (uint32_t i = 0; i < mWorkerNum; i++) {
         //LOG_DEBUG(ELOG_KEY, "[system] reapchild pid(%d),exited(%d),exiting(%d),detached(%d),respawn(%d)", 
         //	mWorkerPool[i]->mPid, mWorkerPool[i]->mExited, mWorkerPool[i]->mExiting, mWorkerPool[i]->mDetached, mWorkerPool[i]->mRespawn);
         
-        if (mWorkerPool[i]->mPid == -1) {
+        if (mWorkerPool[i] == NULL || mWorkerPool[i]->mPid == -1) {
             continue;
         }
 
@@ -253,8 +253,8 @@ wStatus wMaster::ReapChildren(int* live) {
 			// 非分离，就同步文件描述符
 			if (!mWorkerPool[i]->mDetached) {
 				// 关闭channel
-				mWorkerPool[i]->mChannel.Close();
-				
+				mWorkerPool[i]->mChannel->Close();
+
 				struct ChannelReqClose_t ch;
 				ch.mFD = -1;
 				ch.mPid = mWorkerPool[i]->mPid;
@@ -275,7 +275,7 @@ wStatus wMaster::ReapChildren(int* live) {
 				ch.mSlot = i;
 				PassOpenChannel(&ch);
 				
-				live = 1;
+				*live = 1;
 				continue;
 			}
 			
@@ -285,11 +285,11 @@ wStatus wMaster::ReapChildren(int* live) {
             	//mWorkerNum--;
             }
 		} else if (mWorkerPool[i]->mExiting || !mWorkerPool[i]->mDetached) {
-			live = 1;
+			*live = 1;
 		}
     }
 
-	return live;
+    return mStatus = wStatus::Nothing();
 }
 
 wStatus WorkerStart(uint32_t n, int8_t type) {

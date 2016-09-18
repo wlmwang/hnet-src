@@ -26,16 +26,14 @@ public:
 	wStatus PrepareRun();
 	wStatus Run();
 	
-	wStatus NewChannelTask(wChannelSocket* sock, wWorker* worker, wTask** ptr);
-
 	wStatus Recv();
 	wStatus InitEpoll();
 	wStatus CleanEpoll();
-	wStatus AddToEpoll(wTask* pTask, int iEvents = EPOLLIN, int iOp = EPOLL_CTL_ADD);
-    wStatus RemoveEpoll(wTask* pTask);
+	wStatus AddToEpoll(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD);
+    wStatus RemoveEpoll(wTask* task);
 	
-	vector<wTask*>::iterator RemoveTaskPool(wTask *pTask);
-	wStatus AddToTaskPool(wTask *pTask);
+	std::vector<wTask*>::iterator RemoveTaskPool(wTask *task);
+	wStatus AddToTaskPool(wTask *task);
 	wStatus CleanTaskPool();
 
 protected:
@@ -45,12 +43,12 @@ protected:
 	int32_t mEpollFD;
 	uint64_t mTimeout;
 
-	//epoll_event
+	// epoll_event
 	struct epoll_event mEpollEvent;
 	vector<struct epoll_event> mEpollEventPool; //epoll_event已发生事件池（epoll_wait）
 	size_t mTaskCount;
 	
-	//task|pool
+	// task|pool
 	wTask *mTask;
 	vector<wTask*> mTaskPool;
 };

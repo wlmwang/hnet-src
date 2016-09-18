@@ -94,8 +94,11 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
 }
 
 wStatus wConfig::InitProcTitle(int argc, const char *argv[]) {
-    mProcTitle = new wProcTitle(argc, argv);
-    return mStatus = mProcTitle->InitSetproctitle();
+    SAFE_NEW(wProcTitle(argc, argv), mProcTitle);
+    if (mProcTitle == NULL) {
+        return wStatus::IOError("wConfig::InitProcTitle", "new failed");
+    }
+    return mProcTitle->InitSetproctitle();
 }
 
 }   // namespace hnet

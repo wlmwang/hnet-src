@@ -15,10 +15,10 @@
 
 namespace hnet {
 
-wServer::wServer(string name) : mServerName(name), mLastTicker(0), mIsCheckTimer(false),
-mEpollFD(kFDUnknown), mTimeout(10), mTaskCount(0), mTask(NULL) {
-	mLastTicker = misc::GetTimeofday();
-	mCheckTimer = wTimer(kKeepAliveTm);
+wServer::wServer(string title) : mTitle(title), mExiting(false), mTimerSwitch(false), mEpollFD(kFDUnknown), 
+mEnv(wEnv::Default()), mTimeout(10), mTaskCount(0), mTask(NULL) {
+	mLatestTm = misc::GetTimeofday();
+	mHeartbeatTimer = wTimer(kKeepAliveTm);
 	mEpollEventPool.reserve(kListenBacklog);
 	memset((void *)&mEpollEvent, 0, sizeof(mEpollEvent));
 }
@@ -28,64 +28,47 @@ wServer::~wServer(){
 	CleanTaskPool();
 }
 
-void wServer::PrepareSingle(string sIpAddr, unsigned int nPort, string sProtocol) {
-	LOG_INFO(ELOG_KEY, "[system] single server prepare on ip(%s) port(%d) protocol(%s)", sIpAddr.c_str(), nPort, sProtocol.c_str());
-	
-	// 添加服务器
-	if (AddListener(sIpAddr, nPort, sProtocol) < 0 || mListenSock.size() <= 0) {
-		exit(0);
+wStatus wServer::PrepareSingle(string ipaddr, uint16_t port, string protocol) {	
+	if (!AddListener(ipaddr, port, protocol).Ok()) {
+		return mStatus;
+	} else if (!InitEpoll().Ok()) {
+		return mStatus;
+	} else if (!Listener2Epoll().Ok()) {
+		return mStatus;
 	}
-	
-	// 初始化epoll
-	if (InitEpoll() < 0) {
-		exit(0);
-	}
-	
-	// 添加到侦听事件队列
-	Listener2Epoll();
-	
-	// 运行前工作
-	PrepareRun();
+
+	return PrepareRun();
 }
 
-void wServer::SingleStart(bool bDaemon) {
-	LOG_INFO(ELOG_KEY, "[system] single server start succeed");
-	mStatus = SERVER_RUNNING;
-
-	//进入服务主循环
-	do {
+wStatus wServer::SingleStart(bool bDaemon) {
+	// 进入服务主循环
+	while (bDaemon) {
 		Recv();
 		Run();
 		CheckTimer();
-	} while(IsRunning() && bDaemon);
+	}
+	return mStatus;
 }
 
-void wServer::PrepareMaster(string sIpAddr, unsigned int nPort, string sProtocol) {
-	LOG_INFO(ELOG_KEY, "[system] master server prepare on ip(%s) port(%d) protocol(%s)", sIpAddr.c_str(), nPort, sProtocol.c_str());
-	
-	// 添加服务器
-	if (AddListener(sIpAddr, nPort, sProtocol) < 0 || mListenSock.size() <= 0) {
-		exit(0);
+wStatus wServer::PrepareMaster(string ipaddr, uint16_t port, string protocol) {	
+	if (!AddListener(ipaddr, port, protocol).Ok()) {
+		return mStatus;
 	}
-
-	// 运行前工作
-	PrepareRun();
+	return PrepareRun();
 }
 
-void wServer::WorkerStart(bool bDaemon) {
-	LOG_INFO(ELOG_KEY, "[system] worker server start succeed");
-	mStatus = SERVER_RUNNING;
-	
-	//初始化epoll
-	if (InitEpoll() < 0) {
-		exit(2);
+wStatus wServer::WorkerStart(bool bDaemon) {
+	if (!InitEpoll().Ok()) {
+		return mStatus;
+	} else if (!Listener2Epoll().Ok()) {
+		return mStatus;
 	}
-	
-	//添加到侦听事件队列
-	Listener2Epoll();
 
-	//进入服务主循环
-	do {
+	// 开启心跳线程
+	mEnv->Schedule(wServer::CheckTimer, this);
+
+	// 进入服务主循环
+	while (bDaemon) {
 		if (mExiting) {
 			WorkerExit();
 		}
@@ -93,23 +76,25 @@ void wServer::WorkerStart(bool bDaemon) {
 		Recv();
 		HandleSignal();
 		Run();
-		CheckTimer();
-	} while (IsRunning() && bDaemon);
+		//CheckTimer();
+	}
+	return mStatus;
 }
 
 void wServer::HandleSignal() {	
 	if (g_terminate) {
-		WorkerExit();	//直接退出
+		// 直接退出
+		WorkerExit();
 	}
 	
 	if (g_quit)	{
 		// 平滑退出
 		g_quit = 0;
 
-		LOG_ERROR(ELOG_KEY, "[system] gracefully shutting down");
+		//LOG_ERROR(ELOG_KEY, "[system] gracefully shutting down");
 		if (!mExiting) {
-			mExiting = 1;
-			for (vector<wSocket *>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
+			mExiting = true;
+			for (std::vector<wSocket *>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
 				(*it)->Close();
 			}
 		}
@@ -126,122 +111,107 @@ void wServer::WorkerExit() {
 	exit(0);
 }
 
-int wServer::InitEpoll() {
-	if ((mEpollFD = epoll_create(LISTEN_BACKLOG)) < 0) {
-		mErr = errno;
-		LOG_ERROR(ELOG_KEY, "[system] epoll_create failed:%s", strerror(mErr));
-		return -1;
+wStatus wServer::InitEpoll() {
+	if ((mEpollFD = epoll_create(kListenBacklog)) == -1) {
+		return mStatus = wStatus::IOError("wServer::InitEpoll, epoll_create() failed", strerror(errno));
 	}
-	return mEpollFD;
+	return mStatus = wStatus::Nothing();
 }
 
-wTask* wServer::NewTcpTask(wSocket *pSocket) {
-	return new wTcpTask(pSocket);
+wStatus wServer::NewTcpTask(wSocket* sock, wTask** ptr) {
+    SAFE_NEW(wTcpTask(sock), *ptr);
+    if (*ptr == NULL) {
+		return wStatus::IOError("wServer::NewTcpTask", "new failed");
+    }
+    return wStatus::Nothing();
 }
 
-wTask* wServer::NewUnixTask(wSocket *pSocket) {
-	return new wUnixTask(pSocket);
+wStatus wServer::NewUnixTask(wSocket* sock, wTask** ptr) {
+    SAFE_NEW(wUnixTask(sock), *ptr);
+    if (*ptr == NULL) {
+		return wStatus::IOError("wServer::NewUnixTask", "new failed");
+    }
+    return wStatus::Nothing();
 }
 
-int wServer::AddToEpoll(wTask* pTask, int iEvents, int iOp) {
-	W_ASSERT(pTask != NULL, return -1);
-
-	mEpollEvent.events = iEvents | EPOLLERR | EPOLLHUP; //|EPOLLET
-	mEpollEvent.data.fd = pTask->Socket()->FD();
-	mEpollEvent.data.ptr = pTask;
-	if (epoll_ctl(mEpollFD, iOp, pTask->Socket()->FD(), &mEpollEvent) < 0) {
-		mErr = errno;
-		LOG_ERROR(ELOG_KEY, "[system] fd(%d) add into epoll failed: %s", pTask->Socket()->FD(), strerror(mErr));
-		return -1;
+wStatus wServer::AddToEpoll(wTask* task, int ev, int op) {
+	mEpollEvent.events = ev | EPOLLERR | EPOLLHUP; // |EPOLLET
+	mEpollEvent.data.fd = task->mSocket->mFD;
+	mEpollEvent.data.ptr = task;
+	if (epoll_ctl(mEpollFD, op, task->mSocket->mFD, &mEpollEvent) < 0) {
+		return mStatus = wStatus::IOError("wServer::AddToEpoll, epoll_ctl() failed", strerror(errno));
 	}
-	LOG_DEBUG(ELOG_KEY, "[system] %s fd %d events read %d write %d", 
-		iOp == EPOLL_CTL_MOD ? "mod":"add", pTask->Socket()->FD(), mEpollEvent.events & EPOLLIN, mEpollEvent.events & EPOLLOUT);
-	return 0;
+	return mStatus = wStatus::Nothing();
 }
 
-int wServer::AddToTaskPool(wTask* pTask) {
-	W_ASSERT(pTask != NULL, return -1);
-
-	mTaskPool.push_back(pTask);
-	mTaskCount = mTaskPool.size();	//epoll_event大小
-	if (mTaskCount > (int)mEpollEventPool.capacity()) {
+wStatus wServer::AddToTaskPool(wTask* task) {
+	mTaskPool.push_back(task);
+	mTaskCount = mTaskPool.size();
+	if (mTaskCount > mEpollEventPool.capacity()) {
 		mEpollEventPool.reserve(mTaskCount * 2);
 	}
-	LOG_DEBUG(ELOG_KEY, "[system] fd(%d) add into task pool", pTask->Socket()->FD());
-	return 0;
+	return mStatus = wStatus::Nothing();
 }
 
-void wServer<T>::Recv() {
+wStatus wServer::Recv() {
 	int iRet = epoll_wait(mEpollFD, &mEpollEventPool[0], mTaskCount, mTimeout);
-	if (iRet < 0) {
-		mErr = errno;
-		LOG_ERROR(ELOG_KEY, "[system] epoll_wait failed: %s", strerror(mErr));
-		return;
+	if (iRet == -1) {
+		return mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", strerror(errno));
 	}
-	
-	int iFD = FD_UNKNOWN;
-	int iLenOrErr = 0;
-	wTask *pTask = NULL;
+
+	wTask *task = NULL;
 	for (int i = 0 ; i < iRet ; i++) {
-		pTask = (wTask *)mEpollEventPool[i].data.ptr;
-		iFD = pTask->Socket()->FD();
-		if (iFD == FD_UNKNOWN) {
-			LOG_DEBUG(ELOG_KEY, "[system] socket FD is error, fd(%d), close it", iFD);
-			if (RemoveEpoll(pTask) >= 0) {
-				RemoveTaskPool(pTask);
+		task = reinterpret_cast<wTask *>(mEpollEventPool[i].data.ptr);
+		int64_t fd = task->Socket()->FD();
+		
+		if (fd == kFDUnknown) {
+			if (!RemoveEpoll(task).Ok() || !RemoveTaskPool(task).Ok()) {
+				return mStatus;
 			}
 			continue;
 		}
-		if (!pTask->IsRunning()) {
-			// 多数是超时设置
-			LOG_DEBUG(ELOG_KEY, "[system] task status is quit, fd(%d), close it", iFD);
-			if (RemoveEpoll(pTask) >= 0) {
-				RemoveTaskPool(pTask);
+		if (!task->IsRunning()) {	// 多数是超时设置
+			if (!RemoveEpoll(task).Ok() || !RemoveTaskPool(task).Ok()) {
+				return mStatus;
 			}
 			continue;
 		}
+		// 出错(多数为sock已关闭)
 		if (mEpollEventPool[i].events & (EPOLLERR | EPOLLPRI)) {
-			//出错(多数为sock已关闭)
-			mErr = errno;
-			LOG_ERROR(ELOG_KEY, "[system] epoll event recv error from fd(%d), close it: %s", iFD, strerror(mErr));
-			if (RemoveEpoll(pTask) >= 0) {
-				RemoveTaskPool(pTask);
+			if (!RemoveEpoll(task).Ok() || !RemoveTaskPool(task).Ok()) {
+				return mStatus;
 			}
 			continue;
 		}
 		
-		if (pTask->Socket()->SockType() == SOCK_TYPE_LISTEN && pTask->Socket()->SockStatus() == SOCK_STATUS_LISTENED) {
+		if (task->Socket()->SockType() == kStListen && task->Socket()->SockStatus() == kSsListened) {
 			if (mEpollEventPool[i].events & EPOLLIN) {
 				// accept connect
-				AcceptConn(pTask);
+				mStatus = AcceptConn(task);
+			} else {
+				mStatus = wStatus::IOError("wServer::Recv, accept error", "listen socket error event");
 			}
-		} else if (pTask->Socket()->SockType() == SOCK_TYPE_CONNECT && pTask->Socket()->SockStatus() == SOCK_STATUS_CONNECTED) {
+		} else if (task->Socket()->SockType() == kStConnect && task->Socket()->SockStatus() == kSsConnected) {
 			if (mEpollEventPool[i].events & EPOLLIN) {
 				// 套接口准备好了读取操作
-				if ((iLenOrErr = pTask->TaskRecv()) < 0) {
-					if (iLenOrErr == ERR_CLOSED) {
-						LOG_DEBUG(ELOG_KEY, "[system] socket closed by client");
-					} else if (iLenOrErr == ERR_MSGLEN) {
-						LOG_ERROR(ELOG_KEY, "[system] recv message invalid len");
-					} else {
-						LOG_ERROR(ELOG_KEY, "[system] EPOLLIN(read) failed or socket closed: %s", strerror(pTask->Socket()->Errno()));
-					}
-					if (RemoveEpoll(pTask) >= 0) {
-						RemoveTaskPool(pTask);
+				mStatus = task->TaskRecv();
+				if (!mStatus.Ok()) {
+					if (!RemoveEpoll(task).Ok() || !RemoveTaskPool(task).Ok()) {
+						return mStatus;
 					}
 				}
 			} else if (mEpollEventPool[i].events & EPOLLOUT) {
 				// 清除写事件
-				if (pTask->WritableLen() <= 0) {
-					AddToEpoll(pTask, EPOLLIN, EPOLL_CTL_MOD);
+				if (task->SendLen() == 0) {
+					AddToEpoll(task, EPOLLIN, EPOLL_CTL_MOD);
 					continue;
 				}
-				//套接口准备好了写入操作
-				if (pTask->TaskSend() < 0) {
-					// 写入失败，半连接，对端读关闭
-					LOG_ERROR(ELOG_KEY, "[system] EPOLLOUT(write) failed or socket closed: %s", strerror(pTask->Socket()->Errno()));
-					if (RemoveEpoll(pTask) >= 0) {
-						RemoveTaskPool(pTask);
+				// 套接口准备好了写入操作
+				// 写入失败，半连接，对端读关闭
+				mStatus = task->TaskSend();
+				if (!mStatus.Ok()) {
+					if (!RemoveEpoll(task).Ok() || !RemoveTaskPool(task).Ok()) {
+						return mStatus;
 					}
 				}
 			}
@@ -270,58 +240,62 @@ void wServer::Broadcast(const char *pCmd, int iLen) {
 	}
 }
 
-int wServer::AddListener(string sIpAddr, unsigned int nPort, string sProtocol) {
-	int idx = -1;
-	wSocket *pSocket = NULL;
-	if (sProtocol == "TCP") {
-		pSocket = new wTcpSocket(SOCK_TYPE_LISTEN);
-	} else if(sProtocol == "UNIX") {
-		pSocket = new wUnixSocket(SOCK_TYPE_LISTEN);
+wStatus wServer::AddListener(string ipaddr, uint16_t port, string protocol) {
+	wSocket *socket = NULL;
+	if (protocol == "TCP") {
+		SAFE_NEW(wTcpSocket(kStListen), socket);
+	} else if(protocol == "UNIX") {
+		SAFE_NEW(wUnixSocket(kStListen), socket);
 	}
 
-	if (pSocket != NULL) {
-		if (pSocket->Open() == FD_UNKNOWN) {
-			LOG_ERROR(ELOG_KEY, "[system] listen socket open failed:%s", strerror(pSocket->Errno()));
-			SAFE_DELETE(pSocket);
-			return -1;
+	if (socket != NULL) {
+		mStatus = socket->Open();
+		if (!mStatus.Ok()) {
+			SAFE_DELETE(socket);
+			return mStatus;
 		}
-		if (pSocket->Listen(sIpAddr, nPort) < 0) {
-			LOG_ERROR(ELOG_KEY, "[system] listen failed: %s", strerror(pSocket->Errno()));
-			SAFE_DELETE(pSocket);
-			return -1;
+		mStatus = socket->Listen(ipaddr, port);
+		if (!mStatus.Ok()) {
+			SAFE_DELETE(socket);
+			return mStatus;
 		}
-		pSocket->SockStatus() = SOCK_STATUS_LISTENED;
-		mListenSock.push_back(pSocket);
-		idx = mListenSock.size();
+		socket->mSockStatus = kSsListened;
+		mListenSock.push_back(socket);
+	} else {
+		return mStatus = wStatus::IOError("wServer::AddListener", "new failed");
 	}
-	return idx - 1;
+	return mStatus = wStatus::Nothing();
 }
 
-void wServer::Listener2Epoll() {
-	//添加到侦听事件队列
-	for (vector<wSocket *>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
-		mTask = NULL;
-		if ((*it)->SockProto() == SOCK_PROTO_UNIX) {
-			mTask = NewUnixTask(*it);
-		} else if((*it)->SockProto() == SOCK_PROTO_TCP) {
-			mTask = NewTcpTask(*it);
+wStatus wServer::Listener2Epoll() {
+	// 添加到侦听事件队列
+	for (std::vector<wSocket *>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
+		switch ((*it)->mSockProto) {
+		case kSpUnix:
+			mStatus = NewUnixTask(*it, mTask);
+			break;
+		case kSpTcp:
+			mStatus = NewTcpTask(*it, mTask);
+			break;
+		default:
+			mStatus = wStatus::IOError("wServer::Listener2Epoll", "unknown task")
 		}
-		if (NULL != mTask) {
-			mTask->Status() = TASK_RUNNING;
-			if (AddToEpoll(mTask) >= 0) {
-				AddToTaskPool(mTask);
-			} else {
+
+		if (mStatus.Ok()) {
+			if (!AddToEpoll(mTask).Ok() || !AddToTaskPool(mTask).Ok()) {
 				SAFE_DELETE(mTask);
-				exit(2);
 			}
+		} else {
+			break;
 		}
 	}
+	return mStatus;
 }
 
 int wServer::AcceptConn(wTask *pTask) {
 	mTask = NULL;
 	int iNewFD = FD_UNKNOWN;
-	if (pTask->Socket()->SockProto() == SOCK_PROTO_UNIX) {
+	if (pTask->Socket()->SockProto() == kSpUnix) {
 		struct sockaddr_un stSockAddr;
 		socklen_t iSockAddrSize = sizeof(stSockAddr);
 		iNewFD = pTask->Socket()->Accept((struct sockaddr*)&stSockAddr, &iSockAddrSize);
@@ -339,7 +313,7 @@ int wServer::AcceptConn(wTask *pTask) {
 			//return -1;
 		}
 		mTask = NewUnixTask(pSocket);
-	} else if(pTask->Socket()->SockProto() == SOCK_PROTO_TCP) {
+	} else if(pTask->Socket()->SockProto() == kSpTcp) {
 		struct sockaddr_in stSockAddr;
 		socklen_t iSockAddrSize = sizeof(stSockAddr);	
 		iNewFD = pTask->Socket()->Accept((struct sockaddr*)&stSockAddr, &iSockAddrSize);
@@ -379,40 +353,37 @@ int wServer::AcceptConn(wTask *pTask) {
 	return iNewFD;
 }
 
-void wServer::CleanEpoll() {
-	if (mEpollFD != -1) {
-		close(mEpollFD);
+wStatus wServer::CleanEpoll() {
+	if (close(mEpollFD) == -1) {
+		return mStatus = wStatus::IOError("wServer::CleanEpoll, close() failed", strerror(errno));
 	}
 	mEpollFD = -1;
 	memset((void *)&mEpollEvent, 0, sizeof(mEpollEvent));
 	mEpollEventPool.clear();
 }
 
-void wServer::CleanTaskPool() {
+wStatus wServer::CleanTaskPool() {
 	if (mTaskPool.size() > 0) {
-		vector<wTask*>::iterator it;
-		for (it = mTaskPool.begin(); it != mTaskPool.end(); it++) {
+		for (std::vector<wTask*>::iterator it = mTaskPool.begin(); it != mTaskPool.end(); it++) {
 			SAFE_DELETE(*it);
 		}
 	}
 	mTaskPool.clear();
 	mTaskCount = 0;
+	return mStatus = wStatus::Nothing();
 }
 
-int wServer::RemoveEpoll(wTask* pTask) {
-	int iFD = pTask->Socket()->FD();
+wStatus wServer::RemoveEpoll(wTask* task) {
+	int iFD = task->Socket()->FD();
 	mEpollEvent.data.fd = iFD;
 	if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, iFD, &mEpollEvent) < 0) {
-		mErr = errno;
-		LOG_ERROR(ELOG_KEY, "[system] epoll remove socket fd(%d) error : %s", iFD, strerror(mErr));
-		return -1;
+		return mStatus = wStatus::IOError("wServer::RemoveEpoll, epoll_ctl() failed", strerror(errno));
 	}
-	return 0;
+	return mStatus = wStatus::Nothing();
 }
 
-//返回下一个迭代器
-std::vector<wTask*>::iterator wServer::RemoveTaskPool(wTask* pTask) {
-    std::vector<wTask*>::iterator it = std::find(mTaskPool.begin(), mTaskPool.end(), pTask);
+std::vector<wTask*>::iterator wServer::RemoveTaskPool(wTask* task) {
+    std::vector<wTask*>::iterator it = std::find(mTaskPool.begin(), mTaskPool.end(), task);
     if (it != mTaskPool.end()) {
     	SAFE_DELETE(*it);
         it = mTaskPool.erase(it);
@@ -421,52 +392,39 @@ std::vector<wTask*>::iterator wServer::RemoveTaskPool(wTask* pTask) {
     return it;
 }
 
-void wServer::CheckTimer() {
-	unsigned long long iInterval = (unsigned long long)(GetTickCount() - mLastTicker);
-	if (iInterval < 100) {
+void wServer::CheckTimer(void* arg) {
+	uint64_t interval = misc::GetTimeofday() - mLatestTm;
+	if (interval < 100) {
 		return;
 	}
+	mLatestTm += interval;
 
-	mLastTicker += iInterval;
-	if (mCheckTimer.CheckTimer(iInterval)) {
-		CheckTimeout();
+	wServer* server = reinterpret_cast<wServer* >(arg);
+	if (server->mHeartbeatTimer.CheckTimer(interval)) {
+		server->CheckTimeout();
 	}
 }
 
 void wServer::CheckTimeout() {
-	if (!mIsCheckTimer) {
+	if (!mTimerSwitch) {
 		return;
 	}
 
-	unsigned long long iNowTime = GetTickCount();
-	unsigned long long iIntervalTime;
+	uint64_t nowTm = misc::GetTimeofday();
 	if (mTaskPool.size() > 0) {
-		for (vector<wTask*>::iterator iter = mTaskPool.begin(); iter != mTaskPool.end(); iter++) {
-			if ((*iter)->Socket()->SockType() == SOCK_TYPE_CONNECT && (*iter)->Socket()->SockStatus() == SOCK_STATUS_CONNECTED) {
-				//心跳检测
-				iIntervalTime = iNowTime - (*iter)->Socket()->SendTime();	//上一次发送时间间隔
-				if (iIntervalTime >= KEEPALIVE_TIME) {
+		for (std::vector<wTask*>::iterator iter = mTaskPool.begin(); iter != mTaskPool.end(); iter++) {
+			if ((*iter)->Socket()->SockType() == kStConnect && (*iter)->Socket()->SockStatus() == kSsConnected) {
+				// 上一次发送时间间隔
+				uint64_t interval = nowTm - (*iter)->Socket()->SendTime();
+				if (interval >= kKeepAliveTm) {
 					bool bDelTask = false;
-					if (mIsCheckTimer == true) {
-						(*iter)->Heartbeat();
-						if ((*iter)->HeartbeatOutTimes()) {
-							bDelTask = true;
-						}
-					} else {
-						// 使用keepalive保活机制（此逻辑一般不会被激活。也不必在业务层发送心跳，否则就失去了keepalive原始意义）
-						if ((*iter)->Heartbeat() > 0) {
-							(*iter)->ClearbeatOutTimes();
-						}
-						if ((*iter)->HeartbeatOutTimes()) {
-							bDelTask = true;
-						}
+					(*iter)->Heartbeat();
+					if ((*iter)->HeartbeatOutTimes()) {
+						bDelTask = true;
 					}
-
-					// 关闭无用连接
+					// 关闭超时连接
 					if (bDelTask) {
-						LOG_ERROR(ELOG_KEY, "[system] client fd(%d) heartbeat pass limit times, close it", (*iter)->Socket()->FD());
-						if (RemoveEpoll(*iter) >= 0) {
-							iter = RemoveTaskPool(*iter);
+						if (RemoveEpoll(task).Ok() && RemoveTaskPool(task).Ok()) {
 							iter--;
 						}
 					}
@@ -475,47 +433,5 @@ void wServer::CheckTimeout() {
 		}
 	}
 }
-
-/*
-template <typename T>
-int wServer<T>::AcceptMutexLock()
-{
-	return 0;
-	if (mWorker != NULL && mWorker->mMutex)
-	{
-		if (mWorker->mMutexHeld == 1)
-		{
-			return 0;
-		}
-		if (mWorker->mMutex->TryLock() == 0)
-		{
-			mWorker->mMutexHeld = 1;
-			return 0;
-		}
-		return -1;
-	}
-	return 0;
-}
-
-template <typename T>
-int wServer<T>::AcceptMutexUnlock()
-{
-	return 0;
-	if (mWorker != NULL && mWorker->mMutex)
-	{
-		if (mWorker->mMutexHeld == 0)
-		{
-			return 0;
-		}
-		if (mWorker->mMutex->Unlock() == 0)
-		{
-			mWorker->mMutexHeld = 0;
-			return 0;
-		}
-		return -1;
-	}
-	return 0;
-}
-*/
 
 }	// namespace hnet

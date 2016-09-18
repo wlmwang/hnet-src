@@ -137,7 +137,7 @@ wStatus wWorkerIpc::Recv() {
 	
 	wTask *task = NULL;
 	for (int i = 0 ; i < iRet ; i++) {
-		task = (wTask *)mEpollEventPool[i].data.ptr;
+		task = reinterpret_cast<wTask *>(mEpollEventPool[i].data.ptr);
 		int64_t fd = task->Socket()->FD();
 		
 		if (fd == kFDUnknown) {
@@ -171,7 +171,7 @@ wStatus wWorkerIpc::Recv() {
 			}
 		} else if (mEpollEventPool[i].events & EPOLLOUT) {
 			// 清除写事件
-			if (task->WritableLen() <= 0) {
+			if (task->SendLen() == 0) {
 				AddToEpoll(task, EPOLLIN, EPOLL_CTL_MOD);
 				continue;
 			}

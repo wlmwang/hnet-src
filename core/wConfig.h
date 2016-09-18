@@ -14,8 +14,6 @@
 namespace hnet {
 
 class wProcTitle;
-class wMaster;
-class wServer;
 
 class wConfig : private wNoncopyable {
 public:
@@ -31,10 +29,10 @@ public:
     char *mSignal;
     char *mHost;
     uint16_t mPort;
-
+    
+    wProcTitle *mProcTitle;
 protected:
     wStatus mStatus;
-    wProcTitle *mProcTitle;
 };
 
 }    // namespace hnet
