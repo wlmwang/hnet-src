@@ -26,7 +26,7 @@ class wMaster;
 // 服务基础类
 class wServer : private wNoncopyable {
 public:
-	explicit wServer(string name);
+	explicit wServer(string title);
 	virtual ~wServer();
 
 	// 事件读写主调函数

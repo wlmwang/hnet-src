@@ -12,7 +12,7 @@ namespace hnet {
 
 wMemPool::~wMemPool() {
     for (size_t i = 0; i < mBlocks.size(); i++) {
-        delete[] mBlocks[i];
+        SAFE_DELETE_VEC(mBlocks[i]);
     }
 }
 
@@ -25,12 +25,13 @@ char* wMemPool::AllocateFallback(size_t bytes) {
     }
 
     // 最多浪费1023byte大小的当前内存节点中内存
-    mAllocPtr = AllocateNewBlock(kBlockSize);
-    mAllocRemaining = kBlockSize;
+    char* result = AllocateNewBlock(kBlockSize);
+    if (result != NULL) {
+        mAllocRemaining = kBlockSize;
+        mAllocPtr = result + bytes;
+        mAllocRemaining -= bytes;
+    }
 
-    char* result = mAllocPtr;
-    mAllocPtr += bytes;
-    mAllocRemaining -= bytes;
     return result;
 }
 
@@ -53,9 +54,12 @@ char* wMemPool::AllocateAligned(size_t bytes) {
 }
 
 char* wMemPool::AllocateNewBlock(size_t block_bytes) {
-    char* result = new char[block_bytes];
-    mBlocksMemory += block_bytes;
-    mBlocks.push_back(result);
+    char* result;
+    SAFE_NEW(block_bytes, char, result);
+    if (result != NULL) {
+        mBlocksMemory += block_bytes;
+        mBlocks.push_back(result);
+    }
     return result;
 }
 

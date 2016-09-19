@@ -13,7 +13,7 @@
 
 namespace hnet {
 
-wChannelTask::wChannelTask(wSocket *pSocket, wWorker *worker) : wTask(pSocket), mWorker(worker) {
+wChannelTask::wChannelTask(wSocket *socket, wWorker *worker) : wTask(socket), mWorker(worker) {
     RegisterFunc(CMD_CHANNEL_REQ, CHANNEL_REQ_OPEN, &wChannelTask::ChannelOpen);
     RegisterFunc(CMD_CHANNEL_REQ, CHANNEL_REQ_CLOSE, &wChannelTask::ChannelClose);
     RegisterFunc(CMD_CHANNEL_REQ, CHANNEL_REQ_QUIT, &wChannelTask::ChannelQuit);

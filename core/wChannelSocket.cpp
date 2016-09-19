@@ -16,16 +16,6 @@ wChannelSocket::~wChannelSocket() {
     Close();
 }
 
-wStatus wChannelSocket::Close() {
-    if (close(mChannel[0]) == -1) {
-        return mStatus = wStatus::IOError("wChannelSocket::Close [0] failed", strerror(errno));
-    } else if (close(mChannel[1]) == -1) {
-        return mStatus = wStatus::IOError("wChannelSocket::Close [1] failed", strerror(errno));
-    }
-    mFD = kFDUnknown;
-    return mStatus = wStatus::Nothing();
-}
-
 wStatus wChannelSocket::Open() {
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, mChannel) == -1) {
         return mStatus = wStatus::IOError("wChannelSocket::Open socketpair() AF_UNIX failed", strerror(errno));
@@ -46,6 +36,16 @@ wStatus wChannelSocket::Open() {
     
     // mChannel[1]被监听（可读事件）
     mFD = mChannel[1];
+    return mStatus = wStatus::Nothing();
+}
+
+wStatus wChannelSocket::Close() {
+    if (close(mChannel[0]) == -1) {
+        return mStatus = wStatus::IOError("wChannelSocket::Close [0] failed", strerror(errno));
+    } else if (close(mChannel[1]) == -1) {
+        return mStatus = wStatus::IOError("wChannelSocket::Close [1] failed", strerror(errno));
+    }
+    mFD = kFDUnknown;
     return mStatus = wStatus::Nothing();
 }
 

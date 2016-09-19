@@ -9,7 +9,6 @@
 
 #include "wCore.h"
 #include "wSlice.h"
-#include "wMisc.h"
 
 namespace hnet {
 
@@ -17,13 +16,14 @@ class wStatus {
 public:
     wStatus() : mState(NULL) { }
     wStatus(const wStatus& s);
+    
     ~wStatus() {
-        misc::SafeDeleteVec(mState);
+        SAFE_DELETE_VEC(mState);
     }
 
-    void operator=(const wStatus& s);
-
-    static wStatus Nothing() { return wStatus(); }
+    static wStatus Nothing() {
+        return wStatus();
+    }
 
     static wStatus NotFound(const wSlice& msg, const wSlice& msg2 = wSlice()) {
         return wStatus(kNotFound, msg, msg2);
@@ -49,11 +49,25 @@ public:
         return wStatus(kAccessIllegal, msg, msg2);
     }
 
-    bool Ok() const { return (mState == NULL); }
-    bool IsNotFound() const { return code() == kNotFound; }
-    bool IsCorruption() const { return code() == kCorruption; }
-    bool IsIOError() const { return code() == kIOError; }
+    bool Ok() const {
+        return mState == NULL;
+    }
+
+    bool IsNotFound() const {
+        return code() == kNotFound;
+    }
+
+    bool IsCorruption() const {
+        return code() == kCorruption;
+    }
+
+    bool IsIOError() const {
+        return code() == kIOError;
+    }
+
     std::string ToString() const;
+    
+    void operator=(const wStatus& s);
 
 private:
     enum Code {
@@ -69,7 +83,9 @@ private:
     Code code() const {
         return (mState == NULL) ? kOk : static_cast<Code>(mState[4]);
     }
+
     wStatus(Code code, const Slice& msg, const Slice& msg2);
+
     static const char* CopyState(const char* s);
 
 private:
@@ -87,7 +103,7 @@ inline wStatus::wStatus(const wStatus& s) {
 
 inline void wStatus::operator=(const wStatus& s) {
     if (mState != s.mState) {
-        misc::SafeDeleteVec(mState);
+        SAFE_DELETE_VEC(mState);
         mState = (s.mState == NULL) ? NULL : CopyState(s.mState);
     }
 }

@@ -15,11 +15,9 @@ namespace hnet {
 
 class wUnixTask : public wTask {
 public:
-    //wUnixTask() { }
     wUnixTask(wSocket *socket) : wTask(socket) { }
 };
 
 }	// namespace hnet
-
 
 #endif

@@ -5,7 +5,6 @@
  */
 
 #include "wSocket.h"
-#include "wLog.h"
 #include "wMisc.h"
 
 namespace hnet {
@@ -26,11 +25,7 @@ wStatus wSocket::Close() {
 }
 
 wStatus wSocket::SetFL(bool nonblock) {
-    int flags = fcntl(mFD, F_GETFL, 0);
-    if (flags == -1) {
-        return mStatus = wStatus::IOError("wSocket::SetFL F_GETFL failed", strerror(errno));
-    }
-    if (fcntl(mFD, F_SETFL, (nonblock == true ? flags | O_NONBLOCK : flags & ~O_NONBLOCK)) == -1) {
+    if (fcntl(mFD, F_SETFL, (nonblock == true ? fcntl(mFD, F_GETFL, 0) | O_NONBLOCK : fcntl(mFD, F_GETFL, 0) & ~O_NONBLOCK)) == -1) {
         return mStatus = wStatus::IOError("wSocket::SetFL F_SETFL failed", strerror(errno));
     }
     return mStatus = wStatus::Nothing();

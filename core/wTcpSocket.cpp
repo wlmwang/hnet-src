@@ -8,7 +8,6 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <poll.h>
-#include "wMisc.h"
 #include "wTcpSocket.h"
 
 namespace hnet {
@@ -23,8 +22,8 @@ wStatus wTcpSocket::Open() {
 		return mStatus = wStatus::IOError("wTcpSocket::Open setsockopt() SO_REUSEADDR failed", strerror(errno));
 	}
 
-	struct linger stLing = {0, 0};	// 优雅断开
-	if (setsockopt(mFD, SOL_SOCKET, SO_LINGER, &stLing, sizeof(stLing)) == -1) {
+	struct linger l = {0, 0};	// 优雅断开
+	if (setsockopt(mFD, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Open setsockopt() SO_LINGER failed", strerror(errno));
 	}
 
@@ -39,12 +38,12 @@ wStatus wTcpSocket::Bind(string host, uint16_t port) {
 	mHost = host;
 	mPort = port;
 
-	struct sockaddr_in stSocketAddr;
-	stSocketAddr.sin_family = AF_INET;
-	stSocketAddr.sin_port = htons((short)mPort);
-	stSocketAddr.sin_addr.s_addr = inet_addr(mHost.c_str());
+	struct sockaddr_in socketAddr;
+	socketAddr.sin_family = AF_INET;
+	socketAddr.sin_port = htons((short)mPort);
+	socketAddr.sin_addr.s_addr = inet_addr(mHost.c_str());
 
-	if (bind(mFD, (struct sockaddr *)&stSocketAddr, sizeof(stSocketAddr)) == -1) {
+	if (bind(mFD, (struct sockaddr *)&socketAddr, sizeof(socketAddr)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Bind bind failed", strerror(errno));
 	}
 	return mStatus = wStatus::Nothing();
@@ -56,9 +55,8 @@ wStatus wTcpSocket::Listen(string host, uint16_t port) {
 	}
 
 	// 设置发送缓冲大小4M
-	int iOptLen = sizeof(socklen_t);
-	int iOptVal = 0x400000;
-	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, (const void *)&iOptVal, iOptLen) == -1) {
+	socklen_t optVal = 0x400000;
+	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, (const void *)&optVal, sizeof(socklen_t)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Listen setsockopt() SO_SNDBUF failed", strerror(errno));
 	}
 	
@@ -75,7 +73,7 @@ wStatus wTcpSocket::Connect(int64_t *ret, string host, uint16_t port, float time
 	// 超时设置
 	if (timeout > 0) {
 		if (!SetFL().Ok()) {
-			*ret = static_cast<int64_t>(-1);
+			*ret = -1;
 			return mStatus;
 		}
 	}
@@ -121,9 +119,8 @@ wStatus wTcpSocket::Connect(int64_t *ret, string host, uint16_t port, float time
 		}
 	}
 	
-	socklen_t iOptVal = 100*1024;
-	socklen_t iOptLen = sizeof(socklen_t);
-	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, (const void *)&iOptVal, iOptLen) == -1) {
+	socklen_t optVal = 100*1024;
+	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, (const void *)&optVal, sizeof(socklen_t)) == -1) {
 		*ret = -1;
 		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDBUF failed", strerror(errno));
 	}
@@ -157,9 +154,8 @@ wStatus wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *
 
 	if (mStatus.Ok()) {
 		// 设置发送缓冲大小3M
-		int iOptLen = sizeof(socklen_t);
-		int iOptVal = 0x300000;
-		if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (const void *)&iOptVal, iOptLen) == -1) {
+		socklen_t optVal = 0x300000;
+		if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (const void *)&optVal, sizeof(socklen_t)) == -1) {
 			mStatus = wStatus::IOError("wTcpSocket::Accept setsockopt() SO_SNDBUF failed", strerror(errno));
 		}
 	}
@@ -175,47 +171,44 @@ wStatus wTcpSocket::SetTimeout(float timeout) {
 }
 
 wStatus wTcpSocket::SetSendTimeout(float timeout) {
-	struct timeval stTimetv;
-	stTimetv.tv_sec = (int)timeout>=0 ? (int)timeout : 0;
-	stTimetv.tv_usec = (int)((timeout - (int)timeout) * 1000000);
-	if (stTimetv.tv_usec < 0 || stTimetv.tv_usec >= 1000000 || (stTimetv.tv_sec == 0 && stTimetv.tv_usec == 0)) {
-		stTimetv.tv_sec = 30;
-		stTimetv.tv_usec = 0;
+	struct timeval tv;
+	tv.tv_sec = (int)timeout>=0 ? (int)timeout : 0;
+	tv.tv_usec = (int)((timeout - (int)timeout) * 1000000);
+	if (tv.tv_usec < 0 || tv.tv_usec >= 1000000 || (tv.tv_sec == 0 && tv.tv_usec == 0)) {
+		tv.tv_sec = 30;
+		tv.tv_usec = 0;
 	}
 
-	if (setsockopt(mFD, SOL_SOCKET, SO_SNDTIMEO, &stTimetv, sizeof(stTimetv)) == -1) {
+	if (setsockopt(mFD, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDTIMEO failed", strerror(errno));
 	}
 	return mStatus = wStatus::Nothing();
 }
 
 wStatus wTcpSocket::SetRecvTimeout(float timeout) {
-	struct timeval stTimetv;
-	stTimetv.tv_sec = (int)timeout>=0 ? (int)timeout : 0;
-	stTimetv.tv_usec = (int)((timeout - (int)timeout) * 1000000);
-	if (stTimetv.tv_usec < 0 || stTimetv.tv_usec >= 1000000 || (stTimetv.tv_sec == 0 && stTimetv.tv_usec == 0)) {
-		stTimetv.tv_sec = 30;
-		stTimetv.tv_usec = 0;
+	struct timeval tv;
+	tv.tv_sec = (int)timeout>=0 ? (int)timeout : 0;
+	tv.tv_usec = (int)((timeout - (int)timeout) * 1000000);
+	if (tv.tv_usec < 0 || tv.tv_usec >= 1000000 || (tv.tv_sec == 0 && tv.tv_usec == 0)) {
+		tv.tv_sec = 30;
+		tv.tv_usec = 0;
 	}
 	
-	if (setsockopt(mFD, SOL_SOCKET, SO_RCVTIMEO, &stTimetv, sizeof(stTimetv)) == -1) {
+	if (setsockopt(mFD, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_RCVTIMEO failed", strerror(errno));
 	}
 	return mStatus = wStatus::Nothing();
 }
 
 wStatus wTcpSocket::SetKeepAlive(int idle, int intvl, int cnt) {
-	int flages = 1;
-	if (setsockopt(mFD, SOL_SOCKET, SO_KEEPALIVE, &flages, sizeof(flages)) == -1) {
+	int flags = 1;
+	if (setsockopt(mFD, SOL_SOCKET, SO_KEEPALIVE, &flags, sizeof(flags)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_KEEPALIVE failed", strerror(errno));
-	}
-	if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle)) == -1) {
+	} else if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_KEEPIDLE failed", strerror(errno));
-	}
-	if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)) == -1) {
+	} else if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_KEEPINTVL failed", strerror(errno));
-	}
-	if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt)) == -1) {
+	} else if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_KEEPCNT failed", strerror(errno)); 
 	}
 

@@ -20,7 +20,6 @@ public:
     wConfig() : mShowVer(false), mShowHelp(false), mDaemon(false), mSignal(NULL), mHost(NULL), mPort(0), mProcTitle(NULL) { }
     virtual ~wConfig();
     virtual wStatus GetOption(int argc, const char *argv[]);
-    wStatus InitProcTitle(int argc, const char *argv[]);
 
 public:
     bool mShowVer;
@@ -31,8 +30,11 @@ public:
     uint16_t mPort;
     
     wProcTitle *mProcTitle;
+    
 protected:
     wStatus mStatus;
+
+    wStatus InitProcTitle(int argc, const char *argv[]);
 };
 
 }    // namespace hnet

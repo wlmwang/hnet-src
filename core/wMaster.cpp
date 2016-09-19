@@ -17,11 +17,9 @@
 
 namespace hnet {
 
-wMaster::wMaster() : mTitle(kMasterTitle), mPidPath(kPidPath), mWorkerNum(0), mSlot(kMaxPorcess), mDelay(500),
-mEnv(wEnv::Default()), mServer(NULL), mConfig(NULL) {
-    mPid = getpid();
-    mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
-    mWorkerNum = mNcpu;
+wMaster::wMaster(char* title, wServer* server, wConfig* config) : mPidPath(kPidPath), mSlot(kMaxPorcess), mWorkerNum(0),
+mEnv(wEnv::Default()), mPid(getpid()), mTitle(title), mServer(server), mConfig(config) {
+    mWorkerNum = mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
 }
 
 wMaster::~wMaster() {
@@ -30,8 +28,8 @@ wMaster::~wMaster() {
     }
 }
 
-wStatus wMaster::NewWorker(const char* title, uint32_t slot, wWorker** ptr) {
-    SAFE_NEW(wWorker(title, slot, this), *ptr);
+wStatus wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
+    SAFE_NEW(wWorker(mTitle, slot, this), *ptr);
     if (*ptr == NULL) {
 		return mStatus = wStatus::IOError("wMaster::NewWorker", "new failed");
     }
@@ -43,25 +41,22 @@ wStatus wMaster::PrepareStart() {
     	return mStatus;
     }
 
-    // 进程标题
-    if (mConfig == NULL) {
-    	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mConfig is null");
-    } else if (mTitle.size() > 0) {
-    	return mStatus = mConfig->mProcTitle->Setproctitle(mTitle.c_str(), "");
+    if (mServer == NULL) {
+    	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mServer is null");
+    } else if (mConfig == NULL || mConfig->mIPAddr == NULL || mConfig->mPort == 0) {
+    	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mConfig is null or ip|port is illegal");
     }
-    return mStatus;
+
+    // 进程标题
+    return mStatus = mConfig->mProcTitle->Setproctitle(kMasterTitle, mTitle.c_str());
 }
 
 wStatus wMaster::SingleStart() {
-    if (mServer == NULL) {
-    	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mServer is null");
-    } else if (mConfig->mIPAddr != NULL && mConfig->mPort != 0) {
-    	// 初始化服务器
-    	mStatus = mServer->PrepareSingle(mConfig->mIPAddr, mConfig->mPort);
-    	if (!mStatus.Ok()) {
-    		return mStatus;
-    	}
-    }
+	// 初始化服务器
+	mStatus = mServer->PrepareSingle(mConfig->mIPAddr, mConfig->mPort);
+	if (!mStatus.Ok()) {
+		return mStatus;
+	}
 
     if (!CreatePidFile().Ok()) {
 		return mStatus;
@@ -85,15 +80,11 @@ wStatus wMaster::SingleStart() {
 }
 
 wStatus wMaster::MasterStart() {
-    if (mServer == NULL) {
-    	return mStatus = wStatus::IOError("wMaster::MasterStart failed", "mServer is null");
-    } else if (mConfig->mIPAddr != NULL && mConfig->mPort != 0) {
-    	// 创建、绑定服务器Listen Socket
-    	mStatus = mServer->PrepareMaster(mConfig->mIPAddr, mConfig->mPort);
-    	if (!mStatus.Ok()) {
-    		return mStatus;
-    	}
-    }
+	// 创建、绑定服务器Listen Socket
+	mStatus = mServer->PrepareMaster(mConfig->mIPAddr, mConfig->mPort);
+	if (!mStatus.Ok()) {
+		return mStatus;
+	}
 
 	if (mWorkerNum > kMaxPorcess) {
 		return mStatus = wStatus::IOError("wMaster::MasterStart, processes can be spawned", "worker number is overflow");
@@ -264,7 +255,7 @@ wStatus wMaster::ReapChildren(int* live) {
 			
 			// 重启worker
 			if (mWorkerPool[i]->mRespawn && !mWorkerPool[i]->mExiting && !g_terminate && !g_quit) {
-				if (SpawnWorker(mWorkerProcessTitle, i) == -1) {
+				if (SpawnWorker(i) == -1) {
 					//LOG_ERROR(ELOG_KEY, "[system] could not respawn %d", i);
 					continue;
 				}
@@ -294,7 +285,7 @@ wStatus wMaster::ReapChildren(int* live) {
 
 wStatus WorkerStart(uint32_t n, int8_t type) {
 	for (uint32_t i = 0; i < mWorkerNum; ++i) {
-		if (!SpawnWorker(kProcessTitle, type).Ok()) {
+		if (!SpawnWorker(type).Ok()) {
 			return mStatus;
 		}
 		struct ChannelReqOpen_t opench;
@@ -418,7 +409,7 @@ void wMaster::PassCloseChannel(struct ChannelReqClose_t *ch) {
     SAFE_DELETE_VEC(pStart);
 }
 
-wStatus wMaster::SpawnWorker(const char* title, int32_t type) {
+wStatus wMaster::SpawnWorker(int32_t type) {
 	if (type >= 0) {
 		mSlot = static_cast<uint32_t>(type);
 	} else {
@@ -435,7 +426,7 @@ wStatus wMaster::SpawnWorker(const char* title, int32_t type) {
 	}
 
 	// 新建进程表项
-	if (!NewWorker(title, mSlot, &mWorkerPool[mSlot]).Ok()) {
+	if (!NewWorker(mSlot, &mWorkerPool[mSlot]).Ok()) {
 		return mStatus;
 	}
 	wWorker *worker = mWorkerPool[mSlot];

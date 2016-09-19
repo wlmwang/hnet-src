@@ -80,9 +80,6 @@ public:
         return mStatus = wStatus::IOError("wSocket::Open failed", "method should be inherit");
     }
 
-    virtual wStatus Close();
-    virtual wStatus SetFL(bool nonblock = true);
-
     virtual wStatus SetTimeout(float fTimeout = 30) {
         return mStatus = wStatus::IOError("wSocket::SetTimeout failed", "method should be inherit");
     }
@@ -94,7 +91,18 @@ public:
     virtual wStatus SetRecvTimeout(float fTimeout = 30) {
         return mStatus = wStatus::IOError("wSocket::SetRecvTimeout failed", "method should be inherit");
     }
-   
+
+    virtual wStatus Close();
+    virtual wStatus SetFL(bool nonblock = true);
+    
+    inline int64_t& FD() { return mFD;}
+
+    //socket状态属性
+    inline SockType& ST() { return mSockType;}
+    inline SockStatus& SS() { return mSockStatus;}
+    inline SockProto& SP() { return mSockProto;}
+    inline SockFlag& SF() { return mSockFlag;}
+
 protected:
     friend class wTask;
     friend class wServer;
@@ -102,16 +110,15 @@ protected:
     virtual wStatus Bind(string host, uint16_t port = 0) = 0;
     
     wStatus mStatus;
-    
+
     SockType mSockType;
     SockStatus mSockStatus;
     SockProto mSockProto;
     SockFlag mSockFlag;
 
-    int mFD;
-    uint16_t mPort;
     string mHost;
-
+    uint16_t mPort;
+    int64_t  mFD;
     uint64_t mRecvTm;   // 最后接收到数据包的时间戳
     uint64_t mSendTm;   // 最后发送数据包时间戳（主要用户心跳检测）
     uint64_t mMakeTm;   // 创建时间

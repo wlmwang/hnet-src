@@ -18,7 +18,6 @@ class wSocket;
 
 class wTask : private wNoncopyable {
 public:
-    //wTask();
     wTask(wSocket *socket);
     virtual ~wTask();
     
@@ -105,8 +104,9 @@ protected:
 protected:
     // 路由规则
     DEC_DISP(mDispatch);
+
     void RegisterFunc(uint8_t cmd, uint8_t para, DispatchFunc func) {
-	REG_DISP(mDispatch, Name(), CMD_CHANNEL_REQ, CHANNEL_REQ_OPEN, func);
+        REG_DISP(mDispatch, Name(), cmd, para, func);
     }
 };
 

@@ -17,7 +17,6 @@ class wSocket;
 
 class wTcpTask : public wTask {
 public:
-    //wTcpTask() { }
     wTcpTask(wSocket *socket) : wTask(socket) { }
 };
 

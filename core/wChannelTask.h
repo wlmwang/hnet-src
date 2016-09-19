@@ -13,11 +13,12 @@
 
 namespace hnet {
 
+class wSocket;
 class wWorker;
 
 class wChannelTask : public wTask {
 public:
-    wChannelTask(wSocket *pSocket, wWorker *worker = NULL);
+    wChannelTask(wSocket *socket, wWorker *worker = NULL);
     
     virtual const char* Name() const {
 		return "wChannelTask";

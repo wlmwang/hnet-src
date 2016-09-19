@@ -15,7 +15,7 @@
 
 namespace hnet {
 
-const char*	kMasterTitle = "HNET: master process";
+const char* kMasterTitle = " - master process";
 
 class wEnv;
 class wServer;
@@ -24,7 +24,7 @@ class wWorker;
 
 class wMaster : private wNoncopyable {
 public:
-    wMaster();
+    wMaster(char* title, wServer* server, wConfig* config);
     virtual ~wMaster();
     
     // 准备工作
@@ -41,7 +41,7 @@ public:
     // 启动n个worker进程
     wStatus WorkerStart(uint32_t n, int8_t type = kPorcessRespawn);
     // 创建一个worker进程
-    wStatus SpawnWorker(const char* title, int8_t type = kPorcessRespawn);
+    wStatus SpawnWorker(int8_t type = kPorcessRespawn);
 
     // 向所有已启动worker传递刚启动worker的channel描述符
     void PassOpenChannel(struct ChannelReqOpen_t *ch);
@@ -50,12 +50,12 @@ public:
     // 给所有worker进程发送信号
     void SignalWorker(int signo);
 
-    virtual wStatus NewWorker(const char* title, uint32_t slot, wWorker** ptr);
-    virtual wStatus HandleSignal();
-
     // 如果有worker异常退出，则重启
     // 如果所有的worker都退出了，则返回0
     wStatus ReapChildren(int* live);
+    
+    virtual wStatus NewWorker(uint32_t slot, wWorker** ptr);
+    virtual wStatus HandleSignal();
 
 	// master-worker模式
 	// 设置进程标题
@@ -91,17 +91,14 @@ protected:
 	
 	wStatus mStatus;
 	uint8_t mNcpu;
-	string mPidPath;
-	string mTitle;	// 进程名
 	pid_t mPid;		// master进程id
+	const string mPidPath;
+	const string mTitle;	// 进程名
 	
 	// 进程表
 	uint32_t mWorkerNum; // worker数量
 	uint32_t mSlot;		// worker分配索引
 	wWorker *mWorkerPool[kMaxPorcess];
-	
-	// 主进程master构建惊群锁（进程共享）
-	uint32_t mDelay;	// 延时时间,默认500ms
 
 	wEnv *mEnv;
 	wServer* mServer;

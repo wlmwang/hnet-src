@@ -29,14 +29,15 @@ wStatus wProcTitle::SaveArgv() {
     size_t size = 0;
     SAFE_NEW_VEC(mArgc, char*, mArgv);
     if (mArgv == NULL) {
-	return mStatus = wStatus::IOError("wProcTitle::SaveArgv", "new failed");
+	   return mStatus = wStatus::IOError("wProcTitle::SaveArgv", "new failed");
     }
     for(int i = 0; i < mArgc; ++i) {
-        size = strlen(mOsArgv[i]) + 1;  // 包含\0结尾
-	SAFE_NEW_VEC(size, char, mArgv[i]);
-	if (mArgv[i] == NULL) {
-	    return mStatus = wStatus::IOError("wProcTitle::SaveArgv", "new failed");
-	}
+        // 包含\0结尾
+        size = strlen(mOsArgv[i]) + 1;
+        SAFE_NEW_VEC(size, char, mArgv[i]);
+    	if (mArgv[i] == NULL) {
+    	    return mStatus = wStatus::IOError("wProcTitle::SaveArgv", "new failed");
+    	}
         memcpy(mArgv[i], mOsArgv[i], size);
     }
     return mStatus;
@@ -94,7 +95,7 @@ wStatus wProcTitle::Setproctitle(const char *title, const char *pretitle) {
 
     //在原始argv和environ的连续内存中，将修改了的进程名字之外的内存全部清零
     if(mOsArgvLast - (char *) p) {
-        memset(p, kSetProcTitlePad, mOsArgvLast - (char *) p);
+        memset(p, kProcTitlePad, mOsArgvLast - (char *) p);
     }
     return mStatus;
 }

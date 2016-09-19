@@ -18,12 +18,12 @@ wStatus wUnixSocket::Open() {
 }
 
 wStatus wUnixSocket::Bind(string host, uint16_t port) {
-	struct sockaddr_un stSocketAddr;
-	memset(&stSocketAddr, 0, sizeof(stSocketAddr));
-	stSocketAddr.sun_family = AF_UNIX;
-	strncpy(stSocketAddr.sun_path, host.c_str(), sizeof(stSocketAddr.sun_path) - 1);
+	struct sockaddr_un socketAddr;
+	memset(&socketAddr, 0, sizeof(socketAddr));
+	socketAddr.sun_family = AF_UNIX;
+	strncpy(socketAddr.sun_path, host.c_str(), sizeof(socketAddr.sun_path) - 1);
 
-	if (bind(mFD, (struct sockaddr *)&stSocketAddr, sizeof(stSocketAddr)) == -1) {
+	if (bind(mFD, (struct sockaddr *)&socketAddr, sizeof(socketAddr)) == -1) {
 		return mStatus = wStatus::IOError("wUnixSocket::Bind bind failed", strerror(errno));
 	}
 	return mStatus = wStatus::Nothing();
@@ -57,17 +57,17 @@ wStatus wUnixSocket::Connect(int64_t *ret, string host, uint16_t port, float tim
 	// 超时设置
 	if (timeout > 0) {
 		if (!SetFL().Ok()) {
-			*ret = static_cast<int64_t>(-1);
+			*ret = -1;
 			return mStatus;
 		}
 	}
 	
-	struct sockaddr_un stSockAddr;
-	memset(&stSockAddr, 0, sizeof(stSockAddr));
-	stSockAddr.sun_family = AF_UNIX;
-	strncpy(stSockAddr.sun_path, mHost.c_str(), sizeof(stSockAddr.sun_path) - 1);
+	struct sockaddr_un socketAddr;
+	memset(&socketAddr, 0, sizeof(socketAddr));
+	socketAddr.sun_family = AF_UNIX;
+	strncpy(socketAddr.sun_path, mHost.c_str(), sizeof(socketAddr.sun_path) - 1);
 
-	*ret = static_cast<int64_t>(connect(mFD, (const struct sockaddr *)&stSockAddr, sizeof(stSockAddr)));
+	*ret = static_cast<int64_t>(connect(mFD, (const struct sockaddr *)&socketAddr, sizeof(socketAddr)));
 	if (ret == -1 && timeout > 0) {
 		// 建立启动但是尚未完成
 		if (errno == EINPROGRESS) {

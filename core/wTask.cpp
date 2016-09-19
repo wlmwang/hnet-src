@@ -12,11 +12,6 @@
 
 namespace hnet {
 
-/*
-wTask::wTask() : mSocket(NULL), mHeartbeat(0), mRecvLen(0), mSendLen(0),
-mRecvRead(mRecvBuff), mRecvWrite(mRecvBuff), mSendRead(mSendBuff), mSendWrite(mSendBuff) { }
-*/
-
 wTask::wTask(wSocket* socket) : mSocket(socket), mHeartbeat(0), mRecvLen(0), mSendLen(0),
 mRecvRead(mRecvBuff), mRecvWrite(mRecvBuff), mSendRead(mSendBuff), mSendWrite(mSendBuff) { }
 
@@ -282,5 +277,25 @@ wStatus wTask::Handlemsg(char* buf[], uint32_t len) {
 inline const char* wTask::Name() const {
     return "wTask";
 }
+
+/*
+wStatus wTask::Login() {
+    ssize_t size;
+    struct LoginReqToken_t loginReq;
+    memcpy(loginReq.mToken, kToken, 4);
+    // 登录请求
+    if (SyncSend(reinterpret_cast<const char*>(&loginReq), sizeof(struct LoginReqToken_t), &size).Ok()) {
+        char buf[sizeof(struct LoginReqToken_t)];
+        // 登录响应
+        if (SyncRecv(buf, sizeof(struct LoginReqToken_t), &size).Ok()) {
+            struct LoginReqToken_t *loginRes = reinterpret_cast<struct LoginReqToken_t*>(buf);
+            if (strcmp(loginRes->mToken, kToken) == 0) {
+                return mStatus = wStatus::Nothing();
+            }
+        }
+    }
+    return mStatus = wStatus::IOError("wTask::Login, login failed", "token error");
+}
+*/
 
 }   // namespace hnet

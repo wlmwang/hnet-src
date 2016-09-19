@@ -18,9 +18,6 @@ public:
     wProcTitle(int argc, const char *argv[]);
     ~wProcTitle();
 
-    // 务必在设置进程标题之前调用
-    wStatus SaveArgv();
-
     // 移动**environ到堆上，为进程标题做准备。计算**environ指针结尾地址
     // tips：*argv[]与**environ两个变量所占的内存是连续的，并且是**environ紧跟在*argv[]后面
     wStatus InitSetproctitle();
@@ -29,6 +26,9 @@ public:
     wStatus Setproctitle(const char *title, const char *pretitle = NULL);
 
 protected:
+    // 务必在设置进程标题之前调用
+    wStatus SaveArgv();
+    
     wStatus mStatus;
     int mArgc;
     char *mOsArgvLast;

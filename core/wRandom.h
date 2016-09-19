@@ -12,9 +12,6 @@
 namespace hnet {
 
 class wRandom {
-private:
-    uint32_t mSeed;
-
 public:
     explicit Random(uint32_t s) : seed_(s & 0x7fffffffu) {
         if (mSeed == 0 || mSeed == 2147483647L) {
@@ -51,7 +48,9 @@ public:
     uint32_t Skewed(int max_log) {
         return Uniform(1 << Uniform(max_log + 1));
     }
-
+    
+private:
+    uint32_t mSeed;
 };
 
 }	// namespace hnet
