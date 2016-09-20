@@ -8,7 +8,6 @@
 #define _W_MUTEX_H_
 
 #include <pthread.h>
-
 #include "wCore.h"
 #include "wNoncopyable.h"
 

@@ -10,9 +10,7 @@
 #include <malloc.h>
 #include <new>
 #include <map>
-
 #include "wCore.h"
-#include "wLog.h"
 
 #if _MEM_CHECK
 #define MALLOC(x)	malloc_debug(x, __FILE__, __LINE__)

@@ -6,7 +6,6 @@
 
 #include <new>
 #include "wShmtx.h"
-#include "wLog.h"
 #include "wShm.h"
 #include "wSem.h"
 

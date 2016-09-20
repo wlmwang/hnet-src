@@ -24,20 +24,40 @@ class wWorker;
 
 class wMaster : private wNoncopyable {
 public:
+	// title进程标题前缀
     wMaster(char* title, wServer* server, wConfig* config);
+
     virtual ~wMaster();
     
-    // 准备工作
-    wStatus PrepareStart();
+    wStatus Prepare();
     
     // 单进程模式启动
     wStatus SingleStart();
-    void SingleExit();
 
     // m-w模式启动(master-worker)
     wStatus MasterStart();
-    void MasterExit();
+
+	// 修改pid文件名（默认hnet.pid）
+	// 修改启动worker个数（默认cpu个数）
+	// 修改自定义信号处理（默认定义在wSignal.cpp文件中）
+	virtual wStatus PrepareRun() {
+		return mStatus = wStatus::IOError("wMaster::PrepareRun failed", "method should be inherit");
+	}
+
+	virtual wStatus Run() {
+		return mStatus = wStatus::IOError("wMaster::Run failed", "method should be inherit");
+	}
     
+    virtual wStatus NewWorker(uint32_t slot, wWorker** ptr);
+    virtual wStatus HandleSignal();
+
+	virtual wStatus ReloadMaster() {
+		return mStatus = wStatus::IOError("wMaster::ReloadMaster failed", "method should be inherit");
+	}
+
+protected:
+	friend class wWorker;
+
     // 启动n个worker进程
     wStatus WorkerStart(uint32_t n, int8_t type = kPorcessRespawn);
     // 创建一个worker进程
@@ -53,27 +73,6 @@ public:
     // 如果有worker异常退出，则重启
     // 如果所有的worker都退出了，则返回0
     wStatus ReapChildren(int* live);
-    
-    virtual wStatus NewWorker(uint32_t slot, wWorker** ptr);
-    virtual wStatus HandleSignal();
-
-	// master-worker模式
-	// 设置进程标题
-	// 设置pid文件名（默认hnet.pid）
-	// 设置启动worker个数（默认cpu个数）
-	// 设置自定义信号处理结构（默认定义在wSignal.cpp文件中）
-	// 初始化服务器（创建、bind、listen套接字）
-	virtual wStatus PrepareRun() {
-		return mStatus = wStatus::IOError("wMaster::PrepareRun failed", "method should be inherit");
-	}
-
-	virtual wStatus Run() {
-		return mStatus = wStatus::IOError("wMaster::Run failed", "method should be inherit");
-	}
-
-	virtual wStatus ReloadMaster() {
-		return mStatus = wStatus::IOError("wMaster::ReloadMaster failed", "method should be inherit");
-	}
 
 	wStatus CreatePidFile();
 	wStatus DeletePidFile();
@@ -85,10 +84,10 @@ public:
 	// 回收退出进程状态（waitpid以防僵尸进程）
 	// 更新进程表
 	void ProcessExitStat();
+    
+    void SingleExit();
+    void MasterExit();
 
-protected:
-	friend class wWorker;
-	
 	wStatus mStatus;
 	uint8_t mNcpu;
 	pid_t mPid;		// master进程id

@@ -5,7 +5,6 @@
  */
 
 #include "wWorker.h"
-#include "wLog.h"
 #include "wMisc.h"
 #include "wSigSet.h"
 #include "wWorkerIpc.h"

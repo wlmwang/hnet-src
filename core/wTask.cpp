@@ -6,7 +6,6 @@
 
 #include "wTask.h"
 #include "wCommand.h"
-#include "wLog.h"
 #include "wMisc.h"
 #include "wSocket.h"
 

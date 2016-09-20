@@ -25,12 +25,13 @@ public:
     bool mShowVer;
     bool mShowHelp;
     bool mDaemon;
-    char *mSignal;
-    char *mHost;
+    char* mSignal;
+
+    char* mHost;
+    char* mPtotocol;
     uint16_t mPort;
     
     wProcTitle *mProcTitle;
-    
 protected:
     wStatus mStatus;
 

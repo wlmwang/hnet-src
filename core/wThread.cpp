@@ -6,18 +6,17 @@
 
 #include "wThread.h"
 #include "wMutex.h"
-#include "wLog.h"
 
 namespace hnet {
 
 void* wThread::ThreadWrapper(void *pvArgs) {
     if (!pvArgs) {
-	return NULL;
+	   return NULL;
     }
 
     wThread *pThread = (wThread *)pvArgs;
     if (pThread->PrepareRun()) {
-	pThread->Run();
+	   pThread->Run();
     }
 
     return NULL;

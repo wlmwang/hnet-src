@@ -7,7 +7,6 @@
 #include "wMaster.h"
 #include "wMisc.h"
 #include "wEnv.h"
-#include "wLog.h"
 #include "wSigSet.h"
 #include "wSignal.h"
 #include "wWorker.h"
@@ -28,19 +27,12 @@ wMaster::~wMaster() {
     }
 }
 
-wStatus wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
-    SAFE_NEW(wWorker(mTitle, slot, this), *ptr);
-    if (*ptr == NULL) {
-		return mStatus = wStatus::IOError("wMaster::NewWorker", "new failed");
-    }
-    return mStatus = wStatus::Nothing();
-}
-
-wStatus wMaster::PrepareStart() {
+wStatus wMaster::Prepare() {
     if (!PrepareRun().Ok()) {
     	return mStatus;
     }
 
+    // 检测配置、服务实例
     if (mServer == NULL) {
     	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mServer is null");
     } else if (mConfig == NULL || mConfig->mIPAddr == NULL || mConfig->mPort == 0) {
@@ -48,16 +40,14 @@ wStatus wMaster::PrepareStart() {
     }
 
     // 进程标题
-    return mStatus = mConfig->mProcTitle->Setproctitle(kMasterTitle, mTitle.c_str());
+    mStatus = mConfig->mProcTitle->Setproctitle(kMasterTitle, mTitle.c_str());
+    if (!mStatus.Ok()) {
+    	return mStatus;
+    }
+    return mStatus = mServer->Prepare(mConfig->mIPAddr, mConfig->mPort, mConfig->mPtotocol);
 }
 
 wStatus wMaster::SingleStart() {
-	// 初始化服务器
-	mStatus = mServer->PrepareSingle(mConfig->mIPAddr, mConfig->mPort);
-	if (!mStatus.Ok()) {
-		return mStatus;
-	}
-
     if (!CreatePidFile().Ok()) {
 		return mStatus;
     }
@@ -80,12 +70,6 @@ wStatus wMaster::SingleStart() {
 }
 
 wStatus wMaster::MasterStart() {
-	// 创建、绑定服务器Listen Socket
-	mStatus = mServer->PrepareMaster(mConfig->mIPAddr, mConfig->mPort);
-	if (!mStatus.Ok()) {
-		return mStatus;
-	}
-
 	if (mWorkerNum > kMaxPorcess) {
 		return mStatus = wStatus::IOError("wMaster::MasterStart, processes can be spawned", "worker number is overflow");
 	} else if (!InitSignals().Ok()) {
@@ -407,6 +391,14 @@ void wMaster::PassCloseChannel(struct ChannelReqClose_t *ch) {
 		mWorkerPool[i]->mChannel.SendBytes(ptr, size + sizeof(int));
     }
     SAFE_DELETE_VEC(pStart);
+}
+
+wStatus wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
+    SAFE_NEW(wWorker(mTitle, slot, this), *ptr);
+    if (*ptr == NULL) {
+		return mStatus = wStatus::IOError("wMaster::NewWorker", "new failed");
+    }
+    return mStatus = wStatus::Nothing();
 }
 
 wStatus wMaster::SpawnWorker(int32_t type) {

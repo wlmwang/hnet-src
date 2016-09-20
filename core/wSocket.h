@@ -96,7 +96,6 @@ public:
     virtual wStatus SetFL(bool nonblock = true);
     
     inline int64_t& FD() { return mFD;}
-
     //socket状态属性
     inline SockType& ST() { return mSockType;}
     inline SockStatus& SS() { return mSockStatus;}

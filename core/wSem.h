@@ -10,7 +10,6 @@
 #include <sys/ipc.h>
 #include <sys/sem.h>
 #include <semaphore.h>
-
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
