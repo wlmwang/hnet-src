@@ -74,7 +74,7 @@ const int32_t   kFDUnknown = -1;
 const uint32_t  kKeepAliveTm = 3000;
 const uint8_t   kKeepAliveCnt = 5;
 
-const uint8_t	  kHeartbeat = 5;
+const uint8_t	kHeartbeat = 5;
 
 // 16m shm消息队列大小
 const uint32_t  kMsgQueueLen = 16777216;

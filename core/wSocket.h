@@ -96,12 +96,18 @@ public:
     virtual wStatus SetFL(bool nonblock = true);
     
     inline int64_t& FD() { return mFD;}
+    inline std::string& Host() { return mHost;}
+    inline uint16_t& Port() { return mPort;}
+    inline uint64_t& RecvTm() { return mRecvTm;}
+    inline uint64_t& SendTm() { return mSendTm;}
+    inline uint64_t& MakeTm() { return mMakeTm;}
+		
     //socket状态属性
     inline SockType& ST() { return mSockType;}
     inline SockStatus& SS() { return mSockStatus;}
     inline SockProto& SP() { return mSockProto;}
     inline SockFlag& SF() { return mSockFlag;}
-
+    
 protected:
     friend class wTask;
     friend class wServer;
@@ -115,7 +121,7 @@ protected:
     SockProto mSockProto;
     SockFlag mSockFlag;
 
-    string mHost;
+    std::string mHost;
     uint16_t mPort;
     int64_t  mFD;
     uint64_t mRecvTm;   // 最后接收到数据包的时间戳

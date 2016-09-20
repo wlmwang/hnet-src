@@ -10,7 +10,7 @@
 #include "wSigSet.h"
 #include "wSignal.h"
 #include "wWorker.h"
-#include "wChannelCmd.h"	//*channel*_t
+#include "wChannelCmd.h" // *channel*_t
 #include "wConfig.h"
 #include "wServer.h"
 
@@ -23,12 +23,13 @@ mEnv(wEnv::Default()), mPid(getpid()), mTitle(title), mServer(server), mConfig(c
 
 wMaster::~wMaster() {
     for (uint32_t i = 0; i < mWorkerNum; ++i) {
-		SAFE_DELETE(mWorkerPool[i]);
+	SAFE_DELETE(mWorkerPool[i]);
     }
 }
 
 wStatus wMaster::Prepare() {
-    if (!PrepareRun().Ok()) {
+    mStatus = PrepareRun();
+    if (!mStatus.Ok()) {
     	return mStatus;
     }
 
@@ -49,7 +50,7 @@ wStatus wMaster::Prepare() {
 
 wStatus wMaster::SingleStart() {
     if (!CreatePidFile().Ok()) {
-		return mStatus;
+	return mStatus;
     }
     
     // 恢复默认信号处理
@@ -63,35 +64,36 @@ wStatus wMaster::SingleStart() {
     snl.AddSigno(SIGTTIN);
     snl.AddSigno(SIGTTOU);
     
-    if (!Run().Ok()) {
+    mStatus = Run();
+    if (!mStatus.Ok()) {
     	return mStatus;
     }
     return mStatus = mServer->SingleStart();
 }
 
 wStatus wMaster::MasterStart() {
-	if (mWorkerNum > kMaxPorcess) {
-		return mStatus = wStatus::IOError("wMaster::MasterStart, processes can be spawned", "worker number is overflow");
-	} else if (!InitSignals().Ok()) {
-		return mStatus;
-	} else if (!CreatePidFile().Ok()) {
-		return mStatus;
-	}
+    if (mWorkerNum > kMaxPorcess) {
+        return mStatus = wStatus::IOError("wMaster::MasterStart, processes can be spawned", "worker number is overflow");
+    } else if (!InitSignals().Ok()) {
+        return mStatus;
+    } else if (!CreatePidFile().Ok()) {
+        return mStatus;
+    }
 
-	// 信号阻塞
-	wSigSet sgt;
-	sgt.AddSet(SIGCHLD);
-	sgt.AddSet(SIGALRM);
-	sgt.AddSet(SIGIO);
-	sgt.AddSet(SIGINT);
-	sgt.AddSet(SIGQUIT);
-	sgt.AddSet(SIGTERM);
-	sgt.AddSet(SIGHUP);	//RECONFIGURE
-	sgt.AddSet(SIGUSR1);
-	mStatus = sgt.Procmask();
-	if (!mStatus.Ok()) {
-		return mStatus;
-	}
+    // 信号阻塞
+    wSigSet sgt;
+    sgt.AddSet(SIGCHLD);
+    sgt.AddSet(SIGALRM);
+    sgt.AddSet(SIGIO);
+    sgt.AddSet(SIGINT);
+    sgt.AddSet(SIGQUIT);
+    sgt.AddSet(SIGTERM);
+    sgt.AddSet(SIGHUP);	//RECONFIGURE
+    sgt.AddSet(SIGUSR1);
+    mStatus = sgt.Procmask();
+    if (!mStatus.Ok()) {
+        return mStatus;
+    }
 	
     // 启动worker进程
     if (!WorkerStart(mWorkerNum, kPorcessRespawn).Ok()) {
@@ -100,22 +102,22 @@ wStatus wMaster::MasterStart() {
 
     // 监听信号
     while (true) {
-		HandleSignal();
-		Run();
-	};
+	HandleSignal();
+	Run();
+    };
 }
 
 
 void wMaster::SingleExit() {
-	DeletePidFile();
+    DeletePidFile();
     //LOG_ERROR(ELOG_KEY, "[system] single process exit");
-	exit(0);
+    exit(0);
 }
 
 void wMaster::MasterExit() {
-	DeletePidFile();
+    DeletePidFile();
     //LOG_ERROR(ELOG_KEY, "[system] master process exit");
-	exit(0);
+    exit(0);
 }
 
 wStatus wMaster::HandleSignal() {

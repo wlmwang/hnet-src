@@ -66,20 +66,19 @@ public:
     wStatus SyncRecv(char buf[], size_t len, size_t *size, uint32_t timeout /*s*/);
    
     wStatus HeartbeatSend();
-
-    void HeartbeatReset() {
-        return mHeartbeat = 0;
-    }
-
-    bool HeartbeatOuttimes() {
+    inline bool HeartbeatOut() {
         return mHeartbeat > kHeartbeat;
     }
     
-    wSocket *Socket() {
+    inline void HeartbeatReset() {
+        return mHeartbeat = 0;
+    }
+    
+    inline wSocket *Socket() {
         return mSocket;
     }
     
-    size_t SendLen() {
+    inline size_t SendLen() {
         return mSendLen;
     }
     
