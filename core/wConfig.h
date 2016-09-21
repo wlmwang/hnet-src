@@ -17,7 +17,9 @@ class wProcTitle;
 
 class wConfig : private wNoncopyable {
 public:
-    wConfig() : mShowVer(false), mShowHelp(false), mDaemon(false), mSignal(NULL), mHost(NULL), mPort(0), mProcTitle(NULL) { }
+    wConfig() : mShowVer(false), mShowHelp(false), mDaemon(false), mSignal(NULL), 
+        mHost(NULL), mPort(0), mProcTitle(NULL), mPidPath(NULL), mLockPath(NULL) { }
+
     virtual ~wConfig();
     virtual wStatus GetOption(int argc, const char *argv[]);
 
@@ -26,11 +28,13 @@ public:
     bool mShowHelp;
     bool mDaemon;
     char* mSignal;
+    char* mPidPath;
+    char* mLockPath;
 
     char* mHost;
     char* mPtotocol;
     uint16_t mPort;
-    
+
     wProcTitle *mProcTitle;
 protected:
     wStatus mStatus;

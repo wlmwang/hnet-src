@@ -25,13 +25,12 @@ wWorker::~wWorker() {
 	SAFE_DELETE(mChannel);
 }
 
-wStatus wWorker::PrepareStart() {
+wStatus wWorker::Prepare() {
 	// 设置当前进程优先级。进程默认优先级为0
 	// -20 -> 20 高 -> 低。只有root可提高优先级，即可减少priority值
 	if (mSlot < kMaxPorcess && mPriority != 0) {
         if (setpriority(PRIO_PROCESS, 0, mPriority) == -1) {
-			//return mStatus = wStatus::IOError("wWorker::PrepareStart, setpriority() failed", strerror(errno));
-			exit(2);
+			return mStatus = wStatus::IOError("wWorker::Prepare, setpriority() failed", strerror(errno));
         }
     }
 	
@@ -41,54 +40,55 @@ wStatus wWorker::PrepareStart() {
         rlmt.rlim_cur = static_cast<rlim_t>(mRlimitCore);
         rlmt.rlim_max = static_cast<rlim_t>(mRlimitCore);
         if (setrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
-        	//return mStatus = wStatus::IOError("wWorker::PrepareStart, setrlimit(RLIMIT_NOFILE) failed", strerror(errno));
-        	exit(2);
+        	return mStatus = wStatus::IOError("wWorker::Prepare, setrlimit(RLIMIT_NOFILE) failed", strerror(errno));
         }
     }
 	
 	// 将其他进程的channel[1]关闭，自己的除外
-    for (uint32_t n = 0; n < wMaster->mWorkerNum; n++) {
-        if (n == mSlot || wMaster->mWorkerPool[n] == NULL || wMaster->mWorkerPool[n]->mPid == -1 || (*wMaster->mWorkerPool[n]->mChannel)[1] == kFDUnknown) {
-            continue;
-        } else if (close((*wMaster->mWorkerPool[n]->mChannel)[1]) == -1) {
-        	//return mStatus = wStatus::IOError("wWorker::PrepareStart, channel close() failed", strerror(errno));
-        	exit(2);
-        }
+    for (uint32_t n = 0; n < kMaxPorcess; n++) {
+    	if (n == mSlot || mMaster->mWorkerPool[n] == NULL || mMaster->mWorkerPool[n]->mPid == -1) {
+    		continue;
+    	}
+    	wWorker* worker = mMaster->mWorkerPool[n];
+    	if (close((*worker->mChannel)[1]) == -1) {
+    		return mStatus = wStatus::IOError("wWorker::Prepare, channel close() failed", strerror(errno));
+    	}
     }
 
     // 关闭该进程worker进程的ch[0]描述符
-    if (close((*wMaster->mWorkerPool[mSlot]->mChannel)[0]) == -1) {
-    	//return mStatus = wStatus::IOError("wWorker::PrepareStart, channel close() failed", strerror(errno));
-    	exit(2);
+    wWorker* worker = mMaster->mWorkerPool[mSlot];
+    if (close((*worker->mChannel)[0]) == -1) {
+    	return mStatus = wStatus::IOError("wWorker::Prepare, channel close() failed", strerror(errno));
     }
-	
-	// worker进程中不阻塞所有信号
-	wSigSet sst;
-	mStatus = sst.Procmask(SIG_SETMASK);
+
+	mStatus = PrepareRun();
 	if (!mStatus.Ok()) {
-		//return mStatus;
-		exit(2);
-	}
-	if (!PrepareRun().Ok()) {
-		//return mStatus;
-		exit(2);
+		return mStatus;
 	}
 	
     // 进程标题
-    if (mMaster->mConfig == NULL) {
-    	return mStatus = wStatus::IOError("wWorker::PrepareStart failed", "mConfig is null");
-    }
-	return mStatus = mMaster->mConfig->mProcTitle->Setproctitle(kWorkerTitle, mTitle.c_str());
+    mStatus = mMaster->mConfig->mProcTitle->Setproctitle(kWorkerTitle, mTitle.c_str());
+	if (!mStatus.Ok()) {
+		return mStatus;
+	}
+
+    // 开启worker进程通信线程
+	return mStatus = mIpc->StartThread();
 }
 
-void wWorker::Start(bool daemon) {
-	// 开启worker进程通信线程
-	mIpc->StartThread();
-	
-	if (!Run.Ok()) {
-		exit(2);
+void wWorker::Start() {
+	// worker进程中不阻塞所有信号
+	wSigSet ss;
+	mStatus = ss.Procmask(SIG_SETMASK);
+	if (!mStatus.Ok()) {
+		return mStatus;
 	}
-	return mStatus;
+
+    mStatus = Run();
+    if (!mStatus.Ok()) {
+    	return mStatus;
+    }
+	return mStatus = mServer->WorkerStart();
 }
 
 }	// namespace hnet

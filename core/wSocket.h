@@ -37,9 +37,6 @@ enum SockStatus {
 enum SockProto  { kSpUnknown = 0, kSpTcp, kSpUdp, kSpUnix, kSpChannel, kSpHttp};
 enum SockFlag   { kSfUnknown = 0, kSfRvsd, kSfRecv, kSfSend};
 
-class wTask;
-class wServer;
-
 class wSocket : private wNoncopyable {
 public:
     wSocket(SockType type = kStListen, SockProto proto = kSpTcp, SockFlag flag = kSfRvsd);
@@ -109,9 +106,6 @@ public:
     inline SockFlag& SF() { return mSockFlag;}
     
 protected:
-    friend class wTask;
-    friend class wServer;
-
     virtual wStatus Bind(string host, uint16_t port = 0) = 0;
     
     wStatus mStatus;

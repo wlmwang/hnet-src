@@ -28,15 +28,15 @@ public:
 	virtual ~wWorker();
 
 	virtual wStatus PrepareRun() {
-		return mStatus = wStatus::IOError("wWorker::PrepareRun, worker will be exit", "method should be inherit");
+		return wStatus::IOError("wWorker::PrepareRun, worker will be exit", "method should be inherit");
 	}
 
 	virtual wStatus Run() {
-		return mStatus = wStatus::IOError("wWorker::Run, worker will be closed", "method should be inherit");
+		return wStatus::IOError("wWorker::Run, worker will be closed", "method should be inherit");
 	}
 
-	wStatus PrepareStart();
-	wStatus Start(bool daemon = true);
+	wStatus Prepare();
+	wStatus Start();
 	
 protected:
 	friend class wMaster;
@@ -58,7 +58,7 @@ protected:
 	pid_t mPid;
 	uint32_t mSlot;	// 进程表中索引
 	wWorkerIpc *mIpc;	// worker通信,主要通过channel同步个fd
-	wChannelSocket *mChannel;	// worker进程channel
+	wChannelSocket* mChannel;	// worker进程channel
 };
 
 }	// namespace hnet

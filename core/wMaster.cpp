@@ -22,17 +22,12 @@ mEnv(wEnv::Default()), mPid(getpid()), mTitle(title), mServer(server), mConfig(c
 }
 
 wMaster::~wMaster() {
-    for (uint32_t i = 0; i < mWorkerNum; ++i) {
-	SAFE_DELETE(mWorkerPool[i]);
+    for (uint32_t i = 0; i < kMaxPorcess; ++i) {
+		SAFE_DELETE(mWorkerPool[i]);
     }
 }
 
 wStatus wMaster::Prepare() {
-    mStatus = PrepareRun();
-    if (!mStatus.Ok()) {
-    	return mStatus;
-    }
-
     // 检测配置、服务实例
     if (mServer == NULL) {
     	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mServer is null");
@@ -40,7 +35,10 @@ wStatus wMaster::Prepare() {
     	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mConfig is null or ip|port is illegal");
     }
 
-    // 进程标题
+    mStatus = PrepareRun();
+    if (!mStatus.Ok()) {
+    	return mStatus;
+    }
     mStatus = mConfig->mProcTitle->Setproctitle(kMasterTitle, mTitle.c_str());
     if (!mStatus.Ok()) {
     	return mStatus;
@@ -50,19 +48,10 @@ wStatus wMaster::Prepare() {
 
 wStatus wMaster::SingleStart() {
     if (!CreatePidFile().Ok()) {
-	return mStatus;
+		return mStatus;
+    } else if (!InitSignals().Ok()) {
+        return mStatus;
     }
-    
-    // 恢复默认信号处理
-    wSignal snl(SIG_DFL);
-    snl.AddSigno(SIGINT);
-    snl.AddSigno(SIGHUP);
-    snl.AddSigno(SIGQUIT);
-    snl.AddSigno(SIGTERM);
-    snl.AddSigno(SIGCHLD);
-    snl.AddSigno(SIGPIPE);
-    snl.AddSigno(SIGTTIN);
-    snl.AddSigno(SIGTTOU);
     
     mStatus = Run();
     if (!mStatus.Ok()) {
@@ -74,60 +63,49 @@ wStatus wMaster::SingleStart() {
 wStatus wMaster::MasterStart() {
     if (mWorkerNum > kMaxPorcess) {
         return mStatus = wStatus::IOError("wMaster::MasterStart, processes can be spawned", "worker number is overflow");
+    }
+
+    if (!CreatePidFile().Ok()) {
+		return mStatus;
     } else if (!InitSignals().Ok()) {
-        return mStatus;
-    } else if (!CreatePidFile().Ok()) {
         return mStatus;
     }
 
     // 信号阻塞
-    wSigSet sgt;
-    sgt.AddSet(SIGCHLD);
-    sgt.AddSet(SIGALRM);
-    sgt.AddSet(SIGIO);
-    sgt.AddSet(SIGINT);
-    sgt.AddSet(SIGQUIT);
-    sgt.AddSet(SIGTERM);
-    sgt.AddSet(SIGHUP);	//RECONFIGURE
-    sgt.AddSet(SIGUSR1);
-    mStatus = sgt.Procmask();
+    wSigSet ss;
+    ss.AddSet(SIGCHLD);
+    ss.AddSet(SIGALRM);
+    ss.AddSet(SIGIO);
+    ss.AddSet(SIGQUIT);	// 立即退出
+    ss.AddSet(SIGINT);	// 优雅退出
+    ss.AddSet(SIGTERM);	// 优雅退出
+    ss.AddSet(SIGHUP);	// 重新读取配置
+    ss.AddSet(SIGUSR1);	// 重启服务
+    mStatus = ss.Procmask();
     if (!mStatus.Ok()) {
         return mStatus;
     }
 	
-    // 启动worker进程
+    // 启动worker工作进程
     if (!WorkerStart(mWorkerNum, kPorcessRespawn).Ok()) {
     	return mStatus;
     }
 
-    // 监听信号
+    // 主进程监听信号
     while (true) {
-	HandleSignal();
-	Run();
-    };
-}
-
-
-void wMaster::SingleExit() {
-    DeletePidFile();
-    //LOG_ERROR(ELOG_KEY, "[system] single process exit");
-    exit(0);
-}
-
-void wMaster::MasterExit() {
-    DeletePidFile();
-    //LOG_ERROR(ELOG_KEY, "[system] master process exit");
-    exit(0);
+		HandleSignal();
+		Run();
+    }
 }
 
 wStatus wMaster::HandleSignal() {
-    int delay = 0;
-	int sigio = 0;
-	int live = 1;
+    uint64_t delay = 0;
+	uint32_t num = 0;
+	int8_t live = 1;
 
 	if (delay) {
 		if (g_sigalrm) {
-			sigio = 0;
+			num = 0;
 			delay *= 2;
 			g_sigalrm = 0;
 		}
@@ -138,116 +116,126 @@ wStatus wMaster::HandleSignal() {
 		itv.it_value.tv_sec = delay / 1000;
 		itv.it_value.tv_usec = (delay % 1000 ) * 1000;
 
-		// 设置定时器，以系统真实时间来计算，送出SIGALRM信号
+		// 设置定时器，以系统真实时间来计算，送出SIGALRM信号（主要用户优雅退出）
 		if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
 			mStatus = wStatus::IOError("wMaster::HandleSignal, setitimer() failed", strerror(errno));
 		}
 	}
 
-	// 阻塞方式等待信号量
-	wSigSet sigset;
-	sigset.Suspend();
+	// 阻塞方式等待信号量。会被上面设置的定时器打断
+	wSigSet ss;
+	ss.Suspend();
 	
-	// SIGCHLD有worker退出，重启
+	// SIGCHLD
 	if (g_reap) {
 		g_reap = 0;
-
-		ProcessExitStat();
+		
+		// waitpid
+		WorkerExitStat();
+		// 有worker退出，重启
 		mStatus = ReapChildren(&live);
 	}
 	
-	// worker都退出，且收到了SIGTERM信号或SIGINT信号(g_terminate ==1) 或SIGQUIT信号(g_quit == 1)，则master退出
+	// worker都退出，且收到了退出信号，则master退出
 	if (!live && (g_terminate || g_quit)) {
-		//LOG_ERROR(ELOG_KEY, "[system] master process exiting");
-		MasterExit();
+		ProcessExit();
+	    DeletePidFile();
+	    exit(0);
 	}
 	
-	// 收到SIGTERM信号或SIGINT信号(g_terminate ==1)，通知所有worker退出，并且等待worker退出
-	// 平滑退出
+	// SIGTERM、SIGINT
 	if (g_terminate) {
-		// 设置延时
+		// 设置延时，50ms
 		if (delay == 0) {
 			delay = 50;
 		}
-		if (sigio) {
-			sigio--;
+		if (num > 0) {
+			num--;
 			return;
 		}
-		sigio = mWorkerNum;
+		num = mWorkerNum;
 
+		// 通知所有worker退出，并且等待worker退出
 		if (delay > 1000) {
-			// 延时已到，给所有worker发送SIGKILL信号，强制杀死worker
+			// 延时已到（最大1s），给所有worker发送SIGKILL信号，强制杀死worker
 			SignalWorker(SIGKILL);
 		} else {
-			// 给所有worker发送SIGTERM信号，通知worker退出
+			// 给所有worker发送SIGTERM信号，通知worker优雅退出
 			SignalWorker(SIGTERM);
 		}
 		return;
 	}
-	
-	// 强制退出
+
+	// SIGQUIT
 	if (g_quit) {
+		// 给所有的worker发送SIGQUIT信号
 		SignalWorker(SIGQUIT);
-		// 关闭所有监听socket
-		// todo
 		return;
 	}
 	
-	// 收到SIGHUP信号（重启服务器）
+	// SIGHUP
 	if (g_reconfigure) {
-		//LOG_DEBUG(ELOG_KEY, "[system] reconfiguring master process");
 		g_reconfigure = 0;
 		
 		// 重新初始化主进程配置
-		ReloadMaster();
-		// 重启worker
-		WorkerStart(mWorkerNum, kProcessJustSpawn);
+		Reload();
 		
-		/* allow new processes to start */
-		//100ms
+		// 重启worker
+		WorkerStart(mWorkerNum, kPorcessJustRespawn);
+		
+		// 100ms
 		usleep(100*1000);
 		
-		//LOG_DEBUG(ELOG_KEY, "[system] recycle old worker status");
-
 		live = 1;
 		// 关闭原来worker进程
 		SignalWorker(SIGTERM);
 	}
+
+	if (g_reopen) {
+		g_reopen = 0;
+		// todo
+	}
 }
 
-wStatus wMaster::ReapChildren(int* live) {
+wStatus wMaster::Reload() {
+	// todo
+	return mStatus;
+}
+
+wStatus wMaster::ReapChildren(int8_t* live) {
 	*live = 0;
-	for (uint32_t i = 0; i < mWorkerNum; i++) {
-        //LOG_DEBUG(ELOG_KEY, "[system] reapchild pid(%d),exited(%d),exiting(%d),detached(%d),respawn(%d)", 
-        //	mWorkerPool[i]->mPid, mWorkerPool[i]->mExited, mWorkerPool[i]->mExiting, mWorkerPool[i]->mDetached, mWorkerPool[i]->mRespawn);
-        
+	for (uint32_t i = 0; i < kMaxPorcess; i++) {
         if (mWorkerPool[i] == NULL || mWorkerPool[i]->mPid == -1) {
             continue;
         }
 
-        // 已退出
+        // 已退出进程
 		if (mWorkerPool[i]->mExited) {
-			// 非分离，就同步文件描述符
 			if (!mWorkerPool[i]->mDetached) {
-				// 关闭channel
-				mWorkerPool[i]->mChannel->Close();
+				// 清除进程表项
+				SAFE_DELETE(mWorkerPool[i]);
 
+				// 非分离进程同步文件描述符
 				struct ChannelReqClose_t ch;
 				ch.mFD = -1;
 				ch.mPid = mWorkerPool[i]->mPid;
 				ch.mSlot = i;
 				PassCloseChannel(&ch);
+
+			} else {
+				// 清除进程表项
+				SAFE_DELETE(mWorkerPool[i]);
 			}
 			
 			// 重启worker
 			if (mWorkerPool[i]->mRespawn && !mWorkerPool[i]->mExiting && !g_terminate && !g_quit) {
-				if (SpawnWorker(i) == -1) {
-					//LOG_ERROR(ELOG_KEY, "[system] could not respawn %d", i);
+				if (!SpawnWorker(i).Ok()) {
 					continue;
 				}
 				
+				// 同步文件描述符
 				struct ChannelReqOpen_t ch;
-				ch.mFD = mWorkerPool[mSlot]->mCh[0];
+				ch.mFD = (*mWorkerPool[mSlot]->mChannel)[0];
 				ch.mPid = mWorkerPool[mSlot]->mPid;
 				ch.mSlot = i;
 				PassOpenChannel(&ch);
@@ -255,22 +243,17 @@ wStatus wMaster::ReapChildren(int* live) {
 				*live = 1;
 				continue;
 			}
-			
-            if (i != (mWorkerNum - 1)) {
-                mWorkerPool[i]->mPid = -1;
-            } else {
-            	//mWorkerNum--;
-            }
+
 		} else if (mWorkerPool[i]->mExiting || !mWorkerPool[i]->mDetached) {
 			*live = 1;
 		}
     }
 
-    return mStatus = wStatus::Nothing();
+    return mStatus;
 }
 
-wStatus WorkerStart(uint32_t n, int8_t type) {
-	for (uint32_t i = 0; i < mWorkerNum; ++i) {
+wStatus WorkerStart(uint32_t n, int32_t type) {
+	for (uint32_t i = 0; i < n; ++i) {
 		if (!SpawnWorker(type).Ok()) {
 			return mStatus;
 		}
@@ -289,39 +272,39 @@ void wMaster::SignalWorker(int signo) {
 
 	int other = 0, size = 0;
 	switch (signo) {
-		case SIGQUIT:
-		ch = &chopen;
+	case SIGQUIT:
+		ch = reinterpret_cast<ChannelReqCmd_s*>(&chopen);
 		ch->mFD = -1;
-		size = sizeof(struct ChannelReqQuit_t);
+		size = sizeof(chopen);
 		break;
 			
-		case SIGTERM:
-		ch = &chclose;
+	case SIGTERM:
+		ch = reinterpret_cast<ChannelReqCmd_s*>(&chclose);
 		ch->mFD = -1;
-		size = sizeof(struct ChannelReqTerminate_t);
+		size = sizeof(chclose);
 		break;
 
-		default:
+	default:
 		other = 1;
 	}
 
 	char *ptr = NULL;
 	if (!other) {
-		ptr = new char[size + sizeof(int)];
+		SAFE_NEW_VEC(size + sizeof(int), char, ptr);
 		coding::EncodeFixed32(ptr, size);
 	}
 	
-	for (uint32_t i = 0; i < mWorkerNum; i++) {
-
+	for (uint32_t i = 0; i < kMaxPorcess; i++) {
+		// 分离进程
         if (mWorkerPool[i]->mDetached || mWorkerPool[i]->mPid == -1) {
         	continue;
         }
-        
+        // 进程正在重启
         if (mWorkerPool[i]->mJustSpawn) {
         	mWorkerPool[i]->mJustSpawn = 0;
         	continue;
         }
-
+        // 正在强制退出
 		if (mWorkerPool[i]->mExiting && signo == SIGQUIT) {
 			continue;
 		}
@@ -329,7 +312,7 @@ void wMaster::SignalWorker(int signo) {
         if (!other) {
 	        /* TODO: EAGAIN */
 			memcpy(ptr + sizeof(int), reinterpret_cast<char *>(ch), size);
-			if (mWorkerPool[i]->mChannel.SendBytes(ptr, size + sizeof(int)) >= 0) {
+			if (mWorkerPool[i]->mChannel->SendBytes(ptr, size + sizeof(int)) >= 0) {
 				if (signo == SIGQUIT || signo == SIGTERM) {
 					mWorkerPool[i]->mExiting = 1;
 				}
@@ -337,9 +320,7 @@ void wMaster::SignalWorker(int signo) {
 			}
 		}
 
-        if (kill(mWorkerPool[i]->mPid, signo) == -1) {
-			//LOG_ERROR(ELOG_KEY, "[system] kill(%d, %d) failed:%s", mWorkerPool[i]->mPid, signo, strerror(errno));
-            
+        if (kill(mWorkerPool[i]->mPid, signo) == -1) {            
             if (errno == ESRCH) {
                 mWorkerPool[i]->mExited = 1;
                 mWorkerPool[i]->mExiting = 0;
@@ -349,6 +330,7 @@ void wMaster::SignalWorker(int signo) {
             continue;
         }
 		
+		// 非重启服务
         if (signo != SIGUSR1) {
         	mWorkerPool[i]->mExiting = 1;
         }
@@ -360,37 +342,39 @@ void wMaster::SignalWorker(int signo) {
 }
 
 void wMaster::PassOpenChannel(struct ChannelReqOpen_t *ch) {
+	char *ptr;
 	size_t size = sizeof(struct ChannelReqOpen_t);
-	char *ptr = new char[size + sizeof(int)];
+	SAFE_NEW_VEC(size + sizeof(int), char, ptr);
 	coding::EncodeFixed32(ptr, size);
 
-	for (uint32_t i = 0; i < mWorkerNum; i++) {
+	for (uint32_t i = 0; i < kMaxPorcess; i++) {
 		// 无需发送给自己
-        if (i == mSlot || mWorkerPool[i]->mPid == -1) {
+        if (i == mSlot || mWorkerPool[i] == NULL || mWorkerPool[i]->mPid == -1) {
         	continue;
         }
 
         /* TODO: EAGAIN */
 		memcpy(ptr + sizeof(int), reinterpret_cast<char*>(ch), size);
-		mWorkerPool[i]->mChannel.SendBytes(ptr, size + sizeof(int));
+		mWorkerPool[i]->mChannel->SendBytes(ptr, size + sizeof(int));
     }
     SAFE_DELETE_VEC(ptr);
 }
 
 void wMaster::PassCloseChannel(struct ChannelReqClose_t *ch) {
+	char *ptr;
 	size_t size = sizeof(struct ChannelReqClose_t);
-	char *ptr = new char[size + sizeof(int)];
+	SAFE_NEW_VEC(size + sizeof(int), char, ptr);
 	coding::EncodeFixed32(ptr, size);
     
-	for (uint32_t i = 0; i < mWorkerNum; i++) {
+	for (uint32_t i = 0; i < kMaxPorcess; i++) {
 		// 不发送已退出worker
-		if (mWorkerPool[i]->mExited || mWorkerPool[i]->mPid == -1) {
+		if (mWorkerPool[i] == NULL || mWorkerPool[i]->mExited || mWorkerPool[i]->mPid == -1) {
 			continue;
 		}
         
         /* TODO: EAGAIN */
 		memcpy(ptr + sizeof(int), reinterpret_cast<char*>(ch), size);
-		mWorkerPool[i]->mChannel.SendBytes(ptr, size + sizeof(int));
+		mWorkerPool[i]->mChannel->SendBytes(ptr, size + sizeof(int));
     }
     SAFE_DELETE_VEC(pStart);
 }
@@ -400,14 +384,15 @@ wStatus wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
     if (*ptr == NULL) {
 		return mStatus = wStatus::IOError("wMaster::NewWorker", "new failed");
     }
-    return mStatus = wStatus::Nothing();
+    return mStatus;
 }
 
-wStatus wMaster::SpawnWorker(int32_t type) {
+wStatus wMaster::SpawnWorker(int64_t type) {
 	if (type >= 0) {
+		// 启动指定索引worker进程
 		mSlot = static_cast<uint32_t>(type);
 	} else {
-		for (uint32_t idx = 0; idx < mWorkerNum; ++idx) {
+		for (uint32_t idx = 0; idx < kMaxPorcess; ++idx) {
 			if (mWorkerPool[idx] == NULL || mWorkerPool[idx]->mPid == -1) {
 				break;
 			}
@@ -419,7 +404,7 @@ wStatus wMaster::SpawnWorker(int32_t type) {
 		return mStatus::IOError("wMaster::SpawnWorker failed", "mSlot overflow");
 	}
 
-	// 新建进程表项
+	// 新建|覆盖 进程表项
 	if (!NewWorker(mSlot, &mWorkerPool[mSlot]).Ok()) {
 		return mStatus;
 	}
@@ -447,23 +432,22 @@ wStatus wMaster::SpawnWorker(int32_t type) {
 
     pid_t pid = fork();
     switch (pid) {
-	    case -1:
+    case -1:
         SAFE_DELETE(mWorkerPool[mSlot]);
         return mStatus = wStatus::IOError("wMaster::SpawnWorker, fork() failed", strerror(errno));
-			
-	    case 0:
+
+    case 0:
     	// worker进程
         worker->mPid = pid;
-        mStatus = worker->PrepareStart();
+        mStatus = worker->Prepare();
         if (!mStatus.Ok()) {
-        	return mStatus;
+        	exit(2);
         }
         // 进入worker主循环
-        worker->Start();
-        _exit(0);
+        mStatus = worker->Start();
+        exit(0);
     }
-    //LOG_INFO(ELOG_KEY, "[system] worker start %s [%d] %d", title, mSlot, pid);
-    
+
     // 主进程master更新进程表
     worker->mSlot = mSlot;
     worker->mPid = pid;
@@ -471,39 +455,39 @@ wStatus wMaster::SpawnWorker(int32_t type) {
 	worker->mExiting = 0;
 	
 	if (type >= 0) {
-		return mStatus = wStatus::Nothing();
+		return mStatus;
 	}
 
     switch (type) {
-		case kPorcessNoRespawn:
+	case kPorcessNoRespawn:
 		worker->mRespawn = 0;
 		worker->mJustSpawn = 0;
 		worker->mDetached = 0;
 		break;
 
-		case kPorcessRespawn:
+	case kPorcessRespawn:
 		worker->mRespawn = 1;
 		worker->mJustSpawn = 0;
 		worker->mDetached = 0;
 		break;
 		
-		case kPorcessJustSpawn:
+	case kPorcessJustSpawn:
 		worker->mRespawn = 0;
 		worker->mJustSpawn = 1;
 		worker->mDetached = 0;    	
 
-		case kPorcessJustRespawn:
+	case kPorcessJustRespawn:
 		worker->mRespawn = 1;
 		worker->mJustSpawn = 1;
 		worker->mDetached = 0;
 
-		case kPorcessDetached:
+	case kPorcessDetached:
 		worker->mRespawn = 0;
 		worker->mJustSpawn = 0;
 		worker->mDetached = 1;
     }
 	
-    return mStatus = wStatus::Nothing();
+    return mStatus;
 }
 
 wStatus wMaster::CreatePidFile() {
@@ -516,60 +500,52 @@ wStatus wMaster::DeletePidFile() {
 }
 
 wStatus wMaster::InitSignals() {
-	wSignal::Signal_t *sig;
-	wSignal signal;
-	for (sig = g_signals; sig->mSigno != 0; ++sig) {
-		mStatus = signal.AddHandler(sig);
+	for (wSignal signal, wSignal::Signal_t* sg = g_signals; sg->mSigno != 0; ++sg) {
+		mStatus = signal.AddHandler(sg);
 		if (!mStatus.Ok()) {
 			return mStatus;
 		}
 	}
+	return mStatus;
 }
 
-void wMaster::ProcessExitStat() {    
+void wMaster::WorkerExitStat() {
 	const char *process = "unknown process";
-	int one = 0;
-	int status;
     while (true) {
+		int status, one = 0;
         pid_t pid = waitpid(-1, &status, WNOHANG);
-
         if (pid == 0) {
             return;
-        }
-		
-        if (pid == -1) {
+        } else if (pid == -1) {
             if (errno == EINTR) {
                 continue;
-            }
-            if (errno == ECHILD && one) {
+            } else if (errno == ECHILD && one) {
+                return;
+            } else if (errno == ECHILD) {
                 return;
             }
-            if (errno == ECHILD) {
-				//LOG_ERROR(ELOG_KEY, "[system] waitpid() failed:%s", strerror(errno));
-                return;
-            }
-			
-			//LOG_ERROR(ELOG_KEY, "[system] waitpid() failed:%s", strerror(errno));
             return;
         }
 		
         one = 1;
 		int32_t i;
-		for (i = 0; i < mWorkerNum; ++i) {
-			if (mWorkerPool[i]->mPid == pid) {
+		for (i = 0; i < kMaxPorcess; ++i) {
+			if (mWorkerPool[i] != NULL && mWorkerPool[i]->mPid == pid) {
                 mWorkerPool[i]->mStat = status;
-                mWorkerPool[i]->mExited = 1;	//退出
+                mWorkerPool[i]->mExited = 1;
                 process = mWorkerPool[i]->mTitle.c_str();
                 break;
 			}
 		}
-		
+
+		/*
         if (WTERMSIG(status)) {
-			//LOG_ERROR(ELOG_KEY, "[system] %s %d exited on signal %d%s", process, pid, WTERMSIG(status), WCOREDUMP(status) ? " (core dumped)" : "");
+			LOG_ERROR(ELOG_KEY, "[system] %s %d exited on signal %d%s", process, pid, WTERMSIG(status), WCOREDUMP(status) ? " (core dumped)" : "");
         } else {
-			//LOG_ERROR(ELOG_KEY, "[system] %s %d exited with code %d", process, pid, WTERMSIG(status));
+			LOG_ERROR(ELOG_KEY, "[system] %s %d exited with code %d", process, pid, WTERMSIG(status));
         }
-		
+		*/
+	
 		// 退出后不重启
         if (WEXITSTATUS(status) == 2 && mWorkerPool[i]->mRespawn) {
 			//LOG_ERROR(ELOG_KEY, "[system] %s %d exited with fatal code %d and cannot be respawned", process, pid, WTERMSIG(status));

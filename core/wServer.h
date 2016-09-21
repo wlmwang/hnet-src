@@ -44,9 +44,6 @@ public:
     // 异步广播消息
     wStatus Broadcast(const char *cmd, int len);
 
-    // accept接受连接
-    wStatus AcceptConn(wTask *task);
-
     // 新建客户端
     virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr);
     virtual wStatus NewUnixTask(wSocket* sock, wTask** ptr);
@@ -60,39 +57,45 @@ public:
         return wStatus::IOError("wServer::Run, server will be exit", "method should be inherit");
     }
     
+    virtual wStatus HandleSignal();
+
+    // 连接检测（心跳）
     virtual void CheckTimeout();
     
+    // single|worker进程退出函数
+    virtual void ProcessExit() { }
+
 protected:
     friend class wMaster;
     
-    static void CheckTimer(void* arg);
-    
-    void HandleSignal();
-    void WorkerExit();
-    
     // 事件读写主调函数
     wStatus Recv();
-    
+    // accept接受连接
+    wStatus AcceptConn(wTask *task);
+
     wStatus InitEpoll();
     // Listen Socket(nonblock fd)
     wStatus AddListener(string ipaddr, uint16_t port, string protocol = "TCP");
     // 添加到epoll侦听事件队列
     wStatus Listener2Epoll();
-
+    wStatus CleanListener();
+    
     wStatus AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool newconn = true);
     wStatus RemoveTask(wTask* task);
     wStatus CleanTask();
 
     wStatus AddToTaskPool(wTask *task);
-    std::vector<wTask*>::iterator RemoveTaskPool(wTask *pTask);
+    std::vector<wTask*>::iterator RemoveTaskPool(wTask *task);
     wStatus CleanTaskPool();
-	
+
+    static void CheckTimer(void* arg);
+
     wStatus mStatus;
     string mTitle;
-    bool mExiting;
     wEnv *mEnv;
+    bool mExiting;
 
-    vector<wSocket *> mListenSock;	// 多监听服务
+    std::vector<wSocket *> mListenSock;	// 多监听服务
     uint64_t mLatestTm;	// 服务器当前时间 微妙
     wTimer mHeartbeatTimer;	// 定时器
     bool mCheckSwitch;	// 心跳开关，默认关闭。强烈建议移动互联网环境下打开，而非依赖keepalive机制保活
@@ -102,7 +105,7 @@ protected:
 
     // task|pool
     wTask *mTask;
-    vector<wTask*> mTaskPool;
+    std::vector<wTask*> mTaskPool;
     wMutex *mTaskPoolMutex;
 };
 

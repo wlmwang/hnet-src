@@ -23,34 +23,31 @@ public:
 	wWorkerIpc(wWorker *worker);
 	~wWorkerIpc();
 
-	wStatus PrepareRun();
-	wStatus Run();
-	
-	wStatus Recv();
-	wStatus InitEpoll();
-	wStatus CleanEpoll();
-	wStatus AddToEpoll(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD);
-    wStatus RemoveEpoll(wTask* task);
-	
-	std::vector<wTask*>::iterator RemoveTaskPool(wTask *task);
-	wStatus AddToTaskPool(wTask *task);
-	wStatus CleanTaskPool();
+	virtual wStatus PrepareRun();
+	virtual wStatus Run();
 
 protected:
+    // 事件读写主调函数
+    wStatus Recv();
+
+	wStatus InitEpoll();
+    wStatus AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool newconn = true);
+    wStatus RemoveTask(wTask* task);
+    wStatus CleanTask();
+
+    wStatus AddToTaskPool(wTask *task);
+    std::vector<wTask*>::iterator RemoveTaskPool(wTask *task);
+    wStatus CleanTaskPool();
+
 	wStatus mStatus;
 	wWorker *mWorker;
 	
 	int32_t mEpollFD;
 	uint64_t mTimeout;
-
-	// epoll_event
-	struct epoll_event mEpollEvent;
-	vector<struct epoll_event> mEpollEventPool; //epoll_event已发生事件池（epoll_wait）
-	size_t mTaskCount;
 	
 	// task|pool
 	wTask *mTask;
-	vector<wTask*> mTaskPool;
+	std::vector<wTask*> mTaskPool;
 };
 
 }	// namespace hnet

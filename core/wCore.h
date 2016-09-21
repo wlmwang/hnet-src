@@ -74,7 +74,7 @@ const int32_t   kFDUnknown = -1;
 const uint32_t  kKeepAliveTm = 3000;
 const uint8_t   kKeepAliveCnt = 5;
 
-const uint8_t	kHeartbeat = 5;
+const uint8_t   kHeartbeat = 5;
 
 // 16m shm消息队列大小
 const uint32_t  kMsgQueueLen = 16777216;
@@ -91,7 +91,7 @@ const int8_t    kProcessNoRespawn = -1;		// 子进程退出时，父进程不再
 const int8_t    kProcessJustSpawn = -2;		// 子进程正在重启，该进程创建之后，再次退出时，父进程不再创建
 const int8_t    kProcessRespawn = -3;     // 子进程异常退出时，父进程会重新创建它
 const int8_t    kProcessJustRespawn = -4;	// 子进程正在重启，该进程创建之后，再次退出时，父进程会重新创建它
-const int8_t    kProcessDetached = -5;		// 分离进程（热代码替换）
+const int8_t    kProcessDetached = -5;		// 分离进程
 
 const int8_t    kProcessSingle = 0;
 const int8_t    kProcessMaster = 1;

@@ -8,25 +8,27 @@
 
 namespace hnet {
 
-int g_terminate;
-int g_quit;
-int g_sigalrm;
-int g_sigio;
-int g_reap;
-int g_reconfigure;
+int g_sigalrm = 0;
+int g_sigio = 0;
+int g_terminate = 0;
+int g_quit = 0;
+int g_reconfigure = 0;
+int g_reap = 0;
+int g_reopen = 0;
 
 // 信号集
 wSignal::Signal_t g_signals[] = {
-    { SIGHUP, "SIGHUP", "reload", &wSignal::SignalHandler},
-    { SIGTERM, "SIGTERM", "stop", &wSignal::SignalHandler},
-    { SIGINT, "SIGINT", "", &wSignal::SignalHandler},
-    { SIGQUIT, "SIGQUIT", "quit", &wSignal::SignalHandler},
-    { SIGALRM, "SIGALRM", "", &wSignal::SignalHandler},
-    { SIGIO, "SIGIO", "", &wSignal::SignalHandler},
-    { SIGCHLD, "SIGCHLD", "", &wSignal::SignalHandler},
-    { SIGSYS, "SIGSYS", "", SIG_IGN},
-    { SIGPIPE, "SIGPIPE", "", SIG_IGN},
-    { 0, NULL, "", NULL}
+    {SIGHUP,    "SIGHUP",   "reload",   &wSignal::SignalHandler},   // 重启
+    {SIGUSR1,   "SIGUSR1",  "reopen",   &wSignal::SignalHandler},   // 清除日志
+    {SIGQUIT,   "SIGQUIT",  "quit",     &wSignal::SignalHandler},   // 优雅退出
+    {SIGTERM,   "SIGTERM",  "stop",     &wSignal::SignalHandler},   // 立即退出
+    {SIGINT,    "SIGINT",   "",         &wSignal::SignalHandler},   // 立即退出
+    {SIGALRM,   "SIGALRM",  "",         &wSignal::SignalHandler},
+    {SIGIO,     "SIGIO",    "",         &wSignal::SignalHandler},
+    {SIGCHLD,   "SIGCHLD",  "",         &wSignal::SignalHandler},
+    {SIGSYS,    "SIGSYS",   "",         SIG_IGN},
+    {SIGPIPE,   "SIGPIPE",  "",         SIG_IGN},
+    {0,         NULL,       "",         NULL}
 };
 
 wSignal::wSignal() { }
@@ -66,7 +68,6 @@ wStatus wSignal::AddHandler(const Signal_t *signal) {
 // 对于SIGCHLD信号，由自定义函数处理g_reap时调用waitpid
 void wSignal::SignalHandler(int signo) {
     int err = errno;
-
     wSignal::Signal_t *signal;
     for (signal = g_signals; signal->mSigno != 0; signal++) {
         if (signal->mSigno == signo) {
@@ -76,31 +77,36 @@ void wSignal::SignalHandler(int signo) {
 
     string action = "";
     switch (signo) {
-        case SIGQUIT:
+    case SIGQUIT:
         g_quit = 1;
         action = ", shutting down";
         break;
 
-        case SIGTERM:
-        case SIGINT:
+    case SIGTERM:
+    case SIGINT:
         g_terminate = 1;
         action = ", exiting";
         break;
 
-        case SIGHUP:
+    case SIGHUP:
         g_reconfigure = 1;
         action = ", reconfiguring";
         break;
+    
+    case SIGUSR1:
+        g_reopen = 1;
+        action = ", reopen";
+        break;
 
-        case SIGALRM:
+    case SIGALRM:
         g_sigalrm = 1;
         break;
 
-        case SIGIO:
+    case SIGIO:
         g_sigio = 1;
         break;
 
-        case SIGCHLD:
+    case SIGCHLD:
         g_reap = 1;
         break;
     }

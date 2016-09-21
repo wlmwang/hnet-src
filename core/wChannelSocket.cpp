@@ -33,7 +33,6 @@ wStatus wChannelSocket::Open() {
     } else if (fcntl(mChannel[1], F_SETFD, FD_CLOEXEC) == -1) {
         // mStatus = wStatus::IOError("wChannelSocket::Open [1] fcntl() FD_CLOEXEC failed", strerror(errno));
     }
-    
     // mChannel[1]被监听（可读事件）
     mFD = mChannel[1];
     return mStatus = wStatus::Nothing();
