@@ -43,9 +43,7 @@ public:
     
     // 解析消息
     // wStatus返回不为空，则task被关闭
-    virtual wStatus Handlemsg(char *buf[], uint32_t len) {
-        return mStatus = wStatus::IOError("wTask::Handlemsg, socket will be closed", "method should be inherit");
-    }
+    virtual wStatus Handlemsg(char *buf[], uint32_t len);
     
     // 异步发送：将待发送客户端消息写入buf，等待TaskSend发送
     // wStatus返回不为空，则task被关闭

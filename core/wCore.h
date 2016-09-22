@@ -93,11 +93,6 @@ const int8_t    kProcessRespawn = -3;     // 子进程异常退出时，父进�
 const int8_t    kProcessJustRespawn = -4;	// 子进程正在重启，该进程创建之后，再次退出时，父进程会重新创建它
 const int8_t    kProcessDetached = -5;		// 分离进程
 
-const int8_t    kProcessSingle = 0;
-const int8_t    kProcessMaster = 1;
-const int8_t    kProcessSignaller = 2;
-const int8_t    kProcessWorker = 3;
-
 const bool      kLittleEndian = true;
 const uint32_t  kPageSize = 4096;
 

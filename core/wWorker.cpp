@@ -16,12 +16,10 @@ namespace hnet {
 
 wWorker::wWorker(const char* title, int slot, wMaster* master) : mTitle(title), mPid(-1), 
 mPriority(0), mRlimitCore(kRlimitCore), mSlot(slot), mMaster(master) {
-	SAFE_NEW(wWorkerIpc(this), mIpc);
 	SAFE_NEW(wChannelSocket(), mChannel);
 }
 
 wWorker::~wWorker() {
-	SAFE_DELETE(mIpc);
 	SAFE_DELETE(mChannel);
 }
 
@@ -46,18 +44,15 @@ wStatus wWorker::Prepare() {
 	
 	// 将其他进程的channel[1]关闭，自己的除外
     for (uint32_t n = 0; n < kMaxPorcess; n++) {
-    	if (n == mSlot || mMaster->mWorkerPool[n] == NULL || mMaster->mWorkerPool[n]->mPid == -1) {
+    	if (n == mSlot || mMaster->Worker(n) == NULL || mMaster->Worker(n)->mPid == -1) {
     		continue;
-    	}
-    	wWorker* worker = mMaster->mWorkerPool[n];
-    	if (close((*worker->mChannel)[1]) == -1) {
+    	} else if (close(mMaster->Worker()->FD(1)) == -1) {
     		return mStatus = wStatus::IOError("wWorker::Prepare, channel close() failed", strerror(errno));
     	}
     }
 
     // 关闭该进程worker进程的ch[0]描述符
-    wWorker* worker = mMaster->mWorkerPool[mSlot];
-    if (close((*worker->mChannel)[0]) == -1) {
+    if (close(mMaster->Worker()->FD(1)) == -1) {
     	return mStatus = wStatus::IOError("wWorker::Prepare, channel close() failed", strerror(errno));
     }
 
@@ -73,10 +68,12 @@ wStatus wWorker::Prepare() {
 	}
 
     // 开启worker进程通信线程
-	return mStatus = mIpc->StartThread();
+    mMaster->mEnv->Schedule(wWorkerIpc::ChannelIpc, this);
+	
+	return mStatus;
 }
 
-void wWorker::Start() {
+wStatus wWorker::Start() {
 	// worker进程中不阻塞所有信号
 	wSigSet ss;
 	mStatus = ss.Procmask(SIG_SETMASK);

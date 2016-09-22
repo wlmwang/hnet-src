@@ -27,6 +27,9 @@ public:
     wMaster(char* title, wServer* server, wConfig* config);
     virtual ~wMaster();
     
+    // 发送命令行信号
+    wStatus SignalProcess(char* sig);
+
     // 准备启动
     wStatus Prepare();
     
@@ -53,9 +56,13 @@ public:
     virtual wStatus HandleSignal();
     
     virtual wStatus Reload();
-    
+
     // master主进程退出函数
     virtual void ProcessExit() { }
+    
+    inline wWorker* Worker(uint32_t slot) {
+        return mWorkerPool[slot];
+    }
 
 protected:
     friend class wWorker;

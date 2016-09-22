@@ -37,11 +37,15 @@ public:
 
 	wStatus Prepare();
 	wStatus Start();
-	
+
+	inline wMaster* Master() { return mMaster;}
+    inline wChannelSocket* Channel() { return mChannel;}
+    inline int64_t& FD(uint8_t i) { return (*mChannel)[i];}
+    inline pid_t& Pid() { return mPid;}
 protected:
 	friend class wMaster;
 	friend class wWorkerIpc;
-	
+
 	wStatus mStatus;
 	wMaster *mMaster;
 	int mPriority;	// 进程优先级
@@ -57,7 +61,6 @@ protected:
 	const string mTitle;	// 进程名
 	pid_t mPid;
 	uint32_t mSlot;	// 进程表中索引
-	wWorkerIpc *mIpc;	// worker通信,主要通过channel同步个fd
 	wChannelSocket* mChannel;	// worker进程channel
 };
 

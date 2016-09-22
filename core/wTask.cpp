@@ -15,7 +15,7 @@ wTask::wTask(wSocket* socket) : mSocket(socket), mHeartbeat(0), mRecvLen(0), mSe
 mRecvRead(mRecvBuff), mRecvWrite(mRecvBuff), mSendRead(mSendBuff), mSendWrite(mSendBuff) { }
 
 wTask::~wTask() {
-    misc::SafeDelete(mSocket);
+    SAFE_DELETE(mSocket);
 }
 
 wStatus wTask::HeartbeatSend() {
@@ -258,17 +258,19 @@ wStatus wTask::Handlemsg(char* buf[], uint32_t len) {
     struct wCommand *cmd = reinterpret_cast<struct wCommand*>(buf);
     
     if (cmd->GetId() == CmdId(CMD_NULL, PARA_NULL)) {
-	mHeartbeat = 0;
-	mStatus = wStatus::Nothing();
+    	mHeartbeat = 0;
+    	mStatus = wStatus::Nothing();
     } else {
-	auto pf = mDispatch.GetFuncT(Name(), cmd->GetId());
-	if (pf != NULL) {
-	    pf->mFunc(buf, len);
-	    // todo
-	    mStatus = wStatus::Nothing();
-	} else {
-	    mStatus = wStatus::IOError("wTask::Handlemsg, invalid msg", "no method find");
-	}
+    	auto pf = mDispatch.GetFuncT(Name(), cmd->GetId());
+    	if (pf != NULL) {
+    	    if (pf->mFunc(buf, len) == 0) {
+                mStatus = wStatus::Nothing();
+            } else {
+                //mStatus = wStatus::IOError("wTask::Handlemsg, result error", "not return 0");
+            }
+    	} else {
+    	    mStatus = wStatus::IOError("wTask::Handlemsg, invalid msg", "no method find");
+    	}
     }
     return mStatus;
 }

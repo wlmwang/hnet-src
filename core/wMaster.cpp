@@ -5,6 +5,7 @@
  */
 
 #include "wMaster.h"
+#include "wSlice.h"
 #include "wMisc.h"
 #include "wEnv.h"
 #include "wSigSet.h"
@@ -235,8 +236,8 @@ wStatus wMaster::ReapChildren(int8_t* live) {
 				
 				// 同步文件描述符
 				struct ChannelReqOpen_t ch;
-				ch.mFD = (*mWorkerPool[mSlot]->mChannel)[0];
-				ch.mPid = mWorkerPool[mSlot]->mPid;
+				ch.mFD = Worker(mSlot)->FD(0);
+				ch.mPid = Worker(mSlot)->mPid;
 				ch.mSlot = i;
 				PassOpenChannel(&ch);
 				
@@ -258,9 +259,9 @@ wStatus WorkerStart(uint32_t n, int32_t type) {
 			return mStatus;
 		}
 		struct ChannelReqOpen_t opench;
-		opench.mSlot = mSlot;
-        opench.mPid = mWorkerPool[mSlot]->mPid;
-        opench.mFD = (*mWorkerPool[mSlot]->mChannel)[0];
+		opench.mFD = Worker(mSlot)->FD(0);
+        opench.mPid = Worker(mSlot)->mPid;
+        opench.mSlot = mSlot;
         PassOpenChannel(&opench);
 	}
 }
@@ -312,7 +313,7 @@ void wMaster::SignalWorker(int signo) {
         if (!other) {
 	        /* TODO: EAGAIN */
 			memcpy(ptr + sizeof(int), reinterpret_cast<char *>(ch), size);
-			if (mWorkerPool[i]->mChannel->SendBytes(ptr, size + sizeof(int)) >= 0) {
+			if (Worker(i)->Channel()->SendBytes(ptr, size + sizeof(int)) >= 0) {
 				if (signo == SIGQUIT || signo == SIGTERM) {
 					mWorkerPool[i]->mExiting = 1;
 				}
@@ -355,7 +356,7 @@ void wMaster::PassOpenChannel(struct ChannelReqOpen_t *ch) {
 
         /* TODO: EAGAIN */
 		memcpy(ptr + sizeof(int), reinterpret_cast<char*>(ch), size);
-		mWorkerPool[i]->mChannel->SendBytes(ptr, size + sizeof(int));
+		Worker(i)->Channel()->SendBytes(ptr, size + sizeof(int));
     }
     SAFE_DELETE_VEC(ptr);
 }
@@ -374,7 +375,7 @@ void wMaster::PassCloseChannel(struct ChannelReqClose_t *ch) {
         
         /* TODO: EAGAIN */
 		memcpy(ptr + sizeof(int), reinterpret_cast<char*>(ch), size);
-		mWorkerPool[i]->mChannel->SendBytes(ptr, size + sizeof(int));
+		Worker(i)->Channel()->SendBytes(ptr, size + sizeof(int));
     }
     SAFE_DELETE_VEC(pStart);
 }
@@ -408,10 +409,10 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 	if (!NewWorker(mSlot, &mWorkerPool[mSlot]).Ok()) {
 		return mStatus;
 	}
-	wWorker *worker = mWorkerPool[mSlot];
+	wWorker *worker = Worker(mSlot);
 	
 	// 打开进程间IPC通信channel
-	mStatus = worker->mChannel->Open();
+	mStatus = worker->Channel()->Open();
 	if (!mStatus.Ok()) {
 		return mStatus;
 	}
@@ -420,12 +421,12 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 	// FIOASYNC现已被O_ASYNC标志位取代
 	// todo
 	u_long on = 1;
-    if (ioctl((*worker->mChannel)[0], FIOASYNC, &on) == -1) {
+    if (ioctl(worker->FD(0), FIOASYNC, &on) == -1) {
     	SAFE_DELETE(mWorkerPool[mSlot]);
     	return mStatus = wStatus::IOError("wMaster::SpawnWorker, ioctl(FIOASYNC) failed", strerror(errno));
     }
     // 设置将要在文件描述符channel[0]上接收SIGIO 或 SIGURG事件信号的进程标识
-    if (fcntl((*worker->mChannel)[0], F_SETOWN, mPid) == -1) {
+    if (fcntl(worker->FD(0), F_SETOWN, mPid) == -1) {
     	SAFE_DELETE(mWorkerPool[mSlot]);
     	return mStatus = wStatus::IOError("wMaster::SpawnWorker, fcntl(F_SETOWN) failed", strerror(errno));
     }
@@ -499,9 +500,32 @@ wStatus wMaster::DeletePidFile() {
 	return mStatus = mEnv->DeleteFile(mPidPath);
 }
 
+wStatus wMaster::SignalProcess(char* sig) {
+	std::string str;
+	mStatus = ReadFileToString(mEnv, mPidPath, &str);
+	if (!mStatus.Ok()) {
+		return mStatus;
+	}
+
+	wSlice p(str);
+	uint64_t pid = 0;
+	if (logging::ConsumeDecimalNumber(&p, &pid) && pid > 0) {
+		for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
+			if (strcmp(sig, s->mName)) {
+				if (kill(pid, s->mSigno) == -1) {
+					return wStatus::IOError("wMaster::SignalProcess, kill() failed", strerror(errno));
+				} else {
+					return wStatus::Nothing();
+				}
+			}
+		}
+	}
+	return wStatus::IOError("wMaster::SignalProcess, signal failed", "cannot find signal");
+}
+
 wStatus wMaster::InitSignals() {
-	for (wSignal signal, wSignal::Signal_t* sg = g_signals; sg->mSigno != 0; ++sg) {
-		mStatus = signal.AddHandler(sg);
+	for (wSignal signal, wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
+		mStatus = signal.AddHandler(s);
 		if (!mStatus.Ok()) {
 			return mStatus;
 		}

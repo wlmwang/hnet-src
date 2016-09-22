@@ -10,21 +10,22 @@
 #include <vector>
 #include "wCore.h"
 #include "wStatus.h"
-#include "wThread.h"
+#include "wNoncopyable.h"
 
 namespace hnet {
 
 class wTask;
 class wWorker;
-class wChannelSocket;
 
-class wWorkerIpc : public wThread {
+class wWorkerIpc : public wNoncopyable {
 public:
 	wWorkerIpc(wWorker *worker);
 	~wWorkerIpc();
 
-	virtual wStatus PrepareRun();
-	virtual wStatus Run();
+	wStatus Prepare();
+	wStatus Start();
+	
+	static void ChannelIpc(void* arg);
 
 protected:
     // 事件读写主调函数

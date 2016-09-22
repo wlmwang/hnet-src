@@ -4,27 +4,35 @@
  * Copyright (C) Hupu, Inc.
  */
 
-#ifndef _W_MTCP_CLIENT_H_
-#define _W_MTCP_CLIENT_H_
-
-#include <algorithm>
-#include <map>
-#include <vector>
-
-#include <sys/epoll.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
+#ifndef _W_CLIENT_H_
+#define _W_CLIENT_H_
 
 #include "wCore.h"
 #include "wStatus.h"
+#include "wNoncopyable.h"
+#include "wTask.h"
 
 namespace hnet {
 
-class wClient {
+class wSocket;
+class wMultiClient;
+
+// 单客户端类
+// 建议使用task同步接口（发送、接受）
+class wClient : private wNoncopyable {
 public:
-	wClient();
-	virtual ~wClient();
-	
+	wClient(int32_t type);
+	~wClient();
+    
+	wStatus Connect(std::string ipaddr, uint16_t port, std::string protocol = "TCP");
+	wTask* Task() { return mTask;}
+
+protected:
+	friend class wMultiClient;
+
+	wStatus mStatus;
+	int32_t mType;
+	wTask* mTask;
 };
 
 }	// namespace hnet

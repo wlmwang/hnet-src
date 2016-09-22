@@ -8,6 +8,7 @@
 #include "wMisc.h"
 #include "wMutex.h"
 #include "wTimer.h"
+#include "wEnv.h"
 #include "wTcpSocket.h"
 #include "wUnixSocket.h"
 #include "wTcpTask.h"
@@ -15,7 +16,7 @@
 
 namespace hnet {
 
-wServer::wServer(string title) : mTitle(title), mCheckSwitch(false), mEpollFD(kFDUnknown), 
+wServer::wServer(std::string title) : mTitle(title), mCheckSwitch(false), mEpollFD(kFDUnknown), 
 mEnv(wEnv::Default()), mTimeout(10), mTask(NULL), mExiting(false) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
@@ -27,7 +28,7 @@ wServer::~wServer(){
     SAFE_DELETE(mTaskPoolMutex);
 }
 
-wStatus wServer::Prepare(string ipaddr, uint16_t port, string protocol) {	
+wStatus wServer::Prepare(std::string ipaddr, uint16_t port, std::string protocol) {	
     if (!AddListener(ipaddr, port, protocol).Ok()) {
 		return mStatus;
     }
@@ -121,7 +122,7 @@ wStatus wServer::Recv() {
 		return mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", strerror(errno));
     }
     
-    for (wTask *task = NULL, int i = 0 ; i < iRet ; i++) {
+    for (wTask* task = NULL, int i = 0 ; i < iRet ; i++) {
 		task = reinterpret_cast<wTask *>(evt[i].data.ptr);
 		int64_t fd = task->Socket()->FD();
 		
@@ -257,7 +258,7 @@ wStatus wServer::InitEpoll() {
     return mStatus;
 }
 
-wStatus wServer::AddListener(string ipaddr, uint16_t port, string protocol) {
+wStatus wServer::AddListener(std::string ipaddr, uint16_t port, std::string protocol) {
     wSocket *socket = NULL;
     if (protocol == "TCP") {
 		SAFE_NEW(wTcpSocket(kStListen), socket);
@@ -319,13 +320,13 @@ wStatus wServer::AddTask(wTask* task, int ev, int op, bool newconn) {
 
     if (newconn) {
     	mTaskPoolMutex->Lock();
-    	AddToTaskPool();
+    	AddToTaskPool(task);
     	mTaskPoolMutex->Unlock();
     }
     return mStatus;
 }
 
-wStatus wServer::RemoveTask(wTask* task) {
+wStatus wServer::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter) {
     struct epoll_event evt;
     evt.data.fd = task->Socket()->FD();
     if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, evt.data.fd, &evt) < 0) {
@@ -333,7 +334,8 @@ wStatus wServer::RemoveTask(wTask* task) {
     }
 
     mTaskPoolMutex->Lock();
-    RemoveTaskPool(task);
+    std::vector<wTask*>::iterator it = RemoveTaskPool(task);
+    iter != NULL && (*iter = it);
     mTaskPoolMutex->Unlock();
     return mStatus;
 }
@@ -409,7 +411,7 @@ void wServer::CheckTimeout() {
 				uint64_t interval = nowTm - (*it)->Socket()->SendTm();
 				if (interval >= kKeepAliveTm*1000) {
 				    if (!(*it)->HeartbeatSend().Ok() || (*it)->HeartbeatOut()) {
-						it = RemoveTaskPool(*it);
+						RemoveTask(*it, &it);
 						it--;
 				    }
 				}

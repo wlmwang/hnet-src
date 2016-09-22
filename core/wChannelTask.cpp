@@ -20,37 +20,32 @@ wChannelTask::wChannelTask(wSocket *socket, wWorker *worker) : wTask(socket), mW
     RegisterFunc(CMD_CHANNEL_REQ, CHANNEL_REQ_TERMINATE, &wChannelTask::ChannelTerminate);
 }
 
-int wChannelTask::ChannelOpen(char *pBuffer, int iLen) {
-	struct ChannelReqOpen_t *pCh = (struct ChannelReqOpen_t* )pBuffer;
-	if (mWorker->mWorkerPool != NULL && mWorker->mWorkerPool[pCh->mSlot]) {
-		LOG_DEBUG(ELOG_KEY, "[system] get channel solt:%i pid:%d fd:%d", pCh->mSlot, pCh->mPid, pCh->mFD);
-
-		mWorker->mWorkerPool[pCh->mSlot]->mPid = pCh->mPid;
-		mWorker->mWorkerPool[pCh->mSlot]->mCh[0] = pCh->mFD;
+int wChannelTask::ChannelOpen(char buf[], int len) {
+	struct ChannelReqOpen_t* ch = reinterpret_cast<struct ChannelReqOpen_t*>(buf);
+	if (mWorker->Master()->Worker(ch->mSlot)) {
+		mWorker->Master()->Worker(ch->mSlot)->Pid() = ch->mPid;
+		mWorker->Master()->Worker(ch->mSlot)->FD(0) = ch->mPid;
 	}
 	return 0;
 }
 
-int wChannelTask::ChannelClose(char *pBuffer, int iLen) {
-	struct ChannelReqClose_t *pCh = (struct ChannelReqClose_t* )pBuffer;
-	if (mWorker->mWorkerPool != NULL && mWorker->mWorkerPool[pCh->mSlot]) {
-		LOG_DEBUG(ELOG_KEY, "[system] close channel s:%i pid:%d our:%d fd:%d", pCh->mSlot, pCh->mPid, 
-			mWorker->mWorkerPool[pCh->mSlot]->mPid, mWorker->mWorkerPool[pCh->mSlot]->mCh[0]);
-		
-		if (close(mWorker->mWorkerPool[pCh->mSlot]->mCh[0]) == -1) {
-			LOG_DEBUG(ELOG_KEY, "[system] close() channel failed: %s", strerror(errno));
+int wChannelTask::ChannelClose(char *buf, int len) {
+	struct ChannelReqClose_t* ch = reinterpret_cast<struct ChannelReqClose_t*>(buf);
+	if (mWorker->Master()->Worker(ch->mSlot)) {
+		if (close(mWorker->Master()->Worker(ch->mSlot)->FD(0)) == -1) {
+			//wStatus::IOError("wChannelTask::ChannelClose, close() failed", strerror(errno));
 		}
-		mWorker->mWorkerPool[pCh->mSlot]->mCh[0] = FD_UNKNOWN; //-1
+		mWorker->Master()->Worker(ch->mSlot)->FD(0) = kFDUnknown;
 	}
 	return 0;
 }
 
-int wChannelTask::ChannelQuit(char *pBuffer, int iLen) {
+int wChannelTask::ChannelQuit(char *buf, int len) {
 	g_quit = 1;
 	return 0;
 }
 
-int wChannelTask::ChannelTerminate(char *pBuffer, int iLen) {
+int wChannelTask::ChannelTerminate(char *buf, int len) {
 	g_terminate = 1;
 	return 0;
 }

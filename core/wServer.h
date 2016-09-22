@@ -26,10 +26,10 @@ class wMutex;
 // 服务基础类
 class wServer : private wNoncopyable {
 public:
-    explicit wServer(string title);
+    explicit wServer(std::string title);
     virtual ~wServer();
 
-    wStatus Prepare(string ipaddr, uint16_t port, string protocol = "TCP");
+    wStatus Prepare(std::string ipaddr, uint16_t port, std::string protocol = "TCP");
 
     // single模式启动服务
     wStatus SingleStart(bool daemon = true);
@@ -75,13 +75,13 @@ protected:
 
     wStatus InitEpoll();
     // Listen Socket(nonblock fd)
-    wStatus AddListener(string ipaddr, uint16_t port, string protocol = "TCP");
+    wStatus AddListener(std::string ipaddr, uint16_t port, std::string protocol = "TCP");
     // 添加到epoll侦听事件队列
     wStatus Listener2Epoll();
     wStatus CleanListener();
     
     wStatus AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool newconn = true);
-    wStatus RemoveTask(wTask* task);
+    wStatus RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL);
     wStatus CleanTask();
 
     wStatus AddToTaskPool(wTask *task);
@@ -91,7 +91,7 @@ protected:
     static void CheckTimer(void* arg);
 
     wStatus mStatus;
-    string mTitle;
+    std::string mTitle;
     wEnv *mEnv;
     bool mExiting;
 

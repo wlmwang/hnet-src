@@ -28,6 +28,7 @@ public:
     DEC_FUNC(ChannelClose);
     DEC_FUNC(ChannelQuit);
     DEC_FUNC(ChannelTerminate);
+    
 protected:
     wWorker *mWorker;
 };
