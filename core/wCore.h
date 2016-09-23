@@ -22,6 +22,8 @@
 #include <iostream>
 #include <cstdio>
 
+namespace hnet {
+
 #define SAFE_NEW(type, ptr) \
 do { \
        try { \
@@ -55,9 +57,6 @@ do { \
        delete[] ptr; \
        ptr = NULL; \
 } while(0)
-
-
-namespace hnet {
 
 using namespace std;
 
@@ -107,7 +106,7 @@ const u_char*   kPidPath = "../log/hnet.pid";
 const u_char*   kLockPath = "../log/hnet.lock";
 const u_char*   kAcceptMutex = "../log/hnet.mutex.bin";
 
-const char*     kToken = "Anny";
+const u_char*   kToken = "Anny";
 
 }   // namespace hnet
 

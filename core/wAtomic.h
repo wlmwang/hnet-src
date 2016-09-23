@@ -22,19 +22,19 @@ public:
 
     explicit wAtomic(void* v) : mRep(v) { }
 
-    inline void* Acquire_Load() const {
+    inline void* AcquireLoad() const {
         return mRep.load(std::memory_order_acquire);
     }
 
-    inline void Release_Store(void* v) {
+    inline void ReleaseStore(void* v) {
         mRep.store(v, std::memory_order_release);
     }
 
-    inline void* NoBarrier_Load() const {
+    inline void* NoBarrierLoad() const {
         return mRep.load(std::memory_order_relaxed);
     }
 
-    inline void NoBarrier_Store(void* v) {
+    inline void NoBarrierStore(void* v) {
         mRep.store(v, std::memory_order_relaxed);
     }
 };

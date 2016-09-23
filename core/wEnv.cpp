@@ -114,12 +114,12 @@ private:
     wAtomic allowed_;
 
     intptr_t GetAllowed() const {
-        return reinterpret_cast<intptr_t>(allowed_.Acquire_Load());
+        return reinterpret_cast<intptr_t>(allowed_.AcquireLoad());
     }
 
     // 要求：调用前 mu_ 需加锁
     void SetAllowed(intptr_t v) {
-        allowed_.Release_Store(reinterpret_cast<void*>(v));
+        allowed_.ReleaseStore(reinterpret_cast<void*>(v));
     }
 };
 
