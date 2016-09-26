@@ -19,16 +19,16 @@ class wTask;
 // 请使用task同步消息接口（发送、接受）
 class wClient : private wNoncopyable {
 public:
-	wClient(int32_t type);
-	~wClient();
-    
-	wStatus Connect(std::string ipaddr, uint16_t port, std::string protocol = "TCP");
-	wTask* Task() { return mTask;}
+    wClient(int32_t type);
+    ~wClient();
+
+    wStatus Connect(std::string ipaddr, uint16_t port, std::string protocol = "TCP");
+    wTask* Task() { return mTask;}
 
 protected:
-	wStatus mStatus;
-	int32_t mType;
-	wTask* mTask;
+    wStatus mStatus;
+    int32_t mType;
+    wTask* mTask;
 };
 
 }	// namespace hnet
