@@ -59,7 +59,7 @@ enum {
 #   define  LOG_WARN(vLogName, vFmt, ...)	LogWarn(vLogName, vFmt, ##__VA_ARGS__)
 #   define  LOG_ERROR(vLogName, vFmt, ...)	LogError(vLogName, vFmt, ##__VA_ARGS__)
 #   define  LOG_FATAL(vLogName, vFmt, ...)	LogFatal(vLogName, vFmt, ##__VA_ARGS__)
-#   define  LOG_SHUTDOWN_ALL                    ShutdownAllLog()
+#   define  LOG_SHUTDOWN_ALL()              ShutdownAllLog()
 
 #else
 #   define  INIT_ROLLINGFILE_LOG(vLogName, vLogDir, vPriority, ...)
@@ -71,7 +71,7 @@ enum {
 #   define  LOG_WARN(vLogName, vFmt, ...)
 #   define  LOG_ERROR(vLogName, vFmt, ...)
 #   define  LOG_FATAL(vLogName, vFmt, ...)
-#   define  LOG_SHUTDOWN_ALL
+#   define  LOG_SHUTDOWN_ALL()
 #endif
 
 //初始化一种类型的日志：如果该类型日志已存在，

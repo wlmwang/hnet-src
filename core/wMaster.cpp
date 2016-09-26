@@ -17,9 +17,10 @@
 
 namespace hnet {
 
-wMaster::wMaster(char* title, wServer* server, wConfig* config) : mPidPath(kPidPath), mSlot(kMaxPorcess), mWorkerNum(0),
+wMaster::wMaster(const char* title, wServer* server, wConfig* config) : mSlot(kMaxPorcess), mWorkerNum(0),
 mEnv(wEnv::Default()), mPid(getpid()), mTitle(title), mServer(server), mConfig(config) {
     mWorkerNum = mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
+    mPidPath = mConfig->mPidPath == NULL ? kPidPath: mConfig->mPidPath;
 }
 
 wMaster::~wMaster() {
@@ -28,7 +29,7 @@ wMaster::~wMaster() {
     }
 }
 
-wStatus wMaster::Prepare() {
+wStatus wMaster::PrepareStart() {
     // 检测配置、服务实例
     if (mServer == NULL) {
     	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mServer is null");
@@ -44,7 +45,13 @@ wStatus wMaster::Prepare() {
     if (!mStatus.Ok()) {
     	return mStatus;
     }
-    return mStatus = mServer->Prepare(mConfig->mIPAddr, mConfig->mPort, mConfig->mPtotocol);
+
+    if (mConfig->mPtotocol == NULL) {
+    	mStatus = mServer->PrepareStart(mConfig->mIPAddr, mConfig->mPort);
+    } else {
+    	mStatus = mServer->PrepareStart(mConfig->mIPAddr, mConfig->mPort, mConfig->mPtotocol);
+    }
+    return mStatus;
 }
 
 wStatus wMaster::SingleStart() {

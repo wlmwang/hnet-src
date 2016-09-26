@@ -24,14 +24,14 @@ class wWorker;
 
 class wMaster : private wNoncopyable {
 public:
-    wMaster(char* title, wServer* server, wConfig* config);
+    wMaster(const char* title, wServer* server, wConfig* config);
     virtual ~wMaster();
     
     // 发送命令行信号
     wStatus SignalProcess(char* sig);
 
     // 准备启动
-    wStatus Prepare();
+    wStatus PrepareStart();
     
     // 单进程模式启动
     wStatus SingleStart();
@@ -43,13 +43,13 @@ public:
     // 修改启动worker个数（默认cpu个数）
     // 修改自定义信号处理（默认定义在wSignal.cpp文件中）
     virtual wStatus PrepareRun() {
-        return wStatus::IOError("wMaster::PrepareRun failed", "method should be inherit");
+        return mStatus;
     }
 
     // 单进程为客户端事件循环体
     // M-W模式中为系统信号循环体
     virtual wStatus Run() {
-        return wStatus::IOError("wMaster::Run failed", "method should be inherit");
+        return mStatus;
     }
     
     virtual wStatus NewWorker(uint32_t slot, wWorker** ptr);

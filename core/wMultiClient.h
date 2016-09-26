@@ -23,12 +23,16 @@ class wEnv;
 class wTimer;
 class wClient;
 
+// 多客户端
+// 用于与服务端长连，监听服务端消息
 class wMultiClient : private wNoncopyable {
 public:
 	wMultiClient();
 	virtual ~wMultiClient();
 
+    // 挂载客户端
 	wStatus MountClient(int32_t type, std::string ipaddr, uint16_t port, std::string protocol = "TCP");
+    // 卸载客户端
 	wStatus UnmountClient();
 	
 	wStatus Prepare();
@@ -38,11 +42,11 @@ public:
     wStatus Broadcast(const char *cmd, int len, int32_t type = kReserveType);
 
     virtual wStatus PrepareRun() {
-        return wStatus::IOError("wMultiClient::PrepareRun, server will be exit", "method should be inherit");
+        return mStatus;
     }
 
     virtual wStatus Run() {
-        return wStatus::IOError("wMultiClient::Run, server will be exit", "method should be inherit");
+        return mStatus;
     }
 	
 	virtual void CheckTimeout();

@@ -13,22 +13,6 @@ wMultiClient::wMultiClient() : mEpollFD(kFDUnknown), mEnv(wEnv::Default()), mTim
 	mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
 
-wStatus wMultiClient::Prepare() {
-    if (!InitEpoll().Ok()) {
-		return mStatus;
-    }
-    return mStatus = PrepareRun();
-}
-
-wStatus wMultiClient::Start(bool deamon) {
-	// 进入服务主服务
-	while (deamon) {
-		Recv();
-		Run();
-		CheckTimer();
-	}
-}
-
 wStatus wMultiClient::MountClient(int32_t type, std::string ipaddr, uint16_t port, std::string protocol) {
 	if (type == kReserveType) {
 		return mStatus = wStatus::IOError("wMultiClient::MountClient failed", "reserve type");
@@ -49,6 +33,22 @@ wStatus wMultiClient::MountClient(int32_t type, std::string ipaddr, uint16_t por
 		SAFE_DELETE(client);
 	}
 	return mStatus;
+}
+
+wStatus wMultiClient::Prepare() {
+    if (!InitEpoll().Ok()) {
+		return mStatus;
+    }
+    return mStatus = PrepareRun();
+}
+
+wStatus wMultiClient::Start(bool deamon) {
+	// 进入服务主服务
+	while (deamon) {
+		Recv();
+		Run();
+		CheckTimer();
+	}
 }
 
 wStatus wMultiClient::InitEpoll() {

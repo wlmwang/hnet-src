@@ -23,7 +23,6 @@ wStatus wClient::Connect(std::string ipaddr, uint16_t port, std::string protocol
     } else if(protocol == "UNIX") {
 		SAFE_NEW(wUnixSocket(kStConnect), socket);
     }
-    
     if (socket == NULL) {
     	return mStatus = wStatus::IOError("wServer::AddListener", "new failed");
     }
@@ -47,7 +46,6 @@ wStatus wClient::Connect(std::string ipaddr, uint16_t port, std::string protocol
     } else if(protocol == "UNIX") {
 		SAFE_NEW(wUnixTask(sock), mTask);
     }
-
     if (mTask == NULL) {
 		return mStatus = wStatus::IOError("wClient::Connect", "new failed");
     }

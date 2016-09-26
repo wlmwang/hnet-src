@@ -26,10 +26,10 @@ class wMutex;
 // 服务基础类
 class wServer : private wNoncopyable {
 public:
-    explicit wServer(std::string title);
+    explicit wServer();
     virtual ~wServer();
 
-    wStatus Prepare(std::string ipaddr, uint16_t port, std::string protocol = "TCP");
+    wStatus PrepareStart(std::string ipaddr, uint16_t port, std::string protocol = "TCP");
 
     // single模式启动服务
     wStatus SingleStart(bool daemon = true);
@@ -48,13 +48,12 @@ public:
     virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr);
     virtual wStatus NewUnixTask(wSocket* sock, wTask** ptr);
     
-    // 服务主循环逻辑，继承可以定制服务
     virtual wStatus PrepareRun() {
-        return wStatus::IOError("wServer::PrepareRun, server will be exit", "method should be inherit");
+        return mStatus;
     }
-
+    // 服务主循环逻辑，继承可以定制服务
     virtual wStatus Run() {
-        return wStatus::IOError("wServer::Run, server will be exit", "method should be inherit");
+        return mStatus;
     }
     
     virtual wStatus HandleSignal();
@@ -91,7 +90,6 @@ protected:
     static void CheckTimer(void* arg);
 
     wStatus mStatus;
-    std::string mTitle;
     wEnv *mEnv;
     bool mExiting;
 

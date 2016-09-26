@@ -16,8 +16,7 @@
 
 namespace hnet {
 
-wServer::wServer(std::string title) : mTitle(title), mCheckSwitch(false), mEpollFD(kFDUnknown), 
-mEnv(wEnv::Default()), mTimeout(10), mTask(NULL), mExiting(false) {
+wServer::wServer() : mCheckSwitch(false), mEpollFD(kFDUnknown), mEnv(wEnv::Default()), mTimeout(10), mTask(NULL), mExiting(false) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
     SAFE_NEW(wMutex, mTaskPoolMutex);
@@ -28,7 +27,7 @@ wServer::~wServer(){
     SAFE_DELETE(mTaskPoolMutex);
 }
 
-wStatus wServer::Prepare(std::string ipaddr, uint16_t port, std::string protocol) {	
+wStatus wServer::PrepareStart(std::string ipaddr, uint16_t port, std::string protocol) {	
     if (!AddListener(ipaddr, port, protocol).Ok()) {
 		return mStatus;
     }
