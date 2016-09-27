@@ -17,7 +17,7 @@ class wSocket;
 
 class wTcpTask : public wTask {
 public:
-    wTcpTask(wSocket *socket) : wTask(socket) { }
+    wTcpTask(wSocket *socket, int32_t type) : wTask(socket, type) { }
 };
 
 }	// namespace hnet

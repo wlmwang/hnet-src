@@ -13,15 +13,19 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
+#include "wMutex.h"
+#include "wMisc.h"
+#include "wSocket.h"
 
 namespace hnet {
+
+const int kNumShardBits = 4;
+const int kNumShard = 1 << kNumShardBits;
 
 class wEnv;
 class wTimer;
 class wTask;
-class wSocket;
 class wMaster;
-class wMutex;
 
 // 服务基础类
 class wServer : private wNoncopyable {
@@ -40,7 +44,7 @@ public:
     wStatus WorkerStart(bool daemon = true);
     
     // 异步发送消息
-    wStatus Send(wTask *task, const char *cmd, int len);
+    wStatus Send(const wTask *task, const char *cmd, int len);
     // 异步广播消息
     wStatus Broadcast(const char *cmd, int len);
 
@@ -66,14 +70,19 @@ public:
 
 protected:
     friend class wMaster;
-    
+  
+    // 散列到mTaskPool的某个分组中
+    static uint32_t Shard(const wSocket* sock) {
+        uint32_t hash = misc::Hash(sock->Host().c_str(), sock->Host().size(), 0);
+        return hash >> (32 - kNumShardBits);
+    }
+
     // 事件读写主调函数
     wStatus Recv();
     // accept接受连接
     wStatus AcceptConn(wTask *task);
 
     wStatus InitEpoll();
-    // Listen Socket(nonblock fd)
     wStatus AddListener(std::string ipaddr, uint16_t port, std::string protocol = "TCP");
     // 添加到epoll侦听事件队列
     wStatus Listener2Epoll();
@@ -85,7 +94,7 @@ protected:
 
     wStatus AddToTaskPool(wTask *task);
     std::vector<wTask*>::iterator RemoveTaskPool(wTask *task);
-    wStatus CleanTaskPool();
+    wStatus CleanTaskPool(std::vector<wTask*> pool);
 
     static void CheckTimer(void* arg);
 
@@ -93,18 +102,22 @@ protected:
     wEnv *mEnv;
     bool mExiting;
 
-    std::vector<wSocket *> mListenSock;	// 多监听服务
-    uint64_t mLatestTm;	// 服务器当前时间 微妙
-    wTimer mHeartbeatTimer;	// 定时器
-    bool mCheckSwitch;	// 心跳开关，默认关闭。强烈建议移动互联网环境下打开，而非依赖keepalive机制保活
+    // 多监听服务
+    std::vector<wSocket *> mListenSock;
+    // 服务器当前时间 微妙
+    uint64_t mLatestTm;
+    // 定时器
+    wTimer mHeartbeatTimer;
+    // 心跳开关，默认关闭。强烈建议移动互联网环境下打开，而非依赖keepalive机制保活
+    bool mCheckSwitch;
 
     int32_t mEpollFD;
     uint64_t mTimeout;
 
     // task|pool
     wTask *mTask;
-    std::vector<wTask*> mTaskPool;
-    wMutex *mTaskPoolMutex;
+    std::vector<wTask*> mTaskPool[kNumShard];
+    wMutex mTaskPoolMutex[kNumShard];
 };
 
 }	// namespace hnet

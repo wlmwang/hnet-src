@@ -18,7 +18,7 @@ class wSocket;
 
 class wTask : private wNoncopyable {
 public:
-    wTask(wSocket *socket);
+    wTask(wSocket *socket, int32_t type = 0);
     virtual ~wTask();
     
     virtual const char* Name() const = 0;
@@ -64,6 +64,7 @@ public:
     wStatus SyncRecv(char buf[], size_t len, size_t *size, uint32_t timeout /*s*/);
    
     wStatus HeartbeatSend();
+    
     inline bool HeartbeatOut() {
         return mHeartbeat > kHeartbeat;
     }
@@ -80,8 +81,13 @@ public:
         return mSendLen;
     }
     
+    inline int32_t Type() {
+        return mType;
+    }
+
 protected:
     int8_t mState;
+    int32_t mType;
     wStatus mStatus;
     wSocket *mSocket;
     uint8_t mHeartbeat;

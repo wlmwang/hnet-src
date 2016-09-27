@@ -5,31 +5,92 @@
  */
 
 #include "wMultiClient.h"
+#include "wTimer.h"
 #include "wEnv.h"
-#include "wClient.h"
+#include "wTcpSocket.h"
+#include "wUnixSocket.h"
+#include "wTcpTask.h"
+#include "wUnixTask.h"
 
-wMultiClient::wMultiClient() : mEpollFD(kFDUnknown), mEnv(wEnv::Default()), mTimeout(10) {
+wMultiClient::wMultiClient() : mEnv(wEnv::Default()), mEpollFD(kFDUnknown), mTimeout(10) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
 
 wMultiClient::~wMultiClient() {
-    CleanClient();
+    CleanConnect();
+}
+
+wStatus wMultiClient::AddConnect(int type, std::string ipaddr, uint16_t port, std::string protocol) {
+    if (type >= kNumShard) {
+        return mStatus = wStatus::IOError("wMultiClient::AddConnect failed", "overload type");
+    }
+
+    wSocket *socket;
+    if (protocol == "TCP") {
+       SAFE_NEW(wTcpSocket(kStConnect), socket);
+    } else if(protocol == "UNIX") {
+       SAFE_NEW(wUnixSocket(kStConnect), socket);
+    } else {
+        socket = NULL;
+    }
+    if (socket == NULL) {
+        return mStatus = wStatus::IOError("wMultiClient::Connect", "socket new failed");
+    }
+
+    mStatus = socket->Open();
+    if (!mStatus.Ok()) {
+        SAFE_DELETE(socket);
+        return mStatus;
+    }
+
+    int64_t ret;
+    mStatus = socket->Connect(&ret, ipaddr, port);
+    if (!mStatus.Ok()) {
+        SAFE_DELETE(socket);
+        return mStatus;
+    }
+    socket->SS() = kSsConnected;
+
+    if (protocol == "TCP") {
+        mStatus = NewUnixTask(socket, &mTask, type);
+    } else if(protocol == "UNIX") {
+        mStatus = NewUnixTask(socket, &mTask, type);
+    } else {
+        mStatus = wStatus::IOError("wMultiClient::AcceptConn", "unknown task");
+    }
+
+    if (mStatus.Ok()) {
+        // 登录
+        if (!mTask->Login().Ok()) {
+            SAFE_DELETE(mTask);
+        } else if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
+            SAFE_DELETE(mTask);
+        }
+    }
+    return mStatus;
+}
+
+wStatus wMultiClient::DisConnect(wTask* task) {
+    return RemoveTask(task);
 }
 
 wStatus wMultiClient::Prepare() {
     if (!InitEpoll().Ok()) {
-	return mStatus;
+	   return mStatus;
     }
     return mStatus = PrepareRun();
 }
 
-wStatus wMultiClient::Start(bool deamon) {
+wStatus wMultiClient::Start() {
+    
+    // 开启心跳线程
+    mEnv->Schedule(wServer::CheckTimer, this);
+
     // 进入服务主服务
-    while (deamon) {
+    while (true) {
         Recv();
         Run();
-        CheckTimer();
     }
 }
 
@@ -47,9 +108,8 @@ wStatus wMultiClient::Recv() {
 	return mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", strerror(errno));
     }
     
-    for (wClient* client = NULL, wTask task = NULL , int i = 0 ; i < iRet ; i++) {
-        client = reinterpret_cast<wClient*>(evt[i].data.ptr);
-        task = client->Task();
+    for (wTask* task, int i = 0 ; i < iRet ; i++) {
+        task = reinterpret_cast<wTask*>(evt[i].data.ptr);
 
         if (task->Socket()->FD() == kFDUnknown) {
             continue;
@@ -68,7 +128,7 @@ wStatus wMultiClient::Recv() {
             } else if (evt[i].events & EPOLLOUT) {
                 // 清除写事件
                 if (task->SendLen() == 0) {
-                    AddTask(client->mType, client, EPOLLIN, EPOLL_CTL_MOD, false);
+                    AddTask(task, EPOLLIN, EPOLL_CTL_MOD, false);
                     continue;
                 }
                 // 套接口准备好了写入操作
@@ -84,170 +144,156 @@ wStatus wMultiClient::Recv() {
     return mStatus;
 }
 
-wStatus wMultiClient::Broadcast(const char *cmd, int len, int32_t type) {
-    std::vector<wClient*> cs;
-    if (type == kReserveType) {
-        for (std::map<int, vector<wClient*> >::iterator it = mClientPool.begin(); it != mClientPool.end(); it++) {
-            for (std::vector<wClient*>::iterator ic = it->second.begin(); ic != it->second.end(), ic++) {
-                cs.push_back(*ic);
+wStatus wMultiClient::Broadcast(const char *cmd, int len, int type) {
+    if (type == kNumShard) {
+        for (int i = 0; i < kNumShard; i++) {
+            mTaskPoolMutex[i].Lock();
+            if (mTaskPool[i].size() > 0) {
+                for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
+                    Send(*it, cmd, len);
+                }
+            }
+            mTaskPoolMutex[i].Unlock();
+        }
+    } else {
+        mTaskPoolMutex[type].Lock();
+        if (mTaskPool[type].size() > 0) {
+            for (std::vector<wTask*>::iterator it = mTaskPool[type].begin(); it != mTaskPool[type].end(); it++) {
+                Send(*it, cmd, len);
             }
         }
-    } else {
-        std::map<int, vector<wClient*> >::iterator it = mClientPool.find(type);
-        cs = it->second;
-    }
-    if (cs.size() > 0) {
-        for (std::vector<wClient*>::iterator it = cs.begin(); it != cs.end(); it++) {
-            Send(*it, cmd, len);
-        }
+        mTaskPoolMutex[type].Unlock();
     }
     return mStatus;
 }
 
-wStatus wMultiClient::Send(wClient *client, const char *cmd, int len) {
-    wTask = client->Task();
+wStatus wMultiClient::Send(wTask *task, const char *cmd, int len) {
     if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected 
-    	&& (pTask->Socket()->SF() == kSfSend || pTask->Socket()->SF() == kSfRvsd)) {
+        && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
+        
         mStatus = task->Send2Buf(cmd, len);
         if (mStatus.Ok()) {
-            return AddClient(client->mType, client, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+            return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
         }
     } else {
-	mStatus = wStatus::IOError("wMultiClient::Send, send error", "socket cannot send message");
+        mStatus = wStatus::IOError("wMultiClient::Send, send error", "socket cannot send message");
     }
     return mStatus;
 }
 
-void wMultiClient::CheckTimer() {
+void wMultiClient::CheckTimer(void* arg) {
     uint64_t interval = misc::GetTimeofday() - mLatestTm;
     if (interval < 100*1000) {
-	return;
+        return;
     }
     mLatestTm += interval;
     
-    if (mHeartbeatTimer.CheckTimer(interval/1000)) {
-        CheckTimeout();
+    wMultiClient* client = reinterpret_cast<wMultiClient* >(arg);
+    if (client->mHeartbeatTimer.CheckTimer(interval/1000)) {
+        client->CheckTimeout();
     }
 }
 
 void wMultiClient::CheckTimeout() {
-    for (std::map<int, vector<wClient*> >::iterator it = mClientPool.begin(); it != mClientPool.end(); it++) {
-        for (std::vector<wClient*>::iterator ic = it->second.begin(); ic != it->second.end(), ic++) {
-            if ((*ic)->Task()->Socket()->FD() == kFDUnknown) {
-                // 重连
-                std::string protocol = (*ic)->Task()->Socket()->SP() == kSpUnix? "UNIX": "TCP";
-                MountClient((*ic)->mType, (*ic)->Task()->Socket()->Host(), (*ic)->Task()->Socket()->Port(), protocol);
-                RemoveClient(*ic, &ic);
-                ic--;
-            } else {
-                // 上一次发送时间间隔
-                uint64_t interval = nowTm - (*ic)->Task()->Socket()->SendTm();
-                if (interval >= kKeepAliveTm*1000) {
-                    if (!(*ic)->Task()->HeartbeatSend().Ok() || (*ic)->Task()->HeartbeatOut()) {
-                        RemoveClient(*ic, &ic);
-                        ic--;
+    if (!mCheckSwitch) {
+        return;
+    }
+    uint64_t nowTm = misc::GetTimeofday();
+    
+    for (int i = 0; i < kNumShard; i++) {
+        mTaskPoolMutex[i].Lock();
+        if (mTaskPool[i].size() > 0) {
+            for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
+                if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected) {
+                    if ((*it)->Socket()->FD() == kFDUnknown) {
+                        // 重连
+                        std::string protocol = (*it)->Socket()->SP() == kSpUnix ? "UNIX": "TCP";
+                        AddConnect((*it)->Type(), (*it)->Socket()->Host(), (*it)->Socket()->Port(), protocol);
+                        RemoveTask(*it, &it);
+                    } else {
+                        // 上一次发送时间间隔
+                        uint64_t interval = nowTm - (*it)->Socket()->SendTm();
+                        if (interval >= kKeepAliveTm*1000) {
+                            // 发送心跳
+                            (*it)->HeartbeatSend();
+                            // 心跳超限
+                            if ((*it)->HeartbeatOut()) {
+                                RemoveTask(*it, &it);
+                            }
+                        }
                     }
                 }
             }
         }
+        mTaskPoolMutex[i].Unlock();
     }
 }
 
-wStatus wMultiClient::MountClient(int32_t type, std::string ipaddr, uint16_t port, std::string protocol) {
-    if (type == kReserveType) {
-        return mStatus = wStatus::IOError("wMultiClient::MountClient failed", "reserve type");
-    }
-    wClient* client;
-    SAFE_NEW(wClient(type), client);
-    if (client == NULL) {
-        return mStatus = wStatus::IOError("wMultiClient::MountClient", "new failed");
-    }
-
-    mStatus = client->Connect(ipaddr, port, protocol);
-    if (!mStatus.Ok()) {
-        SAFE_DELETE(client);
-        return mStatus;
-    }
-
-    if (!AddClient(type, client, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
-        SAFE_DELETE(client);
-    }
-    return mStatus;
-}
-
-wStatus wMultiClient::UnMountClient(wClient *client) {
-    return RemoveClient(client);
-}
-
-wStatus wMultiClient::RemoveClient(wClient* client, std::vector<wClient*>::iterator* iter) {
+wStatus wMultiClient::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter) {
     struct epoll_event evt;
-    evt.data.fd = client->Task()->Socket()->FD();
+    evt.data.fd = task->Socket()->FD();
     if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, evt.data.fd, &evt) < 0) {
-	return mStatus = wStatus::IOError("wMultiClient::RemoveClient, epoll_ctl() failed", strerror(errno));
+        return mStatus = wStatus::IOError("wMultiClient::RemoveTask, epoll_ctl() failed", strerror(errno));
     }
-    std::vector<wClient*>::iterator it = RemoveClientPool(client->mType, client);
+
+    mTaskPoolMutex[task->Type()].Lock();
+    std::vector<wTask*>::iterator it = RemoveTaskPool(task);
     iter != NULL && (*iter = it);
+    mTaskPoolMutex[task->Type()].Unlock();
     return mStatus;
 }
 
-std::vector<wClient*>::iterator wMultiClient::RemoveClientPool(int32_t type, wClient* client) {
-    std::map<int, vector<client*> >::iterator it = mClientPool.find(type);
-	if (it == mClientPool.end()) {
-            //todo
-	}
-
-    std::vector<wClient*> vClient = it->second;
-    std::vector<client*>::iterator ic = std::find(vClient.begin(), vClient.end(), client);
-    if (ic != vClient.end()) {
-    	vClient.erase(ic);
-        SAFE_DELETE(*ic);
-        mClientPool.erase(it);
-        mClientPool.insert(pair<int, std::vector<wClient*> >(type, vClient));
+std::vector<wTask*>::iterator wMultiClient::RemoveTaskPool(wTask* task) {
+    std::vector<wTask*>::iterator it = std::find(mTaskPool[task->Type()].begin(), mTaskPool[task->Type()].end(), task);
+    if (it != mTaskPool[task->Type()].end()) {
+        SAFE_DELETE(*it);
+        it = mTaskPool[task->Type()].erase(it);
     }
-    return ic;
+    return it;
 }
 
-wStatus wMultiClient::CleanClient() {
+wStatus wMultiClient::AddTask(int type, wTask* task, int ev, int op, bool newconn) {
+    struct epoll_event evt;
+    evt.events = ev | EPOLLERR | EPOLLHUP | EPOLLET;
+    evt.data.fd = task->Socket()->FD();
+    evt.data.ptr = task;
+    if (epoll_ctl(mEpollFD, op, evt.data.fd, &evt) == -1) {
+        return mStatus = wStatus::IOError("wMultiClient::AddTask, epoll_ctl() failed", strerror(errno));
+    }
+
+    if (newconn) {
+        mTaskPoolMutex[task->Type()].Lock();
+        AddToTaskPool(task);
+        mTaskPoolMutex[task->Type()].Unlock();
+    }
+    return mStatus;
+}
+
+wStatus wMultiClient::AddToTaskPool(wTask* task) {
+    mTaskPool[task->Type()].push_back(task);
+    return mStatus;
+}
+
+wStatus wMultiClient::CleanTask() {
     if (close(mEpollFD) == -1) {
-	return mStatus = wStatus::IOError("wMultiClient::CleanClient, close() failed", strerror(errno));
+        return mStatus = wStatus::IOError("wMultiClient::CleanTask, close() failed", strerror(errno));
     }
     mEpollFD = kFDUnknown;
-    CleanClientPool();
-    return mStatus;
-}
 
-wStatus wMultiClient::CleanClientPool() {
-    if (mClientPool.size() > 0) {
-	for (std::vector<wClient*>::iterator it = mClientPool.begin(); it != mClientPool.end(); it++) {
-	    SAFE_DELETE(*it);
-	}
-    }
-    mClientPool.clear();
-    return mStatus;
-}
-
-wStatus wMultiClient::AddClient(int32_t type, wClient* client, int ev, int op, bool newconn) {
-    struct epoll_event evt;
-    evt.events = ev | EPOLLERR | EPOLLHUP; // |EPOLLET
-    evt.data.fd = client->Task()->Socket()->FD();
-    evt.data.ptr = client;
-    if (epoll_ctl(mEpollFD, op, evt.data.fd, &evt) == -1) {
-	return mStatus = wStatus::IOError("wMultiClient::AddClient, epoll_ctl() failed", strerror(errno));
-    }
-    if (newconn) {
-    	AddToClientPool(type, client);
+    for (int i = 0; i < kNumShard; i++) {
+        mTaskPoolMutex[i].Lock();
+        CleanTaskPool(mTaskPool[i]);
+        mTaskPoolMutex[i].Unlock();
     }
     return mStatus;
 }
 
-wStatus wMultiClient::AddToClientPool(int32_t type, wClient* client) {
-    std::vector<client*> clients;
-    std::map<int, vector<client*> >::iterator it = mClientPool.find(type);
-    if (it != mClientPool.end()) {
-        clients = it->second;
-        mClientPool.erase(it);
+wStatus wMultiClient::CleanTaskPool(std::vector<wTask*> pool) {
+    if (pool.size() > 0) {
+        for (std::vector<wTask*>::iterator it = pool.begin(); it != pool.end(); it++) {
+            SAFE_DELETE(*it);
+        }
     }
-    clients.push_back(client);
-    mClientPool.insert(pair<int32_t, vector<wClient*> >(type, clients));
+    pool.clear();
     return mStatus;
 }

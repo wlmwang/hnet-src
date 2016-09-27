@@ -4,27 +4,29 @@
  * Copyright (C) Hupu, Inc.
  */
 
-#include "wClient.h"
+#include "wSingleClient.h"
 #include "wTcpSocket.h"
 #include "wUnixSocket.h"
 #include "wTcpTask.h"
 #include "wUnixTask.h"
 
-wClient::wClient(int32_t type) : mType(type) { }
+wSingleClient::wSingleClient() { }
 
-wClient::~wClient() {
+wSingleClient::~wSingleClient() {
     SAFE_DELETE(mTask);
 }
 
-wStatus wClient::Connect(std::string ipaddr, uint16_t port, std::string protocol) {
-    wSocket *socket = NULL;
+wStatus wSingleClient::Connect(std::string ipaddr, uint16_t port, std::string protocol) {
+    wSocket *socket;
     if (protocol == "TCP") {
-	SAFE_NEW(wTcpSocket(kStConnect), socket);
+	   SAFE_NEW(wTcpSocket(kStConnect), socket);
     } else if(protocol == "UNIX") {
-	SAFE_NEW(wUnixSocket(kStConnect), socket);
+	   SAFE_NEW(wUnixSocket(kStConnect), socket);
+    } else {
+        socket = NULL;
     }
     if (socket == NULL) {
-    	return mStatus = wStatus::IOError("wServer::AddListener", "new failed");
+    	return mStatus = wStatus::IOError("wSingleClient::Connect", "socket new failed");
     }
 	
     mStatus = socket->Open();
@@ -42,12 +44,12 @@ wStatus wClient::Connect(std::string ipaddr, uint16_t port, std::string protocol
     socket->SS() = kSsConnected;
 	
     if (protocol == "TCP") {
-	SAFE_NEW(wTcpTask(sock), mTask);
+	   SAFE_NEW(wTcpTask(sock), mTask);
     } else if(protocol == "UNIX") {
-	SAFE_NEW(wUnixTask(sock), mTask);
+	   SAFE_NEW(wUnixTask(sock), mTask);
     }
     if (mTask == NULL) {
-	return mStatus = wStatus::IOError("wClient::Connect", "new failed");
+	   return mStatus = wStatus::IOError("wSingleClient::Connect", "task new failed");
     }
     return mStatus;
 }

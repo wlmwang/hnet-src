@@ -11,7 +11,7 @@
 
 namespace hnet {
 
-wTask::wTask(wSocket* socket) : mSocket(socket), mHeartbeat(0), mRecvLen(0), mSendLen(0),
+wTask::wTask(wSocket* socket, int32_t type) : mSocket(socket), mType(type), mHeartbeat(0), mRecvLen(0), mSendLen(0),
 mRecvRead(mRecvBuff), mRecvWrite(mRecvBuff), mSendRead(mSendBuff), mSendWrite(mSendBuff) { }
 
 wTask::~wTask() {

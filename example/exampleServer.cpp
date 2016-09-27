@@ -29,7 +29,7 @@ struct ExampleReqEcho_t : public ExampleReqCmd_s {
 
 class ExampleTask : public wTcpTask {
 public:
-	ExampleTask(wSocket *socket) : wTcpTask(socket) {
+	ExampleTask(wSocket *socket, int32_t type) : wTcpTask(socket, type) {
 		RegisterFunc(CMD_EXAMPLE_REQ, EXAMPLE_REQ_ECHO, &ExampleTask::ExampleEcho);
 	}
     virtual const char* Name() const {
@@ -49,9 +49,9 @@ int ExampleTask::ExampleEcho(char buf[], int len) {
 class ExampleServer : public wServer {
 public:
 	virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr) {
-	    SAFE_NEW(ExampleTask(sock), *ptr);
+	    SAFE_NEW(ExampleTask(sock, Shard(sock)), *ptr);
 	    if (*ptr == NULL) {
-			return wStatus::IOError("ExampleServer::NewTcpTask", "new failed");
+			return wStatus::IOError("ExampleServer::NewTcpTask", "ExampleTask new failed");
 	    }
 	    return mStatus;
 	}

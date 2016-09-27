@@ -15,7 +15,7 @@ namespace hnet {
 
 class wUnixTask : public wTask {
 public:
-    wUnixTask(wSocket *socket) : wTask(socket) { }
+    wUnixTask(wSocket *socket, int32_t type) : wTask(socket, type) { }
 };
 
 }	// namespace hnet
