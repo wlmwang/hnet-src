@@ -5,9 +5,9 @@
  */
 
 #include <algorithm>
-#include <sys/epoll.h>
 #include "wWorkerIpc.h"
 #include "wWorker.h"
+#include "wMaster.h"
 #include "wMisc.h"
 #include "wChannelSocket.h"
 #include "wChannelTask.h"
@@ -25,7 +25,9 @@ void wWorkerIpc::ChannelIpc(void* arg) {
     wWorkerIpc *ipc;
     SAFE_NEW(wWorkerIpc(worker), ipc);
     if (ipc != NULL) {
-    	ipc->Prepare().Ok() && ipc->Start();
+    	if (ipc->Prepare().Ok()) {
+    		ipc->Start();
+    	}
     	SAFE_DELETE(ipc);
     }
 }
@@ -36,8 +38,8 @@ wStatus wWorkerIpc::Prepare() {
 	}
 
 	// worker自身channel[1]被监听
-	if (mWorker != NULL && mWorker->mWorkerPool[mWorker->mSlot] != NULL) {
-		wChannelSocket *socket = mWorker->mWorkerPool[mWorker->mSlot]->mChannel;
+	if (mWorker != NULL && mWorker->mMaster->mWorkerPool[mWorker->mSlot] != NULL) {
+		wChannelSocket *socket = mWorker->mMaster->mWorkerPool[mWorker->mSlot]->mChannel;
 		if (socket != NULL) {
 			wTask *task;
 			SAFE_NEW(wChannelTask(socket, mWorker), task);
@@ -72,15 +74,14 @@ wStatus wWorkerIpc::InitEpoll() {
 
 wStatus wWorkerIpc::AddTask(wTask* task, int ev, int op, bool newconn) {
     struct epoll_event evt;
-    evt.events = ev | EPOLLERR | EPOLLHUP; // |EPOLLET
+    evt.events = ev | EPOLLERR | EPOLLHUP | EPOLLET;
     evt.data.fd = task->Socket()->FD();
     evt.data.ptr = task;
     if (epoll_ctl(mEpollFD, op, evt.data.fd, &evt) == -1) {
 		return mStatus = wStatus::IOError("wWorkerIpc::AddTask, epoll_ctl() failed", strerror(errno));
     }
-
     if (newconn) {
-    	AddToTaskPool();
+    	AddToTaskPool(task);
     }
     return mStatus;
 }
@@ -91,7 +92,6 @@ wStatus wWorkerIpc::RemoveTask(wTask* task) {
     if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, evt.data.fd, &evt) < 0) {
 		return mStatus = wStatus::IOError("wWorkerIpc::RemoveTask, epoll_ctl() failed", strerror(errno));
     }
-
     RemoveTaskPool(task);
     return mStatus;
 }
@@ -101,7 +101,6 @@ wStatus wWorkerIpc::CleanTask() {
 		return mStatus = wStatus::IOError("wServer::CleanTask, close() failed", strerror(errno));
     }
     mEpollFD = kFDUnknown;
-
     CleanTaskPool();
     return mStatus;
 }
@@ -137,7 +136,9 @@ wStatus wWorkerIpc::Recv() {
 		return mStatus = wStatus::IOError("wWorkerIpc::Recv, epoll_wait() failed", strerror(errno));
     }
 
-	for (wTask *task = NULL, int i = 0 ; i < iRet ; i++) {
+    wTask *task;
+    ssize_t size;
+	for (int i = 0 ; i < iRet ; i++) {
 		task = reinterpret_cast<wTask *>(evt[i].data.ptr);
 		int64_t fd = task->Socket()->FD();
 		
@@ -151,7 +152,7 @@ wStatus wWorkerIpc::Recv() {
 		    }
 		} else if (evt[i].events & EPOLLIN) {
 			// 套接口准备好了读取操作
-			mStatus = task->TaskRecv();
+			mStatus = task->TaskRecv(&size);
 			if (!mStatus.Ok()) {
 			    if (!RemoveTask(task).Ok()) {
 					return mStatus;
@@ -165,7 +166,7 @@ wStatus wWorkerIpc::Recv() {
 			}
 			// 套接口准备好了写入操作
 			// 写入失败，半连接，对端读关闭
-			mStatus = task->TaskSend();
+			mStatus = task->TaskSend(&size);
 			if (!mStatus.Ok()) {
 			    if (!RemoveTask(task).Ok()) {
 			        return mStatus;
@@ -173,6 +174,7 @@ wStatus wWorkerIpc::Recv() {
 			}
 	    }
 	}
+	return mStatus;
 }
 
 }	// namespace hnet

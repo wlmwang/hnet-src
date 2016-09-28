@@ -21,7 +21,7 @@ public:
     wTask(wSocket *socket, int32_t type = 0);
     virtual ~wTask();
     
-    virtual const char* Name() const = 0;
+    virtual const char* Name() = 0;
 
     // 登录验证
     virtual wStatus Login() {
@@ -43,17 +43,17 @@ public:
     
     // 解析消息
     // wStatus返回不为空，则task被关闭
-    virtual wStatus Handlemsg(char *buf[], uint32_t len);
+    virtual wStatus Handlemsg(char buf[], uint32_t len);
     
     // 异步发送：将待发送客户端消息写入buf，等待TaskSend发送
     // wStatus返回不为空，则task被关闭
-    wStatus Send2Buf(const char buf[], size_t len);
+    wStatus Send2Buf(char buf[], size_t len);
 
     // 同步发送确切长度消息
     // wStatus返回不为空，则task被关闭
     // size = -1 对端发生错误|稍后重试|对端关闭
     // size >= 0 发送字符
-    wStatus SyncSend(const char buf[], size_t len, ssize_t *size);
+    wStatus SyncSend(char buf[], size_t len, ssize_t *size);
     
     // 同步接受确切长度消息
     // 调用者：保证此sock未加入epoll中，否则出现事件竞争！另外也要确保buf有足够长的空间接受自此同步消息
@@ -61,7 +61,7 @@ public:
     // size = -1 对端发生错误|稍后重试
     // size = 0  对端关闭
     // size > 0  接受字符
-    wStatus SyncRecv(char buf[], size_t len, size_t *size, uint32_t timeout /*s*/);
+    wStatus SyncRecv(char buf[], size_t len, ssize_t *size, uint32_t timeout /*s*/);
    
     wStatus HeartbeatSend();
     
@@ -70,7 +70,7 @@ public:
     }
     
     inline void HeartbeatReset() {
-        return mHeartbeat = 0;
+        mHeartbeat = 0;
     }
     
     inline wSocket *Socket() {
@@ -87,8 +87,9 @@ public:
 
 protected:
     int8_t mState;
-    int32_t mType;
     wStatus mStatus;
+
+    int32_t mType;
     wSocket *mSocket;
     uint8_t mHeartbeat;
 
@@ -96,19 +97,18 @@ protected:
     char mRecvBuff[kPackageSize];    // 异步接受消息缓冲
     char mSendBuff[kPackageSize];    // 异步发送消息缓冲
     
-    char *mRecvWrite;
     char *mRecvRead;
-    size_t  mRecvLen;  // 已接受数据长度
+    char *mRecvWrite;
+    size_t mRecvLen;  // 已接受数据长度
 
-    char *mSendWrite;
     char *mSendRead;
-    size_t  mSendLen;  // 可发送数据长度
+    char *mSendWrite;
+    size_t mSendLen;  // 可发送数据长度
 
 protected:
     // 路由规则
     DEC_DISP(mDispatch);
-
-    void RegisterFunc(uint8_t cmd, uint8_t para, DispatchFunc func) {
+    void RegisterFunc(uint8_t cmd, uint8_t para, TaskDisp func) {
         REG_DISP(mDispatch, Name(), cmd, para, func);
     }
 };

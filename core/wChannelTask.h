@@ -20,7 +20,7 @@ class wChannelTask : public wTask {
 public:
     wChannelTask(wSocket *socket, wWorker *worker = NULL);
     
-    virtual const char* Name() const {
+    virtual const char* Name() {
 		return "wChannelTask";
     }
     

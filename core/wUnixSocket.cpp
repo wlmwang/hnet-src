@@ -7,6 +7,7 @@
 #include <sys/un.h>
 #include <poll.h>
 #include "wUnixSocket.h"
+#include "wMisc.h"
 
 namespace hnet {
 
@@ -23,7 +24,7 @@ wStatus wUnixSocket::Bind(string host, uint16_t port) {
 	socketAddr.sun_family = AF_UNIX;
 	strncpy(socketAddr.sun_path, host.c_str(), sizeof(socketAddr.sun_path) - 1);
 
-	if (bind(mFD, (struct sockaddr *)&socketAddr, sizeof(socketAddr)) == -1) {
+	if (bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr)) == -1) {
 		return mStatus = wStatus::IOError("wUnixSocket::Bind bind failed", strerror(errno));
 	}
 	return mStatus = wStatus::Nothing();
@@ -47,7 +48,7 @@ wStatus wUnixSocket::Connect(int64_t *ret, string host, uint16_t port, float tim
 	mHost = host;
 
 	string tmpsock = "unix_";
-	misc::AppendNumberTo(&tmpsock, static_cast<uint64_t>(getpid()));
+	logging::AppendNumberTo(&tmpsock, static_cast<uint64_t>(getpid()));
 	tmpsock += ".sock";
 	if (!Bind(mHost).Ok()) {
 		*ret = static_cast<int64_t>(-1);
@@ -67,8 +68,8 @@ wStatus wUnixSocket::Connect(int64_t *ret, string host, uint16_t port, float tim
 	socketAddr.sun_family = AF_UNIX;
 	strncpy(socketAddr.sun_path, mHost.c_str(), sizeof(socketAddr.sun_path) - 1);
 
-	*ret = static_cast<int64_t>(connect(mFD, (const struct sockaddr *)&socketAddr, sizeof(socketAddr)));
-	if (ret == -1 && timeout > 0) {
+	*ret = static_cast<int64_t>(connect(mFD, reinterpret_cast<const struct sockaddr *>(&socketAddr), sizeof(socketAddr)));
+	if (*ret == -1 && timeout > 0) {
 		// 建立启动但是尚未完成
 		if (errno == EINPROGRESS) {
 			while (true) {
@@ -82,10 +83,10 @@ wStatus wUnixSocket::Connect(int64_t *ret, string host, uint16_t port, float tim
 					}
 					return mStatus = wStatus::IOError("wUnixSocket::Connect poll failed", strerror(errno));
 				} else if(rt == 0) {
-					return mStatus = wStatus::IOError("wUnixSocket::Connect connect timeout", timeout);
+					return mStatus = wStatus::IOError("wUnixSocket::Connect connect timeout", "");
 				} else {
 					int val, len = sizeof(int);
-					if (getsockopt(mFD, SOL_SOCKET, SO_ERROR, (char*)&val, (socklen_t*)&len) == -1) {
+					if (getsockopt(mFD, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&val), reinterpret_cast<socklen_t*>(&len)) == -1) {
 					    return mStatus = wStatus::IOError("wUnixSocket::Connect getsockopt SO_ERROR failed", strerror(errno));
 					}
 					if (val > 0) {

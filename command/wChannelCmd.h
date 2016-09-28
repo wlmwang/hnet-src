@@ -18,6 +18,7 @@ namespace hnet {
 const uint8_t CMD_CHANNEL_REQ = 1;
 struct ChannelReqCmd_s : public wCommand {
     ChannelReqCmd_s(uint8_t para) : wCommand(CMD_CHANNEL_REQ, para), mPid(0), mSlot(0), mFD(kFDUnknown) { }
+    
     int32_t mPid;	// 发送方进程pid
     int32_t mSlot;	// 发送方进程表中偏移量(下标)
     int32_t mFD;	// 发送方ch[0]描述符

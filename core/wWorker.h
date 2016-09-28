@@ -12,6 +12,7 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
+#include "wChannelSocket.h"
 
 namespace hnet {
 
@@ -20,11 +21,10 @@ const char*     kWorkerTitle = " - worker process";
 
 class wMaster;
 class wWorkerIpc;
-class wChannelSocket;
 
 class wWorker : public wNoncopyable {
 public:
-	wWorker(const char* title, uint32_t slot, wMaster* master);
+	wWorker(std::string title, uint32_t slot, wMaster* master);
 	virtual ~wWorker();
 
 	virtual wStatus PrepareRun() {
@@ -40,14 +40,17 @@ public:
 
 	inline wMaster* Master() { return mMaster;}
     inline wChannelSocket* Channel() { return mChannel;}
-    inline int64_t& FD(uint8_t i) { return (*mChannel)[i];}
+    inline int& FD(uint8_t i) { return (*mChannel)[i];}
     inline pid_t& Pid() { return mPid;}
+
 protected:
 	friend class wMaster;
 	friend class wWorkerIpc;
 
 	wStatus mStatus;
 	wMaster *mMaster;
+	string mTitle;	// 进程名
+	pid_t mPid;
 	int mPriority;	// 进程优先级
 	int mRlimitCore;// 连接限制
 
@@ -58,8 +61,6 @@ protected:
 	int mRespawn;	// worker启动模式。退出是否重启
 	int mJustSpawn;
 
-	const string mTitle;	// 进程名
-	pid_t mPid;
 	uint32_t mSlot;	// 进程表中索引
 	wChannelSocket* mChannel;	// worker进程channel
 };

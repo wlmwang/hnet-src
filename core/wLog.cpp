@@ -6,20 +6,20 @@
 
 #include "wLog.h"
 
-namespace hnet {
-
 #ifdef USE_LOG4CPP
 #   ifdef LINUX
 #       ifndef LOG4CPP_HAVE_GETTIMEOFDAY 
 #           define LOG4CPP_HAVE_GETTIMEOFDAY
-#	endif
+#   endif
 #   endif
 
-#   include	"log4cpp/Category.hh"
-#   include	"log4cpp/RollingFileAppender.hh"
-#   include	"log4cpp/BasicLayout.hh"
-#   include	"log4cpp/PatternLayout.hh"
+#   include "log4cpp/Category.hh"
+#   include "log4cpp/RollingFileAppender.hh"
+#   include "log4cpp/BasicLayout.hh"
+#   include "log4cpp/PatternLayout.hh"
 #endif
+
+namespace hnet {
 
 //初始一种类型的日志
 int InitLog(const char* vLogName, const char* vLogDir, int32_t vPriority, uint32_t vMaxFileSize, uint32_t vMaxBackupIndex, bool vAppend) {

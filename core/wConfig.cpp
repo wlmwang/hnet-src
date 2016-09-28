@@ -8,7 +8,6 @@
 #include "wMisc.h"
 #include "wSlice.h"
 #include "tinyxml.h"    //lib tinyxml
-#include "wProcTitle.h"
 
 namespace hnet {
 
@@ -23,7 +22,7 @@ wConfig::~wConfig() {
 // ./bin/server -h 127.0.0.1
 wStatus wConfig::GetOption(int argc, const char *argv[]) {
     for (int i = 1; i < argc; i++) {
-        char* p = argv[i];
+        const char* p = argv[i];
         if (*p++ != '-') {
             return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
         }
@@ -54,7 +53,8 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
             case 'p':
                 uint64_t val;
                 if (*p) {
-                    if (misc::ConsumeDecimalNumber(&wSlice(p, strlen(p)), &val)) {
+                    std::string s = std::string(p);
+                    if (logging::ConsumeDecimalNumber(&s, &val)) {
                         mPort = static_cast<uint16_t>(val);
                         goto next;
                     }
@@ -62,7 +62,8 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
-                    if (misc::ConsumeDecimalNumber(&wSlice(p, strlen(p)), &val)) {
+                    std::string s = std::string(p);
+                    if (logging::ConsumeDecimalNumber(&s, &val)) {
                         mPort = static_cast<uint16_t>(val);
                         goto next;
                     }

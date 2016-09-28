@@ -60,10 +60,10 @@ do { \
 
 using namespace std;
 
-const u_char    kProcTitlePad = '\0';
-const u_char    kLF = '\n';
-const u_char    kCR = '\r';
-const u_char*   kCRLF = "\r\n";
+const char      kProcTitlePad = '\0';
+const char      kLF = '\n';
+const char      kCR = '\r';
+const char*     kCRLF = "\r\n";
 
 const uint32_t  kMaxHostNameLen = 255;
 const uint8_t   kMaxIpLen = 16;
@@ -84,7 +84,7 @@ const uint32_t  kMaxPackageSize = 524284;
 const uint32_t  kMinPackageSize = 1;
 
 //进程相关
-const uint32_t	kMaxPorcess = 1024;
+const uint32_t	kMaxProcess = 1024;
 
 const int8_t    kProcessNoRespawn = -1;		// 子进程退出时，父进程不再创建
 const int8_t    kProcessJustSpawn = -2;		// 子进程正在重启，该进程创建之后，再次退出时，父进程不再创建
@@ -96,17 +96,17 @@ const bool      kLittleEndian = true;
 const uint32_t  kPageSize = 4096;
 
 // 根据具体项目修改
-const u_char*   kSoftwareName   = "hnet";
-const u_char*   kSoftwareVer    = "0.0.1";
+const char*     kSoftwareName   = "hnet";
+const char*     kSoftwareVer    = "0.0.1";
 
-const u_char*   kDeamonUser = "root";
-const u_char*   kDeamonGroup = "root";
+const uid_t     kDeamonUser = 0;
+const gid_t     kDeamonGroup = 0;
 
-const u_char*   kPidPath = "../log/hnet.pid";
-const u_char*   kLockPath = "../log/hnet.lock";
-const u_char*   kAcceptMutex = "../log/hnet.mutex.bin";
+const char*     kPidPath = "../log/hnet.pid";
+const char*     kLockPath = "../log/hnet.lock";
+const char*     kAcceptMutex = "../log/hnet.mutex.bin";
 
-const u_char*   kToken = "Anny";
+const char*     kToken = "Anny";
 
 }   // namespace hnet
 

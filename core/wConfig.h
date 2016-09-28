@@ -10,15 +10,14 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
+#include "wProcTitle.h"
 
 namespace hnet {
-
-class wProcTitle;
 
 class wConfig : private wNoncopyable {
 public:
     wConfig() : mShowVer(false), mShowHelp(false), mDaemon(false), mSignal(NULL), 
-        mHost(NULL), mPort(0), mProcTitle(NULL), mPidPath(NULL), mLockPath(NULL) { }
+    mPidPath(NULL), mLockPath(NULL), mHost(NULL), mPtotocol(NULL), mPort(0), mProcTitle(NULL) { }
 
     virtual ~wConfig();
     virtual wStatus GetOption(int argc, const char *argv[]);
@@ -27,11 +26,11 @@ public:
     bool mShowVer;
     bool mShowHelp;
     bool mDaemon;
-    char* mSignal;
-    char* mPidPath;
-    char* mLockPath;
+    const char* mSignal;
+    const char* mPidPath;
+    const char* mLockPath;
 
-    char* mHost;
+    const char* mHost;
     char* mPtotocol;
     uint16_t mPort;
 

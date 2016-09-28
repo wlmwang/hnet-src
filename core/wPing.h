@@ -42,9 +42,9 @@ protected:
     unsigned short CalChksum(unsigned short *addr, int len);
 
     wStatus mStatus;
-    pid_t mPid;
     int mFD;
     int mSeqNum;
+    pid_t mPid;
 
     string mStrIp;
     struct sockaddr_in mDestAddr;	//目的地址

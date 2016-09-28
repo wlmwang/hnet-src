@@ -21,10 +21,11 @@ class wEnv;
 class wServer;
 class wConfig;
 class wWorker;
+class wWorkerIpc;
 
 class wMaster : private wNoncopyable {
 public:
-    wMaster(const char* title, wServer* server, wConfig* config);
+    wMaster(std::string title, wServer* server, wConfig* config);
     virtual ~wMaster();
     
     // 发送命令行信号
@@ -66,9 +67,10 @@ public:
 
 protected:
     friend class wWorker;
+    friend class wWorkerIpc;
 
     // 启动n个worker进程
-    wStatus WorkerStart(uint32_t n, int32_t type = kPorcessRespawn);
+    wStatus WorkerStart(uint32_t n, int32_t type = kProcessRespawn);
     // 创建一个worker进程
     wStatus SpawnWorker(int64_t type);
     
@@ -95,19 +97,19 @@ protected:
     void WorkerExitStat();
 
     wStatus mStatus;
-    uint8_t mNcpu;
+    wEnv *mEnv;
+    wServer* mServer;
+    wConfig* mConfig;
+    string mTitle;    // 进程名
+
     pid_t mPid;		// master进程id
-    const string mPidPath;
-    const string mTitle;	// 进程名
+    string mPidPath;
+    uint8_t mNcpu;
 
     // 进程表
     uint32_t mSlot; // worker分配索引
     uint32_t mWorkerNum; // worker数量
-    wWorker *mWorkerPool[kMaxPorcess];
-
-    wEnv *mEnv;
-    wServer* mServer;
-    wConfig* mConfig;
+    wWorker *mWorkerPool[kMaxProcess];
 };
 
 }	// namespace hnet

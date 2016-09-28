@@ -13,6 +13,7 @@
 #include <net/if.h>
 #include "wCore.h"
 #include "wStatus.h"
+#include "wSlice.h"
 #include "wCommand.h"
 #include "wSignal.h"
 
@@ -54,8 +55,6 @@ inline uint64_t DecodeFixed64(const char* ptr) {
 
 namespace logging {
 
-class wSlice;
-
 // 将整型按字符方式追加到str字符串结尾
 void AppendNumberTo(std::string* str, uint64_t num);
 
@@ -69,13 +68,12 @@ std::string NumberToString(uint64_t num);
 std::string EscapeString(const wSlice& value);
 
 // 消费转化in字符串前缀的十进制数字符串，返回是否转化正确
-bool ConsumeDecimalNumber(wSlice* in, uint64_t* val);
+bool ConsumeDecimalNumber(std::string* in, uint64_t* val);
 
 }   // namespace logging
 
 namespace misc {
 
-class wStatus;
 // 创建守护进程
 wStatus InitDaemon(const char *filename = NULL, const char *prefix = NULL);
 

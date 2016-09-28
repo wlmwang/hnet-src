@@ -13,7 +13,7 @@ namespace hnet {
 
 class wRandom {
 public:
-    explicit Random(uint32_t s) : seed_(s & 0x7fffffffu) {
+    explicit wRandom(uint32_t s) : mSeed(s & 0x7fffffffu) {
         if (mSeed == 0 || mSeed == 2147483647L) {
             mSeed = 1;
         }

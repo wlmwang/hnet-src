@@ -16,14 +16,14 @@
 #include "wMutex.h"
 #include "wMisc.h"
 #include "wSocket.h"
+#include "wTimer.h"
 
 namespace hnet {
 
-const int kNumShardBits = 4;
+const int kNumShardBits = 8;
 const int kNumShard = 1 << kNumShardBits;
 
 class wEnv;
-class wTimer;
 class wTask;
 class wMaster;
 
@@ -44,9 +44,9 @@ public:
     wStatus WorkerStart(bool daemon = true);
     
     // 异步发送消息
-    wStatus Send(const wTask *task, const char *cmd, int len);
+    wStatus Send(wTask *task, char *cmd, size_t len);
     // 异步广播消息
-    wStatus Broadcast(const char *cmd, int len);
+    wStatus Broadcast(char *cmd, int len);
 
     // 新建客户端
     virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr);
@@ -72,7 +72,7 @@ protected:
     friend class wMaster;
   
     // 散列到mTaskPool的某个分组中
-    static uint32_t Shard(const wSocket* sock) {
+    static uint32_t Shard(wSocket* sock) {
         uint32_t hash = misc::Hash(sock->Host().c_str(), sock->Host().size(), 0);
         return hash >> (32 - kNumShardBits);
     }
@@ -102,14 +102,15 @@ protected:
     wEnv *mEnv;
     bool mExiting;
 
-    // 多监听服务
-    std::vector<wSocket *> mListenSock;
+    // 心跳开关，默认关闭。强烈建议移动互联网环境下打开，而非依赖keepalive机制保活
+    bool mCheckSwitch;
     // 服务器当前时间 微妙
     uint64_t mLatestTm;
     // 定时器
     wTimer mHeartbeatTimer;
-    // 心跳开关，默认关闭。强烈建议移动互联网环境下打开，而非依赖keepalive机制保活
-    bool mCheckSwitch;
+
+    // 多监听服务
+    std::vector<wSocket *> mListenSock;
 
     int32_t mEpollFD;
     uint64_t mTimeout;

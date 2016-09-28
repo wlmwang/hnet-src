@@ -5,138 +5,155 @@
  */
 
 #include "wMsgQueue.h"
+#include "wMisc.h"
 
 namespace hnet {
-void wMsgQueue::SetBuffer(char *vBuffer, int vBufferLen) {
-	char *pBuffer = vBuffer;
-	mBeginIdxPtr = (int *)pBuffer;	//前4位开始地址
-	pBuffer += sizeof(int);
-	mEndIdxPtr = (int *)pBuffer;	//后4位开始地址
-	pBuffer += sizeof(int);
-	mBufferPtr = pBuffer;	//实际数据地址
-	mQueueSize = vBufferLen - 2 * sizeof(int);	//实际数据长度
+void wMsgQueue::SetBuffer(char buf[], int len) {
+	char *p = buf;
+	// 前4位开始地址
+	mBeginIdxPtr = reinterpret_cast<int *>(p);
+	p += sizeof(int);
+	// 后4位开始地址
+	mEndIdxPtr = reinterpret_cast<int *>(p);
+	p += sizeof(int);
+	// 实际数据地址
+	mBufferPtr = p;
+	// 实际数据长度
+	mQueueSize = len - 2 * sizeof(int);
 }
 
-int wMsgQueue::Pop(char *pBuffer, int vBufferLen) {
-	if (pBuffer == NULL) return -1;
+int wMsgQueue::Pop(char buf[], int len) {
+	if (buf == NULL) {
+		return -1;
+	}
 
-	//临时值，防止发送端同时操作产生同步问题
-	int iBeginIdx = *mBeginIdxPtr;
-	int iEndIdx = *mEndIdxPtr;
+	// 临时值，防止发送端同时操作产生同步问题
+	int begin = *mBeginIdxPtr;
+	int end = *mEndIdxPtr;
 
-	if (iBeginIdx == iEndIdx) return 0;
+	if (begin == end) {
+		return 0;
+	}
 
 	// 当前所有消息占据的长度
-	int iAllMsgLen;
-	if (iBeginIdx > iEndIdx) {
-		iAllMsgLen = (int)mQueueSize - iBeginIdx + iEndIdx;
+	int msglen;
+	if (begin > end) {
+		msglen = (int)mQueueSize - begin + end;
 	} else {
-		iAllMsgLen = iEndIdx - iBeginIdx;
+		msglen = end - begin;
 	}
 	
 	//如果消息有问题，则直接忽略
-	if (iAllMsgLen <= (int)sizeof(int)) {
-		*mBeginIdxPtr = iEndIdx;
+	if (msglen <= static_cast<int>(sizeof(int))) {
+		*mBeginIdxPtr = end;
 		return -2;
 	}
 
 	//消息长度
-	int iHeadMsgLen;
+	int headlen;
 	//分段长度
-	if (iBeginIdx > (int)mQueueSize - (int)sizeof(int)) {
-		int iLenCopyOnce = (int)mQueueSize - iBeginIdx;
-		memcpy((void *)&iHeadMsgLen, (const void *)(mBufferPtr + iBeginIdx), iLenCopyOnce);
-		memcpy((void *)(((char *)&iHeadMsgLen) + iLenCopyOnce), (const void *)mBufferPtr, (int)sizeof(int) - iLenCopyOnce);
+	if (begin > static_cast<int>(mQueueSize) - static_cast<int>(sizeof(int))) {
+		int copeonce = static_cast<int>(mQueueSize - begin);
+		memcpy((void *)&headlen, reinterpret_cast<const void *>(mBufferPtr + begin), copeonce);
+		memcpy((void *)(((char *)&headlen) + copeonce), reinterpret_cast<const void *>(mBufferPtr), static_cast<int>(sizeof(int)) - copeonce);
 	} else {
-		iHeadMsgLen = *(int *)(mBufferPtr + iBeginIdx);
+		headlen = *reinterpret_cast<int *>(mBufferPtr + begin);
 	}
 
 	// 消息长度判断
-	if (iHeadMsgLen < 0 || iHeadMsgLen > iAllMsgLen - (int)sizeof(int)) return -3;
+	if (headlen < 0 || headlen > msglen - static_cast<int>(sizeof(int))) {
+		return -3;
+	}
 	
 	// 如果接收长度过短
-	if (iHeadMsgLen > vBufferLen) return -4;
+	if (headlen > len) {
+		return -4;
+	}
 
-	int iMsgEndIdx = iBeginIdx + (int)sizeof(int) + (int)iHeadMsgLen;
+	int msgend = begin + static_cast<int>(sizeof(int)) + headlen;
 	//如果消息没有分段
-	if (iMsgEndIdx <= (int)mQueueSize) {
-		memcpy((void *)pBuffer, (const void *)(mBufferPtr + iBeginIdx + (int)sizeof(int)), iHeadMsgLen);
-		*mBeginIdxPtr = iMsgEndIdx;
-		return iHeadMsgLen;
+	if (msgend <= (int)mQueueSize) {
+		memcpy((void *)buf, (const void *)(mBufferPtr + begin + static_cast<int>(sizeof(int))), headlen);
+		*mBeginIdxPtr = msgend;
+		return headlen;
 	} else {
 		//前半段的长度
-		int iTmpLen = (int)mQueueSize - (int)sizeof(int) - iBeginIdx;
-		if (iTmpLen <= 0) {
-			memcpy((void *)pBuffer, (const void *)(mBufferPtr - iTmpLen), iHeadMsgLen);
-			*mBeginIdxPtr = iHeadMsgLen - iTmpLen;
-			return iHeadMsgLen;
+		int templen = (int)mQueueSize - static_cast<int>(sizeof(int)) - begin;
+		if (templen <= 0) {
+			memcpy((void *)buf, reinterpret_cast<const void*>(mBufferPtr - templen), headlen);
+			*mBeginIdxPtr = headlen - templen;
+			return headlen;
 		}
 		//拷贝前半段
-		memcpy((void *)pBuffer, (const void *)(mBufferPtr + iBeginIdx + (int)sizeof(int)), iTmpLen);
+		memcpy(reinterpret_cast<const void*>(buf), reinterpret_cast<const void*>(mBufferPtr + begin + (int)sizeof(int)), templen);
 		//后半段的长度
-		int iLastLen = iHeadMsgLen - iTmpLen;
+		int lastlen = headlen - templen;
 		//拷贝后半段
-		memcpy((void *)(pBuffer + iTmpLen), (const void *)mBufferPtr, iLastLen);
+		memcpy((void *)(buf + templen), reinterpret_cast<const void*>(mBufferPtr), lastlen);
 		//调整起始位置
-		*mBeginIdxPtr = iLastLen;
-		return iHeadMsgLen;
+		*mBeginIdxPtr = lastlen;
+		return headlen;
 	}
 }
 
-int wMsgQueue::Push(char *pBuffer, int vBufferLen) {
-	W_ASSERT(pBuffer != NULL || vBufferLen <= 0 || vBufferLen > mQueueSize - MSG_QUEUE_RESERVE_LEN, return -1);
-
-	int iBeginIdx = *mBeginIdxPtr;
-	int iEndIdx = *mEndIdxPtr;
+int wMsgQueue::Push(char *buf, int len) {
+	if (buf == NULL || len < 0 || len > mQueueSize - kReserveLen) {
+		return -1;
+	}
+	int begin = *mBeginIdxPtr;
+	int end = *mEndIdxPtr;
 
 	//剩余的空间长度
-	int iLastLen;
-	if (iBeginIdx == iEndIdx) {
-		iLastLen = (int)mQueueSize;
-	} else if (iBeginIdx > iEndIdx) {
-		iLastLen = iBeginIdx - iEndIdx;
+	int lastlen;
+	if (begin == end) {
+		lastlen = (int)mQueueSize;
+	} else if (begin > end) {
+		lastlen = begin - end;
 	} else {
-		iLastLen = (int)mQueueSize - iEndIdx + iBeginIdx;
+		lastlen = (int)mQueueSize - end + begin;
 	}
 
 	//减去保留长度
-	iLastLen -= MSG_QUEUE_RESERVE_LEN;
+	lastlen -= kReserveLen;
 
 	//如果剩余长度不够
-	if (iLastLen < vBufferLen + (int)sizeof(int)) return -2;
+	if (lastlen < len + static_cast<int>(sizeof(int))) {
+		return -2;
+	}
 
 	//消息长度判断
-	if ((int)vBufferLen <= 0 || (int)vBufferLen > (int)mQueueSize - MSG_QUEUE_RESERVE_LEN) return -3;
-
+	if (len <= 0 || len > mQueueSize - kReserveLen) {
+		return -3;
+	}
 	//拷贝长度，如果分段
-	if (iEndIdx > (int)mQueueSize - (int)sizeof(int)) {
-		int iLenCopyOnce = (int)mQueueSize - iEndIdx;
-		memcpy((void *)(mBufferPtr + iEndIdx), (const void *)&vBufferLen, iLenCopyOnce);
-		memcpy((void *)mBufferPtr, (const void *)(((char *)&vBufferLen) + iLenCopyOnce), sizeof(int) - iLenCopyOnce);
+	if (end > (int)mQueueSize - (int)sizeof(int)) {
+		int iLenCopyOnce = (int)mQueueSize - end;
+		memcpy((void *)(mBufferPtr + end), (const void *)&len, iLenCopyOnce);
+		memcpy((void *)mBufferPtr, (const void *)(((char *)&len) + iLenCopyOnce), sizeof(int) - iLenCopyOnce);
 	} else {	// 如果不分段
-		*(int *)(mBufferPtr + iEndIdx) = vBufferLen;
+		*(int *)(mBufferPtr + end) = len;
 	}
 
 	//确定当前的拷贝入口
-	int iNowEndIdx = iEndIdx + (int)sizeof(int);
+	int iNowEndIdx = end + (int)sizeof(int);
 	if (iNowEndIdx >= (int)mQueueSize) {
 		iNowEndIdx -= (int)mQueueSize;
 	}
 
-	int iMsgEndIdx = iNowEndIdx + vBufferLen;
+	int msgend = iNowEndIdx + len;
 	//不需要分段
-	if (iMsgEndIdx <= (int)mQueueSize) {
-		memcpy((void *)(mBufferPtr + iNowEndIdx), (const void *)pBuffer, vBufferLen);
-		*mEndIdxPtr = iNowEndIdx + vBufferLen;
+	if (msgend <= (int)mQueueSize) {
+		memcpy((void *)(mBufferPtr + iNowEndIdx), (const void *)buf, len);
+		*mEndIdxPtr = iNowEndIdx + len;
 		return 0;
 	} else {
 		//前半段的长度
-		int iTmpLen = (int)mQueueSize - iNowEndIdx;
+		int tmplen = (int)mQueueSize - iNowEndIdx;
 		//拷贝消息前半段
-		memcpy((void *)(mBufferPtr + iNowEndIdx), (const void *)pBuffer, iTmpLen);
+		memcpy((void *)(mBufferPtr + iNowEndIdx), (const void *)buf, tmplen);
 		//后半段的长度
-		int iLastLen = vBufferLen - iTmpLen;
-		memcpy((void *)mBufferPtr, (const void *)(pBuffer + iTmpLen), iLastLen);
+		int iLastLen = len - tmplen;
+		memcpy((void *)mBufferPtr, (const void *)(buf + tmplen), iLastLen);
 		*mEndIdxPtr = iLastLen;
 		return 0;
 	}

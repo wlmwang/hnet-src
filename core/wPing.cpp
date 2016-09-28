@@ -14,7 +14,7 @@
 
 namespace hnet {
 
-wPing::wPing() : mStatus(), mFD(kFDUnknown), mSeqNum(0), mPid(getpid()) { }
+wPing::wPing() : mFD(kFDUnknown), mSeqNum(0), mPid(getpid()) { }
 
 wPing::~wPing() {
     Close();
@@ -82,7 +82,7 @@ wStatus wPing::Ping(const char *ip) {
         return mStatus = wStatus::InvalidArgument("wPing::Ping failed", "ip is NULL or open was not called");
     }
 
-    mStrIp = pIp;
+    mStrIp = ip;
     bzero(&mDestAddr, sizeof(mDestAddr));
     mDestAddr.sin_family = AF_INET;
 

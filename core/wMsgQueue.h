@@ -13,12 +13,12 @@
 
 namespace hnet {
 
-#define MSG_QUEUE_RESERVE_LEN 8
+const int kReserveLen = 8;
 
 // 消息传递的共享内存队列
 class wMsgQueue : private wNoncopyable {
 public:
-	void SetBuffer(char *vBuffer, int vBufferLen);
+	void SetBuffer(char buf[], int len);
 	/**
 	 * 取出第一个消息，本函数只改变mBeginIdx
 	 * @param  pBuffer    [out]

@@ -12,19 +12,20 @@
 #include "wSignal.h"
 #include "wWorker.h"
 #include "wChannelCmd.h" // *channel*_t
+#include "wChannelSocket.h"
 #include "wConfig.h"
 #include "wServer.h"
 
 namespace hnet {
 
-wMaster::wMaster(const char* title, wServer* server, wConfig* config) : mSlot(kMaxPorcess), mWorkerNum(0),
-mEnv(wEnv::Default()), mPid(getpid()), mTitle(title), mServer(server), mConfig(config) {
+wMaster::wMaster(std::string title, wServer* server, wConfig* config) : mEnv(wEnv::Default()), mServer(server), mConfig(config), 
+mTitle(title), mPid(getpid()), mSlot(kMaxProcess) {
     mWorkerNum = mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
     mPidPath = mConfig->mPidPath == NULL ? kPidPath: mConfig->mPidPath;
 }
 
 wMaster::~wMaster() {
-    for (uint32_t i = 0; i < kMaxPorcess; ++i) {
+    for (uint32_t i = 0; i < kMaxProcess; ++i) {
 		SAFE_DELETE(mWorkerPool[i]);
     }
 }
@@ -33,7 +34,7 @@ wStatus wMaster::PrepareStart() {
     // 检测配置、服务实例
     if (mServer == NULL) {
     	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mServer is null");
-    } else if (mConfig == NULL || mConfig->mIPAddr == NULL || mConfig->mPort == 0) {
+    } else if (mConfig == NULL || mConfig->mHost == NULL || mConfig->mPort == 0) {
     	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mConfig is null or ip|port is illegal");
     }
 
@@ -47,9 +48,9 @@ wStatus wMaster::PrepareStart() {
     }
 
     if (mConfig->mPtotocol == NULL) {
-    	mStatus = mServer->PrepareStart(mConfig->mIPAddr, mConfig->mPort);
+    	mStatus = mServer->PrepareStart(mConfig->mHost, mConfig->mPort);
     } else {
-    	mStatus = mServer->PrepareStart(mConfig->mIPAddr, mConfig->mPort, mConfig->mPtotocol);
+    	mStatus = mServer->PrepareStart(mConfig->mHost, mConfig->mPort, mConfig->mPtotocol);
     }
     return mStatus;
 }
@@ -69,7 +70,7 @@ wStatus wMaster::SingleStart() {
 }
 
 wStatus wMaster::MasterStart() {
-    if (mWorkerNum > kMaxPorcess) {
+    if (mWorkerNum > kMaxProcess) {
         return mStatus = wStatus::IOError("wMaster::MasterStart, processes can be spawned", "worker number is overflow");
     }
 
@@ -95,7 +96,7 @@ wStatus wMaster::MasterStart() {
     }
 	
     // 启动worker工作进程
-    if (!WorkerStart(mWorkerNum, kPorcessRespawn).Ok()) {
+    if (!WorkerStart(mWorkerNum, kProcessRespawn).Ok()) {
     	return mStatus;
     }
 
@@ -159,7 +160,7 @@ wStatus wMaster::HandleSignal() {
 		}
 		if (num > 0) {
 			num--;
-			return;
+			return mStatus;
 		}
 		num = mWorkerNum;
 
@@ -171,14 +172,14 @@ wStatus wMaster::HandleSignal() {
 			// 给所有worker发送SIGTERM信号，通知worker优雅退出
 			SignalWorker(SIGTERM);
 		}
-		return;
+		return mStatus;
 	}
 
 	// SIGQUIT
 	if (g_quit) {
 		// 给所有的worker发送SIGQUIT信号
 		SignalWorker(SIGQUIT);
-		return;
+		return mStatus;
 	}
 	
 	// SIGHUP
@@ -189,7 +190,7 @@ wStatus wMaster::HandleSignal() {
 		Reload();
 		
 		// 重启worker
-		WorkerStart(mWorkerNum, kPorcessJustRespawn);
+		WorkerStart(mWorkerNum, kProcessJustRespawn);
 		
 		// 100ms
 		usleep(100*1000);
@@ -203,6 +204,7 @@ wStatus wMaster::HandleSignal() {
 		g_reopen = 0;
 		// todo
 	}
+	return mStatus;
 }
 
 wStatus wMaster::Reload() {
@@ -212,7 +214,7 @@ wStatus wMaster::Reload() {
 
 wStatus wMaster::ReapChildren(int8_t* live) {
 	*live = 0;
-	for (uint32_t i = 0; i < kMaxPorcess; i++) {
+	for (uint32_t i = 0; i < kMaxProcess; i++) {
         if (mWorkerPool[i] == NULL || mWorkerPool[i]->mPid == -1) {
             continue;
         }
@@ -260,7 +262,7 @@ wStatus wMaster::ReapChildren(int8_t* live) {
     return mStatus;
 }
 
-wStatus WorkerStart(uint32_t n, int32_t type) {
+wStatus wMaster::WorkerStart(uint32_t n, int32_t type) {
 	for (uint32_t i = 0; i < n; ++i) {
 		if (!SpawnWorker(type).Ok()) {
 			return mStatus;
@@ -271,6 +273,7 @@ wStatus WorkerStart(uint32_t n, int32_t type) {
         opench.mSlot = mSlot;
         PassOpenChannel(&opench);
 	}
+	return mStatus;
 }
 
 void wMaster::SignalWorker(int signo) {
@@ -278,7 +281,8 @@ void wMaster::SignalWorker(int signo) {
 	struct ChannelReqTerminate_t chclose;
 	struct ChannelReqCmd_s* ch = NULL;
 
-	int other = 0, size = 0;
+	int other = 0;
+	size_t size = 0;
 	switch (signo) {
 	case SIGQUIT:
 		ch = reinterpret_cast<ChannelReqCmd_s*>(&chopen);
@@ -302,7 +306,7 @@ void wMaster::SignalWorker(int signo) {
 		coding::EncodeFixed32(ptr, size);
 	}
 	
-	for (uint32_t i = 0; i < kMaxPorcess; i++) {
+	for (uint32_t i = 0; i < kMaxProcess; i++) {
 		// 分离进程
         if (mWorkerPool[i]->mDetached || mWorkerPool[i]->mPid == -1) {
         	continue;
@@ -319,8 +323,9 @@ void wMaster::SignalWorker(int signo) {
 		
         if (!other) {
 	        /* TODO: EAGAIN */
+			ssize_t ret;
 			memcpy(ptr + sizeof(int), reinterpret_cast<char *>(ch), size);
-			if (Worker(i)->Channel()->SendBytes(ptr, size + sizeof(int)) >= 0) {
+			if (Worker(i)->Channel()->SendBytes(ptr, size + sizeof(int), &ret).Ok()) {
 				if (signo == SIGQUIT || signo == SIGTERM) {
 					mWorkerPool[i]->mExiting = 1;
 				}
@@ -355,7 +360,8 @@ void wMaster::PassOpenChannel(struct ChannelReqOpen_t *ch) {
 	SAFE_NEW_VEC(size + sizeof(int), char, ptr);
 	coding::EncodeFixed32(ptr, size);
 
-	for (uint32_t i = 0; i < kMaxPorcess; i++) {
+	ssize_t ret;
+	for (uint32_t i = 0; i < kMaxProcess; i++) {
 		// 无需发送给自己
         if (i == mSlot || mWorkerPool[i] == NULL || mWorkerPool[i]->mPid == -1) {
         	continue;
@@ -363,7 +369,7 @@ void wMaster::PassOpenChannel(struct ChannelReqOpen_t *ch) {
 
         /* TODO: EAGAIN */
 		memcpy(ptr + sizeof(int), reinterpret_cast<char*>(ch), size);
-		Worker(i)->Channel()->SendBytes(ptr, size + sizeof(int));
+		Worker(i)->Channel()->SendBytes(ptr, size + sizeof(int), &ret);
     }
     SAFE_DELETE_VEC(ptr);
 }
@@ -373,8 +379,9 @@ void wMaster::PassCloseChannel(struct ChannelReqClose_t *ch) {
 	size_t size = sizeof(struct ChannelReqClose_t);
 	SAFE_NEW_VEC(size + sizeof(int), char, ptr);
 	coding::EncodeFixed32(ptr, size);
-    
-	for (uint32_t i = 0; i < kMaxPorcess; i++) {
+
+    ssize_t ret;
+	for (uint32_t i = 0; i < kMaxProcess; i++) {
 		// 不发送已退出worker
 		if (mWorkerPool[i] == NULL || mWorkerPool[i]->mExited || mWorkerPool[i]->mPid == -1) {
 			continue;
@@ -382,9 +389,9 @@ void wMaster::PassCloseChannel(struct ChannelReqClose_t *ch) {
         
         /* TODO: EAGAIN */
 		memcpy(ptr + sizeof(int), reinterpret_cast<char*>(ch), size);
-		Worker(i)->Channel()->SendBytes(ptr, size + sizeof(int));
+		Worker(i)->Channel()->SendBytes(ptr, size + sizeof(int), &ret);
     }
-    SAFE_DELETE_VEC(pStart);
+    SAFE_DELETE_VEC(ptr);
 }
 
 wStatus wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
@@ -400,7 +407,8 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 		// 启动指定索引worker进程
 		mSlot = static_cast<uint32_t>(type);
 	} else {
-		for (uint32_t idx = 0; idx < kMaxPorcess; ++idx) {
+		uint32_t idx;
+		for (idx = 0; idx < kMaxProcess; ++idx) {
 			if (mWorkerPool[idx] == NULL || mWorkerPool[idx]->mPid == -1) {
 				break;
 			}
@@ -408,8 +416,8 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 		mSlot = idx;
 	}
 
-	if (mSlot >= kMaxPorcess) {
-		return mStatus::IOError("wMaster::SpawnWorker failed", "mSlot overflow");
+	if (mSlot >= kMaxProcess) {
+		return mStatus = wStatus::IOError("wMaster::SpawnWorker failed", "mSlot overflow");
 	}
 
 	// 新建|覆盖 进程表项
@@ -467,29 +475,29 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 	}
 
     switch (type) {
-	case kPorcessNoRespawn:
+	case kProcessNoRespawn:
 		worker->mRespawn = 0;
 		worker->mJustSpawn = 0;
 		worker->mDetached = 0;
 		break;
 
-	case kPorcessRespawn:
+	case kProcessRespawn:
 		worker->mRespawn = 1;
 		worker->mJustSpawn = 0;
 		worker->mDetached = 0;
 		break;
 		
-	case kPorcessJustSpawn:
+	case kProcessJustSpawn:
 		worker->mRespawn = 0;
 		worker->mJustSpawn = 1;
 		worker->mDetached = 0;    	
 
-	case kPorcessJustRespawn:
+	case kProcessJustRespawn:
 		worker->mRespawn = 1;
 		worker->mJustSpawn = 1;
 		worker->mDetached = 0;
 
-	case kPorcessDetached:
+	case kProcessDetached:
 		worker->mRespawn = 0;
 		worker->mJustSpawn = 0;
 		worker->mDetached = 1;
@@ -514,9 +522,8 @@ wStatus wMaster::SignalProcess(char* sig) {
 		return mStatus;
 	}
 
-	wSlice p(str);
 	uint64_t pid = 0;
-	if (logging::ConsumeDecimalNumber(&p, &pid) && pid > 0) {
+	if (logging::ConsumeDecimalNumber(&str, &pid) && pid > 0) {
 		for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
 			if (strcmp(sig, s->mName)) {
 				if (kill(pid, s->mSigno) == -1) {
@@ -531,7 +538,8 @@ wStatus wMaster::SignalProcess(char* sig) {
 }
 
 wStatus wMaster::InitSignals() {
-	for (wSignal signal, wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
+	wSignal signal;
+	for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
 		mStatus = signal.AddHandler(s);
 		if (!mStatus.Ok()) {
 			return mStatus;
@@ -559,8 +567,8 @@ void wMaster::WorkerExitStat() {
         }
 		
         one = 1;
-		int32_t i;
-		for (i = 0; i < kMaxPorcess; ++i) {
+		uint32_t i;
+		for (i = 0; i < kMaxProcess; ++i) {
 			if (mWorkerPool[i] != NULL && mWorkerPool[i]->mPid == pid) {
                 mWorkerPool[i]->mStat = status;
                 mWorkerPool[i]->mExited = 1;

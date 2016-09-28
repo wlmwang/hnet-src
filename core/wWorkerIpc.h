@@ -7,7 +7,9 @@
 #ifndef _W_WORKER_IPC_H_
 #define _W_WORKER_IPC_H_
 
+#include <algorithm>
 #include <vector>
+#include <sys/epoll.h>
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"

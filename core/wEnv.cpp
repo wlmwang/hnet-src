@@ -4,9 +4,6 @@
  * Copyright (C) Hupu, Inc.
  */
 
-#ifndef _W_ENV_H_
-#define _W_ENV_H_
-
 #include <dirent.h>
 #include <pthread.h>
 #include <sys/mman.h>
@@ -93,7 +90,7 @@ public:
         if (GetAllowed() <= 0) {
             return false;
         }
-        wMutexWrapper l(&mu_);
+        wMutexWrapper l(&mMutex);
         intptr_t x = GetAllowed();
         if (x <= 0) {
             return false;
@@ -105,49 +102,49 @@ public:
 
     // Release a slot acquired by a previous call to Acquire() that returned true.
     void Release() {
-        wMutexWrapper l(&mu_);
+        wMutexWrapper l(&mMutex);
         SetAllowed(GetAllowed() + 1);
     }
 
 private:
-    wMutex mu_;
-    wAtomic allowed_;
-
     intptr_t GetAllowed() const {
-        return reinterpret_cast<intptr_t>(allowed_.AcquireLoad());
+        return reinterpret_cast<intptr_t>(mAllowed.AcquireLoad());
     }
 
-    // 要求：调用前 mu_ 需加锁
+    // 要求：调用前 mMutex 需加锁
     void SetAllowed(intptr_t v) {
-        allowed_.ReleaseStore(reinterpret_cast<void*>(v));
+        mAllowed.ReleaseStore(reinterpret_cast<void*>(v));
     }
+
+    wMutex mMutex;
+    wAtomic mAllowed;
 };
 
 // 基于共享内存随机访问文件类
 class wPosixMmapReadableFile: public wRandomAccessFile {
 private:
-    std::string filename_;  // 文件名
-    void* mmapped_region_;  // 共享内存起始地址
-    size_t length_;         // 共享内存（文件）长度
-    wMmapLimiter* limiter_; // CPU平台
+    std::string mFilename;  // 文件名
+    void* mMmappedRegion;  // 共享内存起始地址
+    size_t mLength;         // 共享内存（文件）长度
+    wMmapLimiter* mLimiter; // CPU平台
 
 public:
     // base[0,length-1] contains the mmapped contents of the file.
     wPosixMmapReadableFile(const std::string& fname, void* base, size_t length, wMmapLimiter* limiter) 
-    : filename_(fname), mmapped_region_(base), length_(length),limiter_(limiter) { }
+    : mFilename(fname), mMmappedRegion(base), mLength(length),mLimiter(limiter) { }
 
     virtual ~wPosixMmapReadableFile() {
-        munmap(mmapped_region_, length_);
-        limiter_->Release();
+        munmap(mMmappedRegion, mLength);
+        mLimiter->Release();
     }
 
     virtual wStatus Read(uint64_t offset, size_t n, wSlice* result, char* scratch) const {
         wStatus s;
-        if (offset + n > length_) {
+        if (offset + n > mLength) {
             *result = wSlice();
-            s = IOError(filename_, EINVAL);
+            s = IOError(mFilename, EINVAL);
         } else {
-            *result = wSlice(reinterpret_cast<char*>(mmapped_region_) + offset, n);
+            *result = wSlice(reinterpret_cast<char*>(mMmappedRegion) + offset, n);
         }
         return s;
     }
@@ -156,38 +153,38 @@ public:
 // 写文件类
 class wPosixWritableFile : public wWritableFile {
 private:
-    std::string filename_;
-    FILE* file_;
+    std::string mFilename;
+    FILE* mFile;
 
 public:
-    wPosixWritableFile(const std::string& fname, FILE* f) : filename_(fname), file_(f) { }
+    wPosixWritableFile(const std::string& fname, FILE* f) : mFilename(fname), mFile(f) { }
 
     ~wPosixWritableFile() {
-        if (file_ != NULL) {
-            fclose(file_);
+        if (mFile != NULL) {
+            fclose(mFile);
         }
     }
 
     virtual wStatus Append(const wSlice& data) {
-        size_t r = fwrite(data.data(), 1, data.size(), file_);
+        size_t r = fwrite(data.data(), 1, data.size(), mFile);
         if (r != data.size()) {
-            return IOError(filename_, errno);
+            return IOError(mFilename, errno);
         }
         return wStatus::Nothing();
     }
 
     virtual wStatus Close() {
         wStatus result;
-        if (fclose(file_) != 0) {
-            result = IOError(filename_, errno);
+        if (fclose(mFile) != 0) {
+            result = IOError(mFilename, errno);
         }
-        file_ = NULL;
+        mFile = NULL;
         return result;
     }
 
     virtual wStatus Flush() {
-        if (fflush(file_) != 0) {
-            return IOError(filename_, errno);
+        if (fflush(mFile) != 0) {
+            return IOError(mFilename, errno);
         }
         return wStatus::Nothing();
     }
@@ -195,10 +192,10 @@ public:
     // 刷新数据到文件
     virtual wStatus Sync() {
         wStatus result;
-        if (fflush(file_) != 0 || fdatasync(fileno(file_)) != 0) {
-            result = IOError(filename_, errno);
+        if (fflush(mFile) != 0 || fdatasync(fileno(mFile)) != 0) {
+            result = IOError(mFilename, errno);
         }
-        return s;
+        return result;
     }
 };
 
@@ -217,24 +214,25 @@ static int LockOrUnlock(int fd, bool lock) {
 // 文件锁句柄
 class wPosixFileLock : public wFileLock {
 public:
-    int fd_;
-    std::string name_;
+    int mFD;
+    std::string mName;
 };
 
 // 进程文件锁集合，防止同一个进程多次锁同一文件
 class wPosixLockTable {
 private:
-    wMutex mu_;
-    std::set<std::string> locked_files_;  // 文件锁集合
+    wMutex mMutex;
+    // 文件锁集合
+    std::set<std::string> mLockedFiles;
 public:
     bool Insert(const std::string& fname) {
-        wMutexWrapper l(&mu_);
-        return locked_files_.insert(fname).second;
+        wMutexWrapper l(&mMutex);
+        return mLockedFiles.insert(fname).second;
     }
 
     void Remove(const std::string& fname) {
-        wMutexWrapper l(&mu_);
-        locked_files_.erase(fname);
+        wMutexWrapper l(&mMutex);
+        mLockedFiles.erase(fname);
     }
 };
 
@@ -264,7 +262,7 @@ public:
         int fd = open(fname.c_str(), O_RDONLY);
         if (fd < 0) {
             s = IOError(fname, errno);
-        } else if (mmap_limit_.Acquire()) { // 是否可创建mmaps
+        } else if (mMmapLimit.Acquire()) { // 是否可创建mmaps
             uint64_t size;
             s = GetFileSize(fname, &size);
             if (s.Ok()) {
@@ -272,14 +270,14 @@ public:
                 // 对文件写入，相当于输出到文件。实际上直到调用msync()或者munmap()，文件才被更新
                 void* base = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
                 if (base != MAP_FAILED) {
-                    SAFE_NEW(wPosixMmapReadableFile(fname, base, size, &mmap_limit_), *result);
+                    SAFE_NEW(wPosixMmapReadableFile(fname, base, size, &mMmapLimit), *result);
                 } else {
                     s = IOError(fname, errno);
                 }
             }
             close(fd);	// 读取IO，映射后可关闭文件
             if (!s.Ok()) {
-                mmap_limit_.Release();
+                mMmapLimit.Release();
             }
         } else {
             SAFE_NEW(wPosixRandomAccessFile(fname, fd), *result);
@@ -318,7 +316,7 @@ public:
         return wStatus::Nothing();
     }
 
-    virtual Status DeleteFile(const std::string& fname) {
+    virtual wStatus DeleteFile(const std::string& fname) {
         wStatus result;
         if (unlink(fname.c_str()) != 0) {
             result = IOError(fname, errno);
@@ -369,18 +367,18 @@ public:
         int fd = open(fname.c_str(), O_RDWR | O_CREAT, 0644);
         if (fd < 0) {
             result = IOError(fname, errno);
-        } else if (!locks_.Insert(fname)) {   // 重复加锁
+        } else if (!mLocks.Insert(fname)) {   // 重复加锁
             close(fd);
             result = wStatus::IOError("lock " + fname, "already held by process");
         } else if (LockOrUnlock(fd, true) == -1) {
             result = IOError("lock " + fname, errno);
             close(fd);
-            locks_.Remove(fname);
+            mLocks.Remove(fname);
         } else {
             wPosixFileLock* my_lock;
             SAFE_NEW(wPosixFileLock(), my_lock);
-            my_lock->fd_ = fd;
-            my_lock->name_ = fname;
+            my_lock->mFD = fd;
+            my_lock->mName = fname;
             *lock = my_lock;
         }
         return result;
@@ -390,11 +388,11 @@ public:
     virtual wStatus UnlockFile(wFileLock* lock) {
         wPosixFileLock* my_lock = reinterpret_cast<wPosixFileLock*>(lock);
         wStatus result;
-        if (LockOrUnlock(my_lock->fd_, false) == -1) {
+        if (LockOrUnlock(my_lock->mFD, false) == -1) {
             result = IOError("unlock", errno);
         }
-        locks_.Remove(my_lock->name_);
-        close(my_lock->fd_);
+        mLocks.Remove(my_lock->mName);
+        close(my_lock->mFD);
         SAFE_DELETE(my_lock);
         return result;
     }
@@ -411,6 +409,7 @@ public:
         return thread_id;
     }
 
+    /*
     virtual wStatus NewLogger(const std::string& fname, wLogger** result) {
         FILE* f = fopen(fname.c_str(), "w");
         if (f == NULL) {
@@ -421,7 +420,8 @@ public:
             return Status::Nothing();
         }
     }
-
+    */
+   
     // 当前微妙时间
     virtual uint64_t NowMicros() {
         struct timeval tv;
@@ -447,69 +447,69 @@ private:
     void BGThread();
     // 后台任务线程入口函数，为主函数BGThread的包装器
     static void* BGThreadWrapper(void* arg) {
-        reinterpret_cast<PosixEnv*>(arg)->BGThread();
+        reinterpret_cast<wPosixEnv*>(arg)->BGThread();
         return NULL;
     }
 
-    pthread_mutex_t mu_;
-    pthread_cond_t bgsignal_;	// 消费线程条件变量
-    pthread_t bgthread_;     // 后台任务消费线程id
-    bool started_bgthread_;	// 是否已开启了后台任务消费线程
+    pthread_mutex_t mMutex;
+    pthread_cond_t mBgsignal;	// 消费线程条件变量
+    pthread_t mBgthread;     // 后台任务消费线程id
+    bool mStartedBgthread;	// 是否已开启了后台任务消费线程
 
     // Entry per Schedule() call
     // 线程队列节点结构体
     struct BGItem { void* arg; void (*function)(void*); };
     typedef std::deque<BGItem> BGQueue;
-    BGQueue queue_; // 任务双端链表
+    BGQueue mQueue; // 任务双端链表
 
-    wPosixLockTable locks_;
-    wMmapLimiter mmap_limit_;
+    wPosixLockTable mLocks;
+    wMmapLimiter mMmapLimit;
 };
 
-wPosixEnv::wPosixEnv() : started_bgthread_(false) {
-    PthreadCall("mutex_init", pthread_mutex_init(&mu_, NULL));
-    PthreadCall("cvar_init", pthread_cond_init(&bgsignal_, NULL));
+wPosixEnv::wPosixEnv() : mStartedBgthread(false) {
+    PthreadCall("mutex_init", pthread_mutex_init(&mMutex, NULL));
+    PthreadCall("cvar_init", pthread_cond_init(&mBgsignal, NULL));
 }
 
 void wPosixEnv::Schedule(void (*function)(void*), void* arg) {
-    PthreadCall("lock", pthread_mutex_lock(&mu_));
+    PthreadCall("lock", pthread_mutex_lock(&mMutex));
 
     // Start background thread if necessary
-    if (!started_bgthread_) {   // 后台任务线程未开启
-        started_bgthread_ = true;
+    if (!mStartedBgthread) {   // 后台任务线程未开启
+        mStartedBgthread = true;
         PthreadCall(
         "create thread",
-        pthread_create(&bgthread_, NULL,  &PosixEnv::BGThreadWrapper, this));
+        pthread_create(&mBgthread, NULL,  &wPosixEnv::BGThreadWrapper, this));
     }
 
     // If the queue is currently empty, the background thread may currently be
     // waiting.
-    if (queue_.empty()) {
-        PthreadCall("signal", pthread_cond_signal(&bgsignal_));	// 任务链表为空，唤醒任务消费线程   ???竞争条件???
+    if (mQueue.empty()) {
+        PthreadCall("signal", pthread_cond_signal(&mBgsignal));	// 任务链表为空，唤醒任务消费线程   ???竞争条件???
     }
 
     // 添加任务到队尾
-    queue_.push_back(BGItem());
-    queue_.back().function = function;
-    queue_.back().arg = arg;
+    mQueue.push_back(BGItem());
+    mQueue.back().function = function;
+    mQueue.back().arg = arg;
 
-    PthreadCall("unlock", pthread_mutex_unlock(&mu_));
+    PthreadCall("unlock", pthread_mutex_unlock(&mMutex));
 }
 
 // 后台任务线程主函数，是消费任务的守护线程
 void wPosixEnv::BGThread() {
     while (true) {
         // Wait until there is an item that is ready to run
-        PthreadCall("lock", pthread_mutex_lock(&mu_));
-        while (queue_.empty()) {
-            PthreadCall("wait", pthread_cond_wait(&bgsignal_, &mu_));
+        PthreadCall("lock", pthread_mutex_lock(&mMutex));
+        while (mQueue.empty()) {
+            PthreadCall("wait", pthread_cond_wait(&mBgsignal, &mMutex));
         }
 
-        void (*function)(void*) = queue_.front().function;
-        void* arg = queue_.front().arg;
-        queue_.pop_front();
+        void (*function)(void*) = mQueue.front().function;
+        void* arg = mQueue.front().arg;
+        mQueue.pop_front();
 
-        PthreadCall("unlock", pthread_mutex_unlock(&mu_));
+        PthreadCall("unlock", pthread_mutex_unlock(&mMutex));
         (*function)(arg);
     }
 }
@@ -561,6 +561,8 @@ static wStatus DoWriteStringToFile(wEnv* env, const wSlice& data, const std::str
     return s;
 }
 
+}	// namespace anonymous
+
 // 异步写字符到文件
 wStatus WriteStringToFile(wEnv* env, const wSlice& data, const std::string& fname) {
     return DoWriteStringToFile(env, data, fname, false);
@@ -597,9 +599,6 @@ wStatus ReadFileToString(wEnv* env, const std::string& fname, std::string* data)
     SAFE_DELETE(file);
     return s;
 }
-
-}	// namespace anonymous
-
 
 // 实例化env对象
 static pthread_once_t once = PTHREAD_ONCE_INIT;

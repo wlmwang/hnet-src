@@ -55,7 +55,7 @@ char* wMemPool::AllocateAligned(size_t bytes) {
 
 char* wMemPool::AllocateNewBlock(size_t block_bytes) {
     char* result;
-    SAFE_NEW(block_bytes, char, result);
+    SAFE_NEW_VEC(block_bytes, char, result);
     if (result != NULL) {
         mBlocksMemory += block_bytes;
         mBlocks.push_back(result);

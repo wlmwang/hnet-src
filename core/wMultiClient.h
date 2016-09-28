@@ -16,6 +16,7 @@
 #include "wMutex.h"
 #include "wMisc.h"
 #include "wSocket.h"
+#include "wTimer.h"
 
 namespace hnet {
 
@@ -23,7 +24,6 @@ const int kNumShardBits = 4;
 const int kNumShard = 1 << kNumShardBits;
 
 class wEnv;
-class wTimer;
 class wTask;
 
 // 多类型客户端（类型为0-15）
@@ -41,8 +41,8 @@ public:
     
     // 异步广播消息
     // 当 type== kNumShard 广播所有类型下的所有客户端
-    wStatus Broadcast(const char *cmd, int len, int type = kNumShard);
-    wStatus Send(const wTask *task, const char *cmd, int len);
+    wStatus Broadcast(char *cmd, size_t len, int type = kNumShard);
+    wStatus Send(wTask *task, char *cmd, size_t len);
 
     wStatus Prepare();
     wStatus Start();
@@ -73,25 +73,17 @@ protected:
     wStatus CleanTaskPool(std::vector<wTask*> pool);
 
     static void CheckTimer(void* arg);
-
-    /*
-    wStatus AddToClientPool(int32_t type, wClient* client);
-    wStatus CleanClient();
-    
-    wStatus RemoveClient(wClient* client, std::vector<wClient*>::iterator* iter = NULL);
-    std::vector<wClient*>::iterator RemoveClientPool(int32_t type, wClient* client);
-    wStatus CleanClientPool();
-    */
    
     wStatus mStatus;
     wEnv *mEnv;
+    
+    // 心跳开关，默认关闭。强烈建议移动互联网环境下打开，而非依赖keepalive机制保活
+    bool mCheckSwitch;
 
     // 服务器当前时间 微妙
     uint64_t mLatestTm;
     // 定时器
     wTimer mHeartbeatTimer;
-    // 心跳开关，默认关闭。强烈建议移动互联网环境下打开，而非依赖keepalive机制保活
-    bool mCheckSwitch;
 
     int32_t mEpollFD;
     uint64_t mTimeout;

@@ -4,8 +4,12 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include <sys/un.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <poll.h> 
 #include "wServer.h"
-#include "wTimer.h"
 #include "wEnv.h"
 #include "wTcpSocket.h"
 #include "wUnixSocket.h"
@@ -14,7 +18,7 @@
 
 namespace hnet {
 
-wServer::wServer() : mEnv(wEnv::Default()), mCheckSwitch(false), mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mExiting(false) {
+wServer::wServer() : mEnv(wEnv::Default()), mExiting(false), mCheckSwitch(false), mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
@@ -38,7 +42,9 @@ wStatus wServer::SingleStart(bool daemon) {
     }
     
     // 开启心跳线程
-    mEnv->Schedule(wServer::CheckTimer, this);
+    if (mCheckSwitch) {
+		mEnv->Schedule(wServer::CheckTimer, this);
+    }
     
     // 进入服务主循环
     while (daemon) {
@@ -62,8 +68,10 @@ wStatus wServer::WorkerStart(bool daemon) {
     }
     
     // 开启心跳线程
-    mEnv->Schedule(wServer::CheckTimer, this);
-    
+    if (mCheckSwitch) {
+		mEnv->Schedule(wServer::CheckTimer, this);
+    }
+
     // 进入服务主循环
     while (daemon) {
     	if (mExiting) {
@@ -118,7 +126,9 @@ wStatus wServer::Recv() {
     }
     
     // 事件循环
-    for (wTask* task, int i = 0 ; i < iRet ; i++) {
+    wTask* task;
+    ssize_t size;
+    for (int i = 0 ; i < iRet ; i++) {
 		task = reinterpret_cast<wTask *>(evt[i].data.ptr);
 		if (task->Socket()->FD() == kFDUnknown) {
 		    if (!RemoveTask(task).Ok()) {
@@ -137,7 +147,7 @@ wStatus wServer::Recv() {
 		} else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
 		    if (evt[i].events & EPOLLIN) {
 				// 套接口准备好了读取操作
-				mStatus = task->TaskRecv();
+				mStatus = task->TaskRecv(&size);
 				if (!mStatus.Ok()) {
 				    if (!RemoveTask(task).Ok()) {
 						return mStatus;
@@ -151,7 +161,7 @@ wStatus wServer::Recv() {
 				}
 				// 套接口准备好了写入操作
 				// 写入失败，半连接，对端读关闭
-				mStatus = task->TaskSend();
+				mStatus = task->TaskSend(&size);
 				if (!mStatus.Ok()) {
 				    if (!RemoveTask(task).Ok()) {
 					return mStatus;
@@ -186,7 +196,7 @@ wStatus wServer::AcceptConn(wTask *task) {
 		}
 		mStatus = NewUnixTask(socket, &mTask);
 	    
-    } else if(task->Socket()->SockProto() == kSpTcp) {
+    } else if(task->Socket()->SP() == kSpTcp) {
 		int64_t fd;
 		struct sockaddr_in sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);	
@@ -223,7 +233,7 @@ wStatus wServer::AcceptConn(wTask *task) {
     return mStatus;
 }
 
-wStatus wServer::Broadcast(const char *cmd, int len) {
+wStatus wServer::Broadcast(char *cmd, int len) {
     for (int i = 0; i < kNumShard; i++) {
     	mTaskPoolMutex[i].Lock();
 	    if (mTaskPool[i].size() > 0) {
@@ -236,10 +246,9 @@ wStatus wServer::Broadcast(const char *cmd, int len) {
     return mStatus;
 }
 
-wStatus wServer::Send(wTask *task, const char *cmd, int len) {
+wStatus wServer::Send(wTask *task, char *cmd, size_t len) {
     if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected 
     	&& (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
-		
 		mStatus = task->Send2Buf(cmd, len);
 		if (mStatus.Ok()) {
 		    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
@@ -287,7 +296,8 @@ wStatus wServer::InitEpoll() {
 }
 
 wStatus wServer::Listener2Epoll() {
-    for (wTask *task, std::vector<wSocket *>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
+    wTask *task;
+    for (std::vector<wSocket *>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
 		switch ((*it)->SP()) {
 		case kSpUnix:
 		    mStatus = NewUnixTask(*it, &task);
@@ -337,7 +347,9 @@ wStatus wServer::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter) {
 
     mTaskPoolMutex[task->Type()].Lock();
     std::vector<wTask*>::iterator it = RemoveTaskPool(task);
-    iter != NULL && (*iter = it);
+    if (iter != NULL) {
+    	*iter = it;
+    }
     mTaskPoolMutex[task->Type()].Unlock();
     return mStatus;
 }
@@ -389,22 +401,20 @@ wStatus wServer::CleanListener() {
 }
 
 void wServer::CheckTimer(void* arg) {
-    uint64_t interval = misc::GetTimeofday() - mLatestTm;
+    wServer* server = reinterpret_cast<wServer* >(arg);
+
+    uint64_t interval = misc::GetTimeofday() - server->mLatestTm;
     if (interval < 100*1000) {
 		return;
     }
-    mLatestTm += interval;
+    server->mLatestTm += interval;
     
-    wServer* server = reinterpret_cast<wServer* >(arg);
     if (server->mHeartbeatTimer.CheckTimer(interval/1000)) {
 		server->CheckTimeout();
     }
 }
 
 void wServer::CheckTimeout() {
-    if (!mCheckSwitch) {
-		return;
-    }
     uint64_t nowTm = misc::GetTimeofday();
     
     for (int i = 0; i < kNumShard; i++) {

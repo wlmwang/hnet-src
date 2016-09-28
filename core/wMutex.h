@@ -70,7 +70,7 @@ protected:
 
 class wMutexWrapper : private wNoncopyable {
 public:
-    explicit wMutexWrapper(const wMutex* mutex) : mMutex(mutex) {
+    explicit wMutexWrapper(wMutex* mutex) : mMutex(mutex) {
         mMutex->Lock();
     }
     ~wMutexWrapper() {

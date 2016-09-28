@@ -67,7 +67,7 @@ public:
 
     std::string ToString() const;
     
-    void operator=(const wStatus& s);
+    const wStatus& operator=(const wStatus& s);
 
 private:
     enum Code {
@@ -84,7 +84,7 @@ private:
         return (mState == NULL) ? kOk : static_cast<Code>(mState[4]);
     }
 
-    wStatus(Code code, const Slice& msg, const Slice& msg2);
+    wStatus(Code code, const wSlice& msg, const wSlice& msg2);
 
     static const char* CopyState(const char* s);
 
@@ -101,11 +101,12 @@ inline wStatus::wStatus(const wStatus& s) {
     mState = (s.mState == NULL) ? NULL : CopyState(s.mState);
 }
 
-inline void wStatus::operator=(const wStatus& s) {
+inline const wStatus& wStatus::operator=(const wStatus& s) {
     if (mState != s.mState) {
         SAFE_DELETE_VEC(mState);
         mState = (s.mState == NULL) ? NULL : CopyState(s.mState);
     }
+    return *this;
 }
 
 }   // namespace hnet

@@ -9,17 +9,16 @@
 
 #include <cstdarg>
 #include "wCore.h"
-#include "wNoncopyable.h"
 
 namespace hnet {
 
-class wSlice : private wNoncopyable {
+class wSlice {
 public:
     wSlice() : mData(""), mSize(0) { }
 
     wSlice(const char* d, size_t n) : mData(d), mSize(n) { }
 
-    wSlice(const std::string& s) : data_(s.data()), mSize(s.size()) { }
+    wSlice(const std::string& s) : mData(s.data()), mSize(s.size()) { }
     
     wSlice(const char* s) : mData(s), mSize(strlen(s)) { }
 
@@ -31,7 +30,7 @@ public:
 	   return mSize; 
     }
     
-    bool empty() const { 
+    bool empty() const {
 	   return mSize == 0; 
     }
     

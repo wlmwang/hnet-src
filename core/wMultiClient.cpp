@@ -5,20 +5,21 @@
  */
 
 #include "wMultiClient.h"
-#include "wTimer.h"
 #include "wEnv.h"
 #include "wTcpSocket.h"
 #include "wUnixSocket.h"
 #include "wTcpTask.h"
 #include "wUnixTask.h"
 
-wMultiClient::wMultiClient() : mEnv(wEnv::Default()), mEpollFD(kFDUnknown), mTimeout(10) {
+namespace hnet {
+
+wMultiClient::wMultiClient() : mEnv(wEnv::Default()), mCheckSwitch(false), mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
 
 wMultiClient::~wMultiClient() {
-    CleanConnect();
+    CleanTask();
 }
 
 wStatus wMultiClient::AddConnect(int type, std::string ipaddr, uint16_t port, std::string protocol) {
@@ -77,7 +78,7 @@ wStatus wMultiClient::DisConnect(wTask* task) {
 
 wStatus wMultiClient::Prepare() {
     if (!InitEpoll().Ok()) {
-	   return mStatus;
+       return mStatus;
     }
     return mStatus = PrepareRun();
 }
@@ -85,7 +86,9 @@ wStatus wMultiClient::Prepare() {
 wStatus wMultiClient::Start() {
     
     // 开启心跳线程
-    mEnv->Schedule(wServer::CheckTimer, this);
+    if (mCheckSwitch) {
+        mEnv->Schedule(wMultiClient::CheckTimer, this);
+    }
 
     // 进入服务主服务
     while (true) {
@@ -96,7 +99,7 @@ wStatus wMultiClient::Start() {
 
 wStatus wMultiClient::InitEpoll() {
     if ((mEpollFD = epoll_create(kListenBacklog)) == -1) {
-	return mStatus = wStatus::IOError("wMultiClient::InitEpoll, epoll_create() failed", strerror(errno));
+       return mStatus = wStatus::IOError("wMultiClient::InitEpoll, epoll_create() failed", strerror(errno));
     }
     return mStatus;
 }
@@ -105,10 +108,12 @@ wStatus wMultiClient::Recv() {
     std::vector<struct epoll_event> evt(kListenBacklog);
     int iRet = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
     if (iRet == -1) {
-	return mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", strerror(errno));
+       return mStatus = wStatus::IOError("wMultiClient::Recv, epoll_wait() failed", strerror(errno));
     }
-    
-    for (wTask* task, int i = 0 ; i < iRet ; i++) {
+
+    wTask* task;
+    ssize_t size;
+    for (int i = 0 ; i < iRet ; i++) {
         task = reinterpret_cast<wTask*>(evt[i].data.ptr);
 
         if (task->Socket()->FD() == kFDUnknown) {
@@ -120,7 +125,7 @@ wStatus wMultiClient::Recv() {
         } else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
             if (evt[i].events & EPOLLIN) {
                 // 套接口准备好了读取操作
-                mStatus = task->TaskRecv();
+                mStatus = task->TaskRecv(&size);
                 if (!mStatus.Ok()) {
                     // 给重连做准备
                     task->Socket()->FD() = kFDUnknown;
@@ -133,7 +138,7 @@ wStatus wMultiClient::Recv() {
                 }
                 // 套接口准备好了写入操作
                 // 写入失败，半连接，对端读关闭
-                mStatus = task->TaskSend();
+                mStatus = task->TaskSend(&size);
                 if (!mStatus.Ok()) {
                     // 给重连做准备
                     task->Socket()->FD() = kFDUnknown;
@@ -144,7 +149,7 @@ wStatus wMultiClient::Recv() {
     return mStatus;
 }
 
-wStatus wMultiClient::Broadcast(const char *cmd, int len, int type) {
+wStatus wMultiClient::Broadcast(char *cmd, size_t len, int type) {
     if (type == kNumShard) {
         for (int i = 0; i < kNumShard; i++) {
             mTaskPoolMutex[i].Lock();
@@ -167,10 +172,9 @@ wStatus wMultiClient::Broadcast(const char *cmd, int len, int type) {
     return mStatus;
 }
 
-wStatus wMultiClient::Send(wTask *task, const char *cmd, int len) {
+wStatus wMultiClient::Send(wTask *task, char *cmd, size_t len) {
     if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected 
         && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
-        
         mStatus = task->Send2Buf(cmd, len);
         if (mStatus.Ok()) {
             return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
@@ -182,22 +186,20 @@ wStatus wMultiClient::Send(wTask *task, const char *cmd, int len) {
 }
 
 void wMultiClient::CheckTimer(void* arg) {
-    uint64_t interval = misc::GetTimeofday() - mLatestTm;
+    wMultiClient* client = reinterpret_cast<wMultiClient* >(arg);
+
+    uint64_t interval = misc::GetTimeofday() - client->mLatestTm;
     if (interval < 100*1000) {
         return;
     }
-    mLatestTm += interval;
+    client->mLatestTm += interval;
     
-    wMultiClient* client = reinterpret_cast<wMultiClient* >(arg);
     if (client->mHeartbeatTimer.CheckTimer(interval/1000)) {
         client->CheckTimeout();
     }
 }
 
 void wMultiClient::CheckTimeout() {
-    if (!mCheckSwitch) {
-        return;
-    }
     uint64_t nowTm = misc::GetTimeofday();
     
     for (int i = 0; i < kNumShard; i++) {
@@ -235,10 +237,11 @@ wStatus wMultiClient::RemoveTask(wTask* task, std::vector<wTask*>::iterator* ite
     if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, evt.data.fd, &evt) < 0) {
         return mStatus = wStatus::IOError("wMultiClient::RemoveTask, epoll_ctl() failed", strerror(errno));
     }
-
     mTaskPoolMutex[task->Type()].Lock();
     std::vector<wTask*>::iterator it = RemoveTaskPool(task);
-    iter != NULL && (*iter = it);
+    if (iter != NULL) {
+        *iter = it;
+    }
     mTaskPoolMutex[task->Type()].Unlock();
     return mStatus;
 }
@@ -252,7 +255,7 @@ std::vector<wTask*>::iterator wMultiClient::RemoveTaskPool(wTask* task) {
     return it;
 }
 
-wStatus wMultiClient::AddTask(int type, wTask* task, int ev, int op, bool newconn) {
+wStatus wMultiClient::AddTask(wTask* task, int ev, int op, bool newconn) {
     struct epoll_event evt;
     evt.events = ev | EPOLLERR | EPOLLHUP | EPOLLET;
     evt.data.fd = task->Socket()->FD();
@@ -297,3 +300,5 @@ wStatus wMultiClient::CleanTaskPool(std::vector<wTask*> pool) {
     pool.clear();
     return mStatus;
 }
+
+}   // namespace hnet

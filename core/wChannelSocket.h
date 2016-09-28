@@ -32,12 +32,17 @@ public:
 
     virtual wStatus Close();
 
-    int64_t &operator[](uint8_t i);
+    int &operator[](uint8_t i);
 
 protected:
+    virtual wStatus Bind(string host, uint16_t port = 0) {
+        return mStatus = wStatus::Nothing();
+    }
+
+    wStatus mStatus;
     // 0:传递给其他进程，供写入数据 
     // 1:当前进程读取其他进程写入0中的数据
-    int64_t mChannel[2];
+    int mChannel[2];
 };
 
 }   // namespace hnet

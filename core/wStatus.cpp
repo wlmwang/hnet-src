@@ -20,7 +20,7 @@ const char* wStatus::CopyState(const char* state) {
     return result;
 }
 
-wStatus::wStatus(Code code, const Slice& msg, const Slice& msg2) {
+wStatus::wStatus(Code code, const wSlice& msg, const wSlice& msg2) {
     assert(code != kOk);
     const uint32_t len1 = msg.size();
     const uint32_t len2 = msg2.size();
@@ -41,7 +41,7 @@ wStatus::wStatus(Code code, const Slice& msg, const Slice& msg2) {
 }
 
 std::string wStatus::ToString() const {
-    if (state_ == NULL) {
+    if (mState == NULL) {
         return "OK";
     } else {
         char tmp[30];

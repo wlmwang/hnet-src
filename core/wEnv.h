@@ -7,6 +7,10 @@
 #ifndef _W_ENV_H_
 #define _W_ENV_H_
 
+#include <string>
+#include <deque>
+#include <set>
+#include <vector>
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
@@ -102,7 +106,7 @@ public:
     // 解锁文件
     // 要求：先调用 LockFile 成功
     // 要求：锁住还未锁定成功
-    virtual Status UnlockFile(FileLock* lock) = 0;
+    virtual wStatus UnlockFile(wFileLock* lock) = 0;
 
     // 添加任务到后台任务消费线程中
     virtual void Schedule(void (*function)(void* arg), void* arg) = 0;
@@ -110,10 +114,8 @@ public:
     // 开启新线程
     virtual void StartThread(void (*function)(void* arg), void* arg) = 0;
 
-    virtual wStatus GetTestDirectory(std::string* path) = 0;
-
     // 返回日志对象
-    virtual wStatus NewLogger(const std::string& fname, wLogger** result) = 0;
+    //virtual wStatus NewLogger(const std::string& fname, wLogger** result) = 0;
 
     virtual uint64_t NowMicros() = 0;
 
@@ -172,11 +174,11 @@ public:
         return mTarget->RenameFile(s, t);
     }
 
-    wStatus LockFile(const std::string& f, FileLock** l) {
+    wStatus LockFile(const std::string& f, wFileLock** l) {
         return mTarget->LockFile(f, l);
     }
 
-    wStatus UnlockFile(FileLock* l) { 
+    wStatus UnlockFile(wFileLock* l) { 
         return mTarget->UnlockFile(l); 
     }
 
@@ -188,14 +190,12 @@ public:
         return mTarget->StartThread(f, a);
     }
 
-    virtual wStatus GetTestDirectory(std::string* path) {
-        return mTarget->GetTestDirectory(path);
-    }
-
+    /*
     virtual wStatus NewLogger(const std::string& fname, Logger** result) {
         return mTarget->NewLogger(fname, result);
     }
-
+    */
+   
     uint64_t NowMicros() {
         return mTarget->NowMicros();
     }

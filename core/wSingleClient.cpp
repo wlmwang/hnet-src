@@ -10,7 +10,11 @@
 #include "wTcpTask.h"
 #include "wUnixTask.h"
 
-wSingleClient::wSingleClient() { }
+namespace hnet {
+
+wSingleClient::wSingleClient() : mTask (NULL) {
+    //
+}
 
 wSingleClient::~wSingleClient() {
     SAFE_DELETE(mTask);
@@ -44,12 +48,14 @@ wStatus wSingleClient::Connect(std::string ipaddr, uint16_t port, std::string pr
     socket->SS() = kSsConnected;
 	
     if (protocol == "TCP") {
-	   SAFE_NEW(wTcpTask(sock), mTask);
+	   SAFE_NEW(wTcpTask(socket), mTask);
     } else if(protocol == "UNIX") {
-	   SAFE_NEW(wUnixTask(sock), mTask);
+	   SAFE_NEW(wUnixTask(socket), mTask);
     }
     if (mTask == NULL) {
 	   return mStatus = wStatus::IOError("wSingleClient::Connect", "task new failed");
     }
     return mStatus;
 }
+
+}   // namespace hnet

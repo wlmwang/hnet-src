@@ -28,13 +28,17 @@ public:
 protected:
     // 务必在设置进程标题之前调用
     wStatus SaveArgv();
-    
+
     wStatus mStatus;
+    
     int mArgc;
-    char *mOsArgvLast;
-    char **mOsArgv;	//原生参数
-    char **mOsEnv;	//原生环境变量
-    char **mArgv;	//堆上参数（正常取该值）
+    const char *mOsArgvLast;
+    // 原生参数
+    const char **mOsArgv;
+    // 堆上参数（正常取该值）
+    char **mArgv;
+    // 原生环境变量
+    char **mOsEnv;
 };
 
 }	// namespace hnet

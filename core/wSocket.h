@@ -109,18 +109,18 @@ protected:
     virtual wStatus Bind(string host, uint16_t port = 0) = 0;
     
     wStatus mStatus;
+    
+    int64_t  mFD;
+    std::string mHost;
+    uint16_t mPort;
+    uint64_t mRecvTm;   // 最后接收到数据包的时间戳
+    uint64_t mSendTm;   // 最后发送数据包时间戳（主要用户心跳检测）
+    uint64_t mMakeTm;   // 创建时间
 
     SockType mSockType;
     SockStatus mSockStatus;
     SockProto mSockProto;
     SockFlag mSockFlag;
-
-    std::string mHost;
-    uint16_t mPort;
-    int64_t  mFD;
-    uint64_t mRecvTm;   // 最后接收到数据包的时间戳
-    uint64_t mSendTm;   // 最后发送数据包时间戳（主要用户心跳检测）
-    uint64_t mMakeTm;   // 创建时间
 };
 
 }   // namespace hnet

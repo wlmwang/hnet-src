@@ -9,7 +9,6 @@
 #include <sys/file.h>
 #include <sys/ioctl.h>
 #include "wMisc.h"
-#include "wSlice.h"
 
 namespace hnet {
 namespace coding {
@@ -88,7 +87,7 @@ std::string EscapeString(const wSlice& value) {
     return r;
 }
 
-bool ConsumeDecimalNumber(wSlice* in, uint64_t* val) {
+bool ConsumeDecimalNumber(std::string* in, uint64_t* val) {
     uint64_t v = 0;
     int digits = 0;
     while (!in->empty()) {
@@ -97,11 +96,11 @@ bool ConsumeDecimalNumber(wSlice* in, uint64_t* val) {
             ++digits;
             const int delta = (c - '0');
             static const uint64_t kMaxUint64 = ~static_cast<uint64_t>(0);
-            if (v > kMaxUint64/10 || (v == kMaxUint64/10 && delta > kMaxUint64%10)) {
+            if (v > kMaxUint64/10 || (v == kMaxUint64/10 && static_cast<uint64_t>(delta) > kMaxUint64%10)) {
                 return false;	// 转化uint64溢出
             }
             v = (v * 10) + delta;
-            in->assign(*in, 1, in->size()-1);	// *in = in->substr(1, in->size()-1);
+            in->assign(*in, 1, in->size()-1);
         } else {
             break;
         }
@@ -188,16 +187,16 @@ unsigned GetIpByIF(const char* ifname) {
     ssize_t fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd >= 0) {
         struct ifconf ifc = {0, {0}};
-            struct ifreq buf[64];
-            memset(buf, 0, sizeof(buf));
+        struct ifreq buf[64];
+        memset(buf, 0, sizeof(buf));
         ifc.ifc_len = sizeof(buf);
-        ifc.ifc_buf = (caddr_t)buf;
+        ifc.ifc_buf = reinterpret_cast<caddr_t>(buf);
         if (!ioctl(fd, SIOCGIFCONF, (char*)&ifc)) {
             size_t interface = ifc.ifc_len / sizeof(struct ifreq); 
             while (interface-- > 0) {
                 if (strcmp(buf[interface].ifr_name, ifname) == 0) {
-                    if (!(ioctl(fd, SIOCGIFADDR, (char *)&buf[interface]))) {
-                        ip = (unsigned)((struct sockaddr_in *)(&buf[interface].ifr_addr))->sin_addr.s_addr;
+                    if (!ioctl(fd, SIOCGIFADDR, reinterpret_cast<char *>(&buf[interface]))) {
+                        ip = reinterpret_cast<unsigned>((reinterpret_cast<struct sockaddr_in*>(&buf[interface].ifr_addr))->sin_addr.s_addr);
                     }
                     break;  
                 }
@@ -212,7 +211,7 @@ wStatus InitDaemon(const char *lockfile, const char *prefix) {
     // 获取主目录
     char dirPath[256] = {0};
     if (prefix == NULL) {
-        if (getcwd(dirPath, sizeof(dirPath)) == -1) {
+        if (getcwd(dirPath, sizeof(dirPath)) == NULL) {
             return wStatus::Corruption("misc::InitDaemon, getcwd failed", strerror(errno));
         }
     } else {
@@ -220,7 +219,7 @@ wStatus InitDaemon(const char *lockfile, const char *prefix) {
     }
 
     if (chdir(dirPath) == -1) {
-        return wStatus::Corruption("misc::InitDaemon, chdir failed", strerror(errno))
+        return wStatus::Corruption("misc::InitDaemon, chdir failed", strerror(errno));
     }
     umask(0);
 
@@ -239,18 +238,21 @@ wStatus InitDaemon(const char *lockfile, const char *prefix) {
         if (setuid(kDeamonUser) == -1) {
             return wStatus::Corruption("misc::InitDaemon, setuid failed", strerror(errno));
         }
-
         if (setgid(kDeamonGroup) == -1) {
             return wStatus::Corruption("misc::InitDaemon, setgid failed", strerror(errno));
         }
 
+        /*
         // 附加组ID
         if (initgroups(kDeamonUser, kDeamonGroup) == -1) {
             // initgroups failed
         }
+        */
     }
 
-    fork() != 0 && exit(0);
+    if (fork() != 0) {
+        exit(0);
+    }
     setsid();
     
     // 忽略以下信号
@@ -264,7 +266,9 @@ wStatus InitDaemon(const char *lockfile, const char *prefix) {
     stSig.AddSigno(SIGTTIN);
     stSig.AddSigno(SIGTTOU);
 
-    fork() != 0 && exit(0);
+    if (fork() != 0) {
+        exit(0);
+    }
     unlink(lockfile);
     return wStatus::Nothing();
 }

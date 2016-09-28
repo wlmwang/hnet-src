@@ -289,13 +289,13 @@ uint32_t Extend(uint32_t crc, const char* buf, size_t size) {
     auto Step1 = [&]() {
         int c = (l & 0xff) ^ *p++;
         l = table0_[c] ^ (l >> 8);
-    }
+    };
 
     auto Step4 = [&]() {
         uint32_t c = l ^ LeLoad32(p);
         p += 4;
         l = table3_[c & 0xff] ^ table2_[(c >> 8) & 0xff] ^ table1_[(c >> 16) & 0xff] ^ table0_[c >> 24];
-    }
+    };
 
     // Point x at first 4-byte aligned byte in string.  This might be
     // just past the end of the string.
