@@ -22,15 +22,15 @@ struct ExampleReqCmd_s : public wCommand {
 };
 const uint8_t EXAMPLE_REQ_ECHO = 0;
 struct ExampleReqEcho_t : public ExampleReqCmd_s {
-    ssize_t mLen;
-    char* mCmd[512];
+    int8_t mLen;
+    char mCmd[512];
     ExampleReqEcho_t() : ExampleReqCmd_s(EXAMPLE_REQ_ECHO) { }
 };
 
 class ExampleTask : public wTcpTask {
 public:
 	ExampleTask(wSocket *socket, int32_t type) : wTcpTask(socket, type) {
-		RegisterFunc(CMD_EXAMPLE_REQ, EXAMPLE_REQ_ECHO, &ExampleTask::ExampleEcho);
+		REG_DISP(mDispatch, Name(), CMD_EXAMPLE_REQ, EXAMPLE_REQ_ECHO, &ExampleTask::ExampleEcho);
 	}
     virtual const char* Name() const {
 		return "ExampleTask";
@@ -39,7 +39,7 @@ public:
 	DEC_FUNC(ExampleEcho);
 };
 
-int ExampleTask::ExampleEcho(char buf[], int len) {
+int ExampleTask::ExampleEcho(char buf[], uint32_t len) {
 	struct ExampleReqEcho_t* cmd = reinterpret_cast<struct ExampleReqEcho_t*>(buf);
 	ssize_t size;
 	SyncSend(cmd->mCmd, cmd->mLen, &size);
@@ -70,7 +70,7 @@ int main(int argc, const char *argv[]) {
 		std::cout << kSoftwareName << kSoftwareVer << std::endl;
 		return -1;
 	} else if (config->mDaemon == 1) {
-		if (!misc::InitDaemon().Ok(config->mLockPath)) {
+		if (!misc::InitDaemon(config->mLockPath).Ok()) {
 			std::cout << "create daemon failed" << std::endl;
 			return -1;
 		}

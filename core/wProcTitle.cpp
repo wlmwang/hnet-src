@@ -9,8 +9,6 @@
 
 namespace hnet {
 
-extern char **environ;
-
 wProcTitle::wProcTitle(int argc, const char *argv[]) : mArgc(argc), mOsArgv(argv), mOsEnv(environ) {
     mOsArgvLast = argv[0];
     SaveArgv();

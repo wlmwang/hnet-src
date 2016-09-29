@@ -15,7 +15,7 @@
 
 namespace hnet {
 
-const char* kMasterTitle = " - master process";
+const char  kMasterTitle[] = " - master process";
 
 class wEnv;
 class wServer;

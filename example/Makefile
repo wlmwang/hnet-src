@@ -1,0 +1,72 @@
+
+###############################
+# Copyright (C) Anny Wang.
+# Copyright (C) Hupu, Inc.
+###############################
+
+#
+# Makefile
+# 动态链接所需库，需.so文件安装到ldconfig加载路径中(/usr/local/lib)
+# 需要预先编译lib目录下的log4cpp、tinyxml软件包
+#
+
+CXX=g++
+CXXFLAGS=-std=c++11 -O3 -Wall -Wno-invalid-offsetof -DUSE_LOG4CPP -DLINUX -D_DEBUG_ #-D_MEM_CHECK
+LDFLAGS=-L/usr/local/lib -ltinyxml -llog4cpp -lpthread
+
+COREPATH=../core
+COMMPATH=../command
+VENDOR=../vendor
+INCPATH=-I./$(COREPATH) -I./$(COMMPATH) -I./$(VENDOR)/tinyxml -I/usr/local/include/log4cpp
+
+SRCPATH=./
+OBJECTS=./$(COREPATH)/wCrc32c.o \
+		./$(COREPATH)/wEnv.o \
+		./$(COREPATH)/wLog.o \
+		./$(COREPATH)/wMisc.o \
+		./$(COREPATH)/wMemPool.o \
+		./$(COREPATH)/wPing.o \
+		./$(COREPATH)/wStatus.o \
+		./$(COREPATH)/wProcTitle.o \
+		./$(COREPATH)/wSignal.o \
+		./$(COREPATH)/wMsgQueue.o \
+		./$(COREPATH)/wMemPool.o \
+		./$(COREPATH)/wThread.o \
+		./$(COREPATH)/wSocket.o \
+		./$(COREPATH)/wChannelSocket.o \
+		./$(COREPATH)/wTcpSocket.o \
+		./$(COREPATH)/wUnixSocket.o \
+		./$(COREPATH)/wTask.o \
+		./$(COREPATH)/wChannelTask.o \
+		./$(COREPATH)/wConfig.o \
+		./$(COREPATH)/wServer.o \
+		./$(COREPATH)/wSingleClient.o \
+		./$(COREPATH)/wMultiClient.o \
+		./$(COREPATH)/wMaster.o \
+		./$(COREPATH)/wWorker.o \
+		./$(COREPATH)/wWorkerIpc.o \
+		\
+		./$(SRCPATH)/exampleServer.o
+
+TARGET=examplesvrd
+
+.PHONY:all clean install
+
+all: $(TARGET)
+
+$(TARGET): $(OBJECTS)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+
+%.o:%.cpp
+	$(CXX) $(CXXFLAGS) $(INCPATH) -c $< -o $@
+
+%.d:%.cpp
+	@set -e; rm -f $@; $(CXX) -MM $< $(INCPATH) > $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+-include $(OBJECTS:.o=.d)
+
+clean:
+	-rm -f $(COREPATH)/*.o $(COREPATH)/*.d $(COREPATH)/*.d.*
+	-rm -f $(TARGET) $(SRCPATH)/*.o $(SRCPATH)/*.d $(SRCPATH)/*.d.*

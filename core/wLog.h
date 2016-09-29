@@ -13,8 +13,8 @@
 // 基于log4cpp的日志
 namespace hnet {
 
-const char*	    kErrLogKey = "error";
-const char*	    kErrLogFile = "log/error.log";
+const char	    kErrLogKey[] = "error";
+const char	    kErrLogFile[] = "log/error.log";
 const uint32_t  kErrLogSize = 10 << 20;
 const uint32_t	kErrLogBackup = 20;
 

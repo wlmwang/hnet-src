@@ -17,7 +17,7 @@
 namespace hnet {
 
 const uint32_t	kRlimitCore = 65535;
-const char*     kWorkerTitle = " - worker process";
+const char     	kWorkerTitle[] = " - worker process";
 
 class wMaster;
 class wWorkerIpc;

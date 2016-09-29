@@ -14,13 +14,13 @@
 namespace hnet {
 
 wChannelTask::wChannelTask(wSocket *socket, wWorker *worker) : wTask(socket), mWorker(worker) {
-    RegisterFunc(CMD_CHANNEL_REQ, CHANNEL_REQ_OPEN, &wChannelTask::ChannelOpen);
-    RegisterFunc(CMD_CHANNEL_REQ, CHANNEL_REQ_CLOSE, &wChannelTask::ChannelClose);
-    RegisterFunc(CMD_CHANNEL_REQ, CHANNEL_REQ_QUIT, &wChannelTask::ChannelQuit);
-    RegisterFunc(CMD_CHANNEL_REQ, CHANNEL_REQ_TERMINATE, &wChannelTask::ChannelTerminate);
+	REG_DISP(mDispatch, Name(), CMD_CHANNEL_REQ, CHANNEL_REQ_OPEN, &wChannelTask::ChannelOpen);
+	REG_DISP(mDispatch, Name(), CMD_CHANNEL_REQ, CHANNEL_REQ_CLOSE, &wChannelTask::ChannelClose);
+	REG_DISP(mDispatch, Name(), CMD_CHANNEL_REQ, CHANNEL_REQ_QUIT, &wChannelTask::ChannelQuit);
+	REG_DISP(mDispatch, Name(), CMD_CHANNEL_REQ, CHANNEL_REQ_TERMINATE, &wChannelTask::ChannelTerminate);
 }
 
-int wChannelTask::ChannelOpen(char buf[], int len) {
+int wChannelTask::ChannelOpen(char buf[], uint32_t len) {
 	struct ChannelReqOpen_t* ch = reinterpret_cast<struct ChannelReqOpen_t*>(buf);
 	if (mWorker->Master()->Worker(ch->mSlot)) {
 		mWorker->Master()->Worker(ch->mSlot)->Pid() = ch->mPid;
@@ -29,7 +29,7 @@ int wChannelTask::ChannelOpen(char buf[], int len) {
 	return 0;
 }
 
-int wChannelTask::ChannelClose(char *buf, int len) {
+int wChannelTask::ChannelClose(char *buf, uint32_t len) {
 	struct ChannelReqClose_t* ch = reinterpret_cast<struct ChannelReqClose_t*>(buf);
 	if (mWorker->Master()->Worker(ch->mSlot)) {
 		if (close(mWorker->Master()->Worker(ch->mSlot)->FD(0)) == -1) {
@@ -40,12 +40,12 @@ int wChannelTask::ChannelClose(char *buf, int len) {
 	return 0;
 }
 
-int wChannelTask::ChannelQuit(char *buf, int len) {
+int wChannelTask::ChannelQuit(char *buf, uint32_t len) {
 	g_quit = 1;
 	return 0;
 }
 
-int wChannelTask::ChannelTerminate(char *buf, int len) {
+int wChannelTask::ChannelTerminate(char *buf, uint32_t len) {
 	g_terminate = 1;
 	return 0;
 }

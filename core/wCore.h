@@ -22,8 +22,6 @@
 #include <iostream>
 #include <cstdio>
 
-namespace hnet {
-
 #define SAFE_NEW(type, ptr) \
 do { \
        try { \
@@ -58,12 +56,12 @@ do { \
        ptr = NULL; \
 } while(0)
 
-using namespace std;
+namespace hnet {
 
 const char      kProcTitlePad = '\0';
 const char      kLF = '\n';
 const char      kCR = '\r';
-const char*     kCRLF = "\r\n";
+const char      kCRLF[] = "\r\n";
 
 const uint32_t  kMaxHostNameLen = 255;
 const uint8_t   kMaxIpLen = 16;
@@ -96,17 +94,19 @@ const bool      kLittleEndian = true;
 const uint32_t  kPageSize = 4096;
 
 // 根据具体项目修改
-const char*     kSoftwareName   = "hnet";
-const char*     kSoftwareVer    = "0.0.1";
+const char      kSoftwareName[]   = "hnet";
+const char      kSoftwareVer[]    = "0.0.1";
 
 const uid_t     kDeamonUser = 0;
 const gid_t     kDeamonGroup = 0;
 
-const char*     kPidPath = "../log/hnet.pid";
-const char*     kLockPath = "../log/hnet.lock";
-const char*     kAcceptMutex = "../log/hnet.mutex.bin";
+const char      kPidPath[] = "../log/hnet.pid";
+const char      kLockPath[] = "../log/hnet.lock";
+const char      kAcceptMutex[] = "../log/hnet.mutex.bin";
 
-const char*     kToken = "Anny";
+const char      kToken[] = "Anny";
+
+using namespace std;
 
 }   // namespace hnet
 

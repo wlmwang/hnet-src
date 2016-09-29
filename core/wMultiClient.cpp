@@ -54,7 +54,7 @@ wStatus wMultiClient::AddConnect(int type, std::string ipaddr, uint16_t port, st
     socket->SS() = kSsConnected;
 
     if (protocol == "TCP") {
-        mStatus = NewUnixTask(socket, &mTask, type);
+        mStatus = NewTcpTask(socket, &mTask, type);
     } else if(protocol == "UNIX") {
         mStatus = NewUnixTask(socket, &mTask, type);
     } else {
@@ -95,6 +95,22 @@ wStatus wMultiClient::Start() {
         Recv();
         Run();
     }
+}
+
+wStatus wMultiClient::NewTcpTask(wSocket* sock, wTask** ptr, int type) {
+    SAFE_NEW(wTcpTask(sock, type), *ptr);
+    if (*ptr == NULL) {
+        return wStatus::IOError("wMultiClient::NewTcpTask", "new failed");
+    }
+    return mStatus;
+}
+
+wStatus wMultiClient::NewUnixTask(wSocket* sock, wTask** ptr, int type) {
+    SAFE_NEW(wUnixTask(sock, type), *ptr);
+    if (*ptr == NULL) {
+        return wStatus::IOError("wMultiClient::NewUnixTask", "new failed");
+    }
+    return mStatus;
 }
 
 wStatus wMultiClient::InitEpoll() {
