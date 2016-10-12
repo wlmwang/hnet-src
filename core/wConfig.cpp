@@ -12,10 +12,13 @@
 namespace hnet {
 
 wConfig::~wConfig() {
+	for (std::map<std::string, void*>::iterator it = mConf.begin(); it != mConf.end; it++) {
+		SAFE_DELETE_VEC(it->second);
+	}
     SAFE_DELETE(mProcTitle);
 }
 
-// 参数形式 
+// 参数形式
 // ./bin/server -?
 // ./bin/server -d
 // ./bin/server -h127.0.0.1  
@@ -27,62 +30,83 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
             return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
         }
 
+        // 设置布尔值
+        auto setBoolConf = [this](std::string key, bool val) {
+        	bool* b;
+        	SAFE_NEW_VEC(1, bool, b);
+        	*b = val;
+        	this->mConf[key] = reinterpret_cast<void *>(b);
+        };
+
+        // 设置整型值
+        auto setIntConf = [this](std::string key, int val) {
+        	int* i;
+        	SAFE_NEW_VEC(1, bool, i);
+        	*b = val;
+        	this->mConf[key] = reinterpret_cast<void *>(i);
+        };
+
+        // 设置std::string值
+        auto setStrConf = [this](std::string key, const char *val) {
+        	std::string* s;
+        	SAFE_NEW_VEC(1, std::string, s);
+        	*s = val;
+        	this->mConf[key] = reinterpret_cast<void *>(s);
+        };
+
         while (*p) {
             switch (*p++) {
             case '?':
-                mShowHelp = true;  break;
+            	setBoolConf("help", true);
+            	break;
             case 'v':
-                mShowVer = true;   break;
+            	setBoolConf("version", true);
+            	break;
             case 'd':
-                mDaemon = true;    break;
+            	setBoolConf("daemon", true);
+            	break;
 
-            // 监听ip
-            case 'h':
+            case 's':
                 if (*p) {
-                    mHost = p;
+                	setStrConf("signal", p);
                     goto next;
                 }
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
-                    mHost = p;
+                	setStrConf("signal", p);
+                    goto next;
+                }
+                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires signal");
+
+            case 'h':
+                if (*p) {
+                	setStrConf("host", p);
+                    goto next;
+                }
+
+                p = argv[++i]; // 多一个空格
+                if (*p) {
+                	setStrConf("host", p);
                     goto next;
                 }
                 return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-h\" requires ip address");
 
             case 'p':
-                uint64_t val;
                 if (*p) {
-                    std::string s = std::string(p);
-                    if (logging::ConsumeDecimalNumber(&s, &val)) {
-                        mPort = static_cast<uint16_t>(val);
-                        goto next;
-                    }
+                	int p = atoi(p);
+                	setIntConf("port", p);
+                	goto next;
                 }
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
-                    std::string s = std::string(p);
-                    if (logging::ConsumeDecimalNumber(&s, &val)) {
-                        mPort = static_cast<uint16_t>(val);
-                        goto next;
-                    }
+                	int p = atoi(p);
+                	setIntConf("port", p);
+                	goto next;
                 }
                 return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires port number");
 
-            case 's':
-                if (*p) {
-                    mSignal = p;
-                    goto next;
-                }
-
-                p = argv[++i]; // 多一个空格
-                if (*p) {
-                    mSignal = p;
-                    goto next;
-                }
-                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires signal");
-            
             default:
                 return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
             }

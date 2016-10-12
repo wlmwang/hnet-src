@@ -22,22 +22,20 @@ public:
     virtual ~wConfig();
     virtual wStatus GetOption(int argc, const char *argv[]);
 
-public:
-    bool mShowVer;
-    bool mShowHelp;
-    bool mDaemon;
-    const char* mSignal;
-    const char* mPidPath;
-    const char* mLockPath;
+    template<typename T>
+    bool GetConf(std::string key, T* val) {
+    	std::map<std::string, void*>::iterator it = mConf.find(key);
+    	if (it != mConf.end()) {
+    		*val = reinterpret_cast<T>(it->second);
+    		return true;
+    	}
+    	return false;
+    }
 
-    const char* mHost;
-    char* mPtotocol;
-    uint16_t mPort;
-
+    std::map<std::string, void*> mConf;
     wProcTitle *mProcTitle;
 protected:
     wStatus mStatus;
-
     wStatus InitProcTitle(int argc, const char *argv[]);
 };
 
