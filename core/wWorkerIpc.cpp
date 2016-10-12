@@ -77,7 +77,7 @@ wStatus wWorkerIpc::AddTask(wTask* task, int ev, int op, bool newconn) {
     evt.events = ev | EPOLLERR | EPOLLHUP | EPOLLET;
     evt.data.fd = task->Socket()->FD();
     evt.data.ptr = task;
-    if (epoll_ctl(mEpollFD, op, evt.data.fd, &evt) == -1) {
+    if (epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt) == -1) {
 		return mStatus = wStatus::IOError("wWorkerIpc::AddTask, epoll_ctl() failed", strerror(errno));
     }
     if (newconn) {
@@ -89,7 +89,7 @@ wStatus wWorkerIpc::AddTask(wTask* task, int ev, int op, bool newconn) {
 wStatus wWorkerIpc::RemoveTask(wTask* task) {
     struct epoll_event evt;
     evt.data.fd = task->Socket()->FD();
-    if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, evt.data.fd, &evt) < 0) {
+    if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, task->Socket()->FD(), &evt) < 0) {
 		return mStatus = wStatus::IOError("wWorkerIpc::RemoveTask, epoll_ctl() failed", strerror(errno));
     }
     RemoveTaskPool(task);

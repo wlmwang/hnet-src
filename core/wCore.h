@@ -24,37 +24,37 @@
 
 #define SAFE_NEW(type, ptr) \
 do { \
-       try { \
-            ptr = NULL; \
-            ptr = new type; \
-        } catch (...) { \
-            ptr = NULL; \
-        } \
+   try { \
+		ptr = NULL; \
+		ptr = new type; \
+	} catch (...) { \
+		ptr = NULL; \
+	} \
 } while (0)
 
 #define SAFE_NEW_VEC(n, type, ptr) \
 do { \
-       try { \
-            ptr = NULL; \
-            ptr = new type[n]; \
-        } catch (...) { \
-            ptr = NULL; \
-        } \
-} while(0)
+   try { \
+		ptr = NULL; \
+		ptr = new type[n]; \
+	} catch (...) { \
+		ptr = NULL; \
+	} \
+} while (0)
 
 #define SAFE_DELETE(ptr) \
 do { \
-       if(ptr) { \
-           delete ptr; \
-     ptr = NULL; \
-      } \
-} while(0)
+   if (ptr) { \
+	   delete ptr; \
+	   ptr = NULL; \
+  } \
+} while (0)
 
 #define SAFE_DELETE_VEC(ptr) \
 do { \
-       delete[] ptr; \
-       ptr = NULL; \
-} while(0)
+   delete[] ptr; \
+   ptr = NULL; \
+} while (0)
 
 namespace hnet {
 
@@ -86,7 +86,7 @@ const uint32_t	kMaxProcess = 1024;
 
 const int8_t    kProcessNoRespawn = -1;		// 子进程退出时，父进程不再创建
 const int8_t    kProcessJustSpawn = -2;		// 子进程正在重启，该进程创建之后，再次退出时，父进程不再创建
-const int8_t    kProcessRespawn = -3;     // 子进程异常退出时，父进程会重新创建它
+const int8_t    kProcessRespawn = -3;     	// 子进程异常退出时，父进程会重新创建它
 const int8_t    kProcessJustRespawn = -4;	// 子进程正在重启，该进程创建之后，再次退出时，父进程会重新创建它
 const int8_t    kProcessDetached = -5;		// 分离进程
 

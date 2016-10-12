@@ -22,6 +22,7 @@ wMaster::wMaster(std::string title, wServer* server, wConfig* config) : mEnv(wEn
 mTitle(title), mPid(getpid()), mSlot(kMaxProcess) {
     mWorkerNum = mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
     mPidPath = mConfig->mPidPath == NULL ? kPidPath: mConfig->mPidPath;
+    memset(mWorkerPool, 0, sizeof(mWorkerPool));
 }
 
 wMaster::~wMaster() {
@@ -454,7 +455,7 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 
     case 0:
     	// worker进程
-        worker->mPid = pid;
+        worker->mPid = getpid();
         mStatus = worker->Prepare();
         if (!mStatus.Ok()) {
         	exit(2);

@@ -28,11 +28,11 @@ public:
 	virtual ~wWorker();
 
 	virtual wStatus PrepareRun() {
-		return wStatus::IOError("wWorker::PrepareRun, worker will be exit", "method should be inherit");
+		return mStatus;
 	}
 
 	virtual wStatus Run() {
-		return wStatus::IOError("wWorker::Run, worker will be closed", "method should be inherit");
+		return mStatus;
 	}
 
 	wStatus Prepare();
