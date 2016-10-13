@@ -100,10 +100,10 @@ protected:
     wEnv *mEnv;
     wServer* mServer;
     wConfig* mConfig;
-    string mTitle;    // 进程名
+    std::string mTitle;    // 进程名
 
     pid_t mPid;		// master进程id
-    string mPidPath;
+    std::string mPidPath;
     uint8_t mNcpu;
 
     // 进程表

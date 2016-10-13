@@ -36,6 +36,17 @@ protected:
     std::vector<char*> mBlocks;
 };
 
+inline char* wMemPool::Allocate(size_t bytes) {
+	assert(bytes > 0);
+	if (bytes <= mAllocRemaining) {
+		char* result = mAllocPtr;
+		mAllocPtr += bytes;
+		mAllocRemaining -= bytes;
+		return result;
+	}
+	return AllocateFallback(bytes);
+}
+
 }   // namespace hnet
 
 #endif

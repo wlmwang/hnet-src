@@ -62,15 +62,25 @@ int main(int argc, const char *argv[]) {
 	SAFE_NEW(wConfig, config);
 	if (config == NULL) {
 		return -1;
-	} else if (!config->GetOption(argc, argv).Ok()) {
+	}
+
+	wStatus s;
+	s = config->GetOption(argc, argv);
+	if (!s.Ok()) {
+		std::cout << "get configure:" << s.ToString() << std::endl;
 		return -1;
 	}
 
-	if (config->mShowVer) {
+	bool version;
+	if (config->GetConf("version", &version) && version == true) {
 		std::cout << kSoftwareName << kSoftwareVer << std::endl;
 		return -1;
-	} else if (config->mDaemon == 1) {
-		if (!misc::InitDaemon(config->mLockPath).Ok()) {
+	}
+	bool daemon;
+	if (config->GetConf("daemon", &daemon) && daemon == true) {
+		std::string lock_path;
+		config->GetConf("lock_path", &lock_path);
+		if (!misc::InitDaemon(lock_path).Ok()) {
 			std::cout << "create daemon failed" << std::endl;
 			return -1;
 		}
@@ -85,9 +95,12 @@ int main(int argc, const char *argv[]) {
 	wMaster* master;
 	SAFE_NEW(wMaster("EXAMPLE", server, config), master);
 	if (master != NULL) {
-		if (master->PrepareStart().Ok()) {
-			master->MasterStart();
+		s = master->PrepareStart();
+		if (s.Ok()) {
+			wStatus s = master->MasterStart();
+			std::cout << "master start:" << s.ToString() << std::endl;
 		} else {
+			std::cout << "master prepare start:" << s.ToString() << std::endl;
 			return -1;
 		}
 	}

@@ -10,8 +10,8 @@
 # 需要预先编译lib目录下的log4cpp、tinyxml软件包
 #
 
-CXX=g++
-CXXFLAGS=-std=c++11 -O3 -Wall -Wno-invalid-offsetof -DUSE_LOG4CPP -DLINUX -D_DEBUG_ #-D_MEM_CHECK
+CXX=g++ -std=c++11
+CXXFLAGS=-O3 -Wall -Wno-invalid-offsetof -DUSE_LOG4CPP -DLINUX -D_DEBUG_ #-D_MEM_CHECK
 LDFLAGS=-L/usr/local/lib -ltinyxml -llog4cpp -lpthread
 
 COREPATH=../core
@@ -29,22 +29,20 @@ OBJECTS=./$(COREPATH)/wCrc32c.o \
 		./$(COREPATH)/wStatus.o \
 		./$(COREPATH)/wProcTitle.o \
 		./$(COREPATH)/wSignal.o \
-		./$(COREPATH)/wMsgQueue.o \
 		./$(COREPATH)/wMemPool.o \
-		./$(COREPATH)/wThread.o \
 		./$(COREPATH)/wSocket.o \
 		./$(COREPATH)/wChannelSocket.o \
 		./$(COREPATH)/wTcpSocket.o \
 		./$(COREPATH)/wUnixSocket.o \
 		./$(COREPATH)/wTask.o \
 		./$(COREPATH)/wChannelTask.o \
-		./$(COREPATH)/wConfig.o \
-		./$(COREPATH)/wServer.o \
 		./$(COREPATH)/wSingleClient.o \
 		./$(COREPATH)/wMultiClient.o \
 		./$(COREPATH)/wMaster.o \
 		./$(COREPATH)/wWorker.o \
 		./$(COREPATH)/wWorkerIpc.o \
+		./$(COREPATH)/wConfig.o \
+		./$(COREPATH)/wServer.o \
 		\
 		./$(SRCPATH)/exampleServer.o
 

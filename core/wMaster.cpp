@@ -20,9 +20,15 @@ namespace hnet {
 
 wMaster::wMaster(std::string title, wServer* server, wConfig* config) : mEnv(wEnv::Default()), mServer(server), mConfig(config), 
 mTitle(title), mPid(getpid()), mSlot(kMaxProcess) {
+	memset(mWorkerPool, 0, sizeof(mWorkerPool));
     mWorkerNum = mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
-    mPidPath = mConfig->mPidPath == NULL ? kPidPath: mConfig->mPidPath;
-    memset(mWorkerPool, 0, sizeof(mWorkerPool));
+    // pid文件路径
+    std::string pid_path;
+	if (mConfig->GetConf("pid_path", &pid_path) && pid_path.size() > 0) {
+		mPidPath = pid_path;
+	} else {
+		mPidPath = kPidPath;
+	}
 }
 
 wMaster::~wMaster() {
@@ -35,23 +41,28 @@ wStatus wMaster::PrepareStart() {
     // 检测配置、服务实例
     if (mServer == NULL) {
     	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mServer is null");
-    } else if (mConfig == NULL || mConfig->mHost == NULL || mConfig->mPort == 0) {
-    	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mConfig is null or ip|port is illegal");
+    }
+
+    std::string host;
+    int16_t port = 0;
+    if (mConfig == NULL || !mConfig->GetConf("host", &host) || !mConfig->GetConf("port", &port)) {
+    	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mConfig is null or host|port is illegal");
     }
 
     mStatus = PrepareRun();
     if (!mStatus.Ok()) {
     	return mStatus;
     }
-    mStatus = mConfig->mProcTitle->Setproctitle(kMasterTitle, mTitle.c_str());
+    mStatus = mConfig->Setproctitle(kMasterTitle, mTitle.c_str());
     if (!mStatus.Ok()) {
     	return mStatus;
     }
 
-    if (mConfig->mPtotocol == NULL) {
-    	mStatus = mServer->PrepareStart(mConfig->mHost, mConfig->mPort);
+    std::string protocol;
+    if (!mConfig->GetConf("protocol", &protocol)) {
+    	mStatus = mServer->PrepareStart(host, port);
     } else {
-    	mStatus = mServer->PrepareStart(mConfig->mHost, mConfig->mPort, mConfig->mPtotocol);
+    	mStatus = mServer->PrepareStart(host, port, protocol);
     }
     return mStatus;
 }
@@ -550,7 +561,7 @@ wStatus wMaster::InitSignals() {
 }
 
 void wMaster::WorkerExitStat() {
-	const char *process = "unknown process";
+	//const char *process = "unknown process";
     while (true) {
 		int status, one = 0;
         pid_t pid = waitpid(-1, &status, WNOHANG);
@@ -573,7 +584,7 @@ void wMaster::WorkerExitStat() {
 			if (mWorkerPool[i] != NULL && mWorkerPool[i]->mPid == pid) {
                 mWorkerPool[i]->mStat = status;
                 mWorkerPool[i]->mExited = 1;
-                process = mWorkerPool[i]->mTitle.c_str();
+                //process = mWorkerPool[i]->mTitle.c_str();
                 break;
 			}
 		}

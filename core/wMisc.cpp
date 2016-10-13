@@ -207,7 +207,7 @@ unsigned GetIpByIF(const char* ifname) {
     return ip;
 }
 
-wStatus InitDaemon(const char *lockfile, const char *prefix) {
+wStatus InitDaemon(std::string lock_path, const char *prefix) {
     // 获取主目录
     char dirPath[256] = {0};
     if (prefix == NULL) {
@@ -224,13 +224,15 @@ wStatus InitDaemon(const char *lockfile, const char *prefix) {
     umask(0);
 
     // 独占式锁定文件，防止有相同程序的进程已经启动
-    lockfile = lockfile != NULL? lockfile: kLockPath;
-    int lockFD = open(lockfile, O_RDWR|O_CREAT, 0640);
+    if (lock_path.size() == 0) {
+    	lock_path = kLockPath;
+    }
+    int lockFD = open(lock_path.c_str(), O_RDWR|O_CREAT, 0640);
     if (lockFD < 0) {
-        return wStatus::IOError("misc::InitDaemon, open lockfile failed", strerror(errno));
+        return wStatus::IOError("misc::InitDaemon, open lock_path failed", strerror(errno));
     }
     if (flock(lockFD, LOCK_EX | LOCK_NB) < 0) {
-        return wStatus::IOError("misc::InitDaemon, flock lockfile failed(maybe server is already running)", strerror(errno));
+        return wStatus::IOError("misc::InitDaemon, flock lock_path failed(maybe server is already running)", strerror(errno));
     }
 
     // 若是以root身份运行，设置进程的实际、有效uid
@@ -241,13 +243,6 @@ wStatus InitDaemon(const char *lockfile, const char *prefix) {
         if (setgid(kDeamonGroup) == -1) {
             return wStatus::Corruption("misc::InitDaemon, setgid failed", strerror(errno));
         }
-
-        /*
-        // 附加组ID
-        if (initgroups(kDeamonUser, kDeamonGroup) == -1) {
-            // initgroups failed
-        }
-        */
     }
 
     if (fork() != 0) {
@@ -269,7 +264,7 @@ wStatus InitDaemon(const char *lockfile, const char *prefix) {
     if (fork() != 0) {
         exit(0);
     }
-    unlink(lockfile);
+    unlink(lock_path.c_str());
     return wStatus::Nothing();
 }
 

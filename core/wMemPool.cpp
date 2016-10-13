@@ -16,7 +16,6 @@ wMemPool::~wMemPool() {
     }
 }
 
-
 char* wMemPool::AllocateFallback(size_t bytes) {
     if (bytes > kBlockSize / 4) {
         // 直接分配申请字节大小的新块内存返回
@@ -31,7 +30,6 @@ char* wMemPool::AllocateFallback(size_t bytes) {
         mAllocPtr = result + bytes;
         mAllocRemaining -= bytes;
     }
-
     return result;
 }
 

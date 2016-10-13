@@ -75,7 +75,7 @@ bool ConsumeDecimalNumber(std::string* in, uint64_t* val);
 namespace misc {
 
 // 创建守护进程
-wStatus InitDaemon(const char *filename = NULL, const char *prefix = NULL);
+wStatus InitDaemon(std::string lock_path, const char *prefix = NULL);
 
 // 哈希值 murmur hash类似算法
 uint32_t Hash(const char* data, size_t n, uint32_t seed);

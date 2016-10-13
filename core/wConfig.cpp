@@ -8,14 +8,17 @@
 #include "wMisc.h"
 #include "wSlice.h"
 #include "tinyxml.h"    //lib tinyxml
+#include "wMemPool.h"
 
 namespace hnet {
 
+wConfig::wConfig() : mProcTitle(NULL) {
+	SAFE_NEW(wMemPool, mPool);
+}
+
 wConfig::~wConfig() {
-	for (std::map<std::string, void*>::iterator it = mConf.begin(); it != mConf.end; it++) {
-		SAFE_DELETE_VEC(it->second);
-	}
     SAFE_DELETE(mProcTitle);
+    SAFE_DELETE(mPool);
 }
 
 // 参数形式
@@ -32,24 +35,24 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
 
         // 设置布尔值
         auto setBoolConf = [this](std::string key, bool val) {
-        	bool* b;
-        	SAFE_NEW_VEC(1, bool, b);
+        	bool* b = reinterpret_cast<bool *>(mPool->Allocate(sizeof(bool)));
         	*b = val;
         	this->mConf[key] = reinterpret_cast<void *>(b);
         };
 
         // 设置整型值
         auto setIntConf = [this](std::string key, int val) {
-        	int* i;
-        	SAFE_NEW_VEC(1, bool, i);
-        	*b = val;
+        	int* i = reinterpret_cast<int *>(mPool->Allocate(sizeof(int)));
+        	*i = val;
         	this->mConf[key] = reinterpret_cast<void *>(i);
         };
 
-        // 设置std::string值
+        // 设置string值
         auto setStrConf = [this](std::string key, const char *val) {
-        	std::string* s;
-        	SAFE_NEW_VEC(1, std::string, s);
+        	char* c = mPool->Allocate(sizeof(std::string));
+        	std::string *s;
+        	// 定位new操作符，初始化string对象（string使用前必须初始化）
+        	SAFE_NEW((c)std::string(), s);
         	*s = val;
         	this->mConf[key] = reinterpret_cast<void *>(s);
         };
@@ -94,15 +97,15 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
 
             case 'p':
                 if (*p) {
-                	int p = atoi(p);
-                	setIntConf("port", p);
+                	int i = atoi(p);
+                	setIntConf("port", i);
                 	goto next;
                 }
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
-                	int p = atoi(p);
-                	setIntConf("port", p);
+                	int i = atoi(p);
+                	setIntConf("port", i);
                 	goto next;
                 }
                 return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires port number");
