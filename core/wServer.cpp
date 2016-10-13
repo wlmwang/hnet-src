@@ -345,12 +345,13 @@ wStatus wServer::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter) {
 		return mStatus = wStatus::IOError("wServer::RemoveTask, epoll_ctl() failed", strerror(errno));
     }
 
-    mTaskPoolMutex[task->Type()].Lock();
+    int32_t type =  task->Type();
+    mTaskPoolMutex[type].Lock();
     std::vector<wTask*>::iterator it = RemoveTaskPool(task);
     if (iter != NULL) {
     	*iter = it;
     }
-    mTaskPoolMutex[task->Type()].Unlock();
+    mTaskPoolMutex[type].Unlock();
     return mStatus;
 }
 
@@ -374,10 +375,11 @@ wStatus wServer::AddToTaskPool(wTask* task) {
 }
 
 std::vector<wTask*>::iterator wServer::RemoveTaskPool(wTask* task) {
-    std::vector<wTask*>::iterator it = std::find(mTaskPool[task->Type()].begin(), mTaskPool[task->Type()].end(), task);
-    if (it != mTaskPool[task->Type()].end()) {
+	int32_t type =  task->Type();
+    std::vector<wTask*>::iterator it = std::find(mTaskPool[type].begin(), mTaskPool[type].end(), task);
+    if (it != mTaskPool[type].end()) {
     	SAFE_DELETE(*it);
-        it = mTaskPool[task->Type()].erase(it);
+        it = mTaskPool[type].erase(it);
     }
     return it;
 }
