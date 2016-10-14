@@ -26,8 +26,8 @@ wStatus wWorkerIpc::PrepareRun() {
 	}
 
 	// worker自身channel[1]被监听
-	if (mWorker != NULL && mWorker->mMaster->mWorkerPool[mWorker->mSlot] != NULL) {
-		wChannelSocket *socket = mWorker->mMaster->mWorkerPool[mWorker->mSlot]->mChannel;
+	if (mWorker != NULL && mWorker->Master() != NULL && mWorker->Master()->Worker(mWorker->mSlot) != NULL) {
+		wChannelSocket *socket = mWorker->Master()->Worker(mWorker->mSlot)->Channel();
 		if (socket != NULL) {
 			wTask *task;
 			SAFE_NEW(wChannelTask(socket, mWorker), task);

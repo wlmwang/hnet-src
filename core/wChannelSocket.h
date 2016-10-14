@@ -32,7 +32,7 @@ public:
 
     virtual wStatus Close();
 
-    int &operator[](uint8_t i);
+    int& operator[](uint8_t i);
 
 protected:
     virtual wStatus Bind(string host, uint16_t port = 0) {
@@ -40,7 +40,7 @@ protected:
     }
 
     wStatus mStatus;
-    // 0:传递给其他进程，供写入数据 
+    // 0:传递给其他进程，供写入数据
     // 1:当前进程读取其他进程写入0中的数据
     int mChannel[2];
 };

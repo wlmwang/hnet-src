@@ -22,20 +22,20 @@ wChannelTask::wChannelTask(wSocket *socket, wWorker *worker) : wTask(socket), mW
 
 int wChannelTask::ChannelOpen(char buf[], uint32_t len) {
 	struct ChannelReqOpen_t* ch = reinterpret_cast<struct ChannelReqOpen_t*>(buf);
-	if (mWorker->Master()->Worker(ch->mSlot)) {
+	if (mWorker->Master()->Worker(ch->mSlot) != NULL) {
 		mWorker->Master()->Worker(ch->mSlot)->Pid() = ch->mPid;
-		mWorker->Master()->Worker(ch->mSlot)->FD(0) = ch->mPid;
+		mWorker->Master()->Worker(ch->mSlot)->ChannelFD(0) = ch->mPid;
 	}
 	return 0;
 }
 
 int wChannelTask::ChannelClose(char *buf, uint32_t len) {
 	struct ChannelReqClose_t* ch = reinterpret_cast<struct ChannelReqClose_t*>(buf);
-	if (mWorker->Master()->Worker(ch->mSlot)) {
-		if (close(mWorker->Master()->Worker(ch->mSlot)->FD(0)) == -1) {
+	if (mWorker->Master()->Worker(ch->mSlot) != NULL) {
+		if (close(mWorker->Master()->Worker(ch->mSlot)->ChannelFD(0)) == -1) {
 			//wStatus::IOError("wChannelTask::ChannelClose, close() failed", strerror(errno));
 		}
-		mWorker->Master()->Worker(ch->mSlot)->FD(0) = kFDUnknown;
+		mWorker->Master()->Worker(ch->mSlot)->ChannelFD(0) = kFDUnknown;
 	}
 	return 0;
 }

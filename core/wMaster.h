@@ -79,8 +79,8 @@ protected:
     wStatus InitSignals();
 
     // 如果有worker异常退出，则重启
-    // 如果所有的worker都退出了，则 *live = 0
-    wStatus ReapChildren(int8_t* live);
+    // 如果所有的worker都退出了，则mLive = 0
+    wStatus ReapChildren();
 
     wStatus CreatePidFile();
     wStatus DeletePidFile();
@@ -110,6 +110,10 @@ protected:
     uint32_t mSlot; // worker分配索引
     uint32_t mWorkerNum; // worker数量
     wWorker *mWorkerPool[kMaxProcess];
+
+    int32_t mDelay;
+    int32_t mSigio;
+    int32_t mLive;
 };
 
 }	// namespace hnet

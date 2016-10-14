@@ -39,9 +39,9 @@ public:
 	wStatus Start();
 
 	inline wMaster* Master() { return mMaster;}
-    inline wChannelSocket* Channel() { return mChannel;}
-    inline int& FD(uint8_t i) { return (*mChannel)[i];}
     inline pid_t& Pid() { return mPid;}
+    inline wChannelSocket* Channel() { return mChannel;}
+    inline int& ChannelFD(uint8_t i) { return (*mChannel)[i];}
 
 protected:
 	friend class wMaster;

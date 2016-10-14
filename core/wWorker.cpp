@@ -48,13 +48,13 @@ wStatus wWorker::Prepare() {
     for (uint32_t n = 0; n < kMaxProcess; n++) {
     	if (n == mSlot || mMaster->Worker(n) == NULL || mMaster->Worker(n)->mPid == -1) {
     		continue;
-    	} else if (close(mMaster->Worker(n)->FD(1)) == -1) {
+    	} else if (close(mMaster->Worker(n)->ChannelFD(1)) == -1) {
     		return mStatus = wStatus::IOError("wWorker::Prepare, channel close() failed", strerror(errno));
     	}
     }
 
     // 关闭该进程worker进程的ch[0]描述符
-    if (close(mMaster->Worker(mSlot)->FD(1)) == -1) {
+    if (close(mMaster->Worker(mSlot)->ChannelFD(0)) == -1) {
     	return mStatus = wStatus::IOError("wWorker::Prepare, channel close() failed", strerror(errno));
     }
 
