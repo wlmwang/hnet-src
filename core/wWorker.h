@@ -49,6 +49,7 @@ protected:
 
 	wStatus mStatus;
 	wMaster *mMaster;
+	wWorkerIpc *mIpc;
 	string mTitle;	// 进程名
 	pid_t mPid;
 	int mPriority;	// 进程优先级

@@ -408,19 +408,6 @@ public:
         memcpy(&thread_id, &tid, std::min(sizeof(thread_id), sizeof(tid)));
         return thread_id;
     }
-
-    /*
-    virtual wStatus NewLogger(const std::string& fname, wLogger** result) {
-        FILE* f = fopen(fname.c_str(), "w");
-        if (f == NULL) {
-            *result = NULL;
-            return IOError(fname, errno);
-        } else {
-            SAFE_NEW(wPosixLogger(f, &wPosixEnv::gettid), *result);
-            return Status::Nothing();
-        }
-    }
-    */
    
     // 当前微妙时间
     virtual uint64_t NowMicros() {
@@ -474,18 +461,17 @@ wPosixEnv::wPosixEnv() : mStartedBgthread(false) {
 void wPosixEnv::Schedule(void (*function)(void*), void* arg) {
     PthreadCall("lock", pthread_mutex_lock(&mMutex));
 
-    // Start background thread if necessary
-    if (!mStartedBgthread) {   // 后台任务线程未开启
+    // 后台任务线程未开启
+    if (!mStartedBgthread) {
         mStartedBgthread = true;
         PthreadCall(
         "create thread",
         pthread_create(&mBgthread, NULL,  &wPosixEnv::BGThreadWrapper, this));
     }
 
-    // If the queue is currently empty, the background thread may currently be
-    // waiting.
+    // 任务链表为空，唤醒任务消费线程
     if (mQueue.empty()) {
-        PthreadCall("signal", pthread_cond_signal(&mBgsignal));	// 任务链表为空，唤醒任务消费线程   ???竞争条件???
+        PthreadCall("signal", pthread_cond_signal(&mBgsignal));
     }
 
     // 添加任务到队尾

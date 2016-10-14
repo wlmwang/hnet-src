@@ -41,7 +41,7 @@ wStatus wServer::SingleStart(bool daemon) {
 		return mStatus;
     }
     
-    // 开启心跳线程
+    // 添加心跳任务到线程池中
     if (mCheckSwitch) {
 		mEnv->Schedule(wServer::CheckTimer, this);
     }
@@ -67,7 +67,7 @@ wStatus wServer::WorkerStart(bool daemon) {
 		return mStatus;
     }
     
-    // 开启心跳线程
+    // 添加心跳任务到线程池中
     if (mCheckSwitch) {
 		mEnv->Schedule(wServer::CheckTimer, this);
     }
@@ -414,11 +414,15 @@ void wServer::CheckTimer(void* arg) {
     if (server->mHeartbeatTimer.CheckTimer(interval/1000)) {
 		server->CheckTimeout();
     }
+
+    // 重新将心跳任务添加到线程池中
+    if (server->mCheckSwitch) {
+    	server->mEnv->Schedule(wServer::CheckTimer, server);
+    }
 }
 
 void wServer::CheckTimeout() {
     uint64_t nowTm = misc::GetTimeofday();
-    
     for (int i = 0; i < kNumShard; i++) {
     	mTaskPoolMutex[i].Lock();
 	    if (mTaskPool[i].size() > 0) {

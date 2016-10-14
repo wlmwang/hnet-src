@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include <cstdarg>
 #include "wCore.h"
+#include "wStatus.h"
 #include "wNoncopyable.h"
 
 namespace hnet {
@@ -17,61 +18,54 @@ namespace hnet {
 class wMutex;
 class wCond;
 
-static int PthreadCall(const char* label, int errNumber) {
-    if (errNumber != 0) {
-        fprintf(stderr, "pthread %s: %s\n", label, strerror(errNumber));
-        abort();
-    }
-    return errNumber;
-}
-
 class wThread : private wNoncopyable {
 public:
-    wThread() : mRunStatus(kThreadBlocked), mMutex(NULL), mCond(NULL) { }
-    virtual ~wThread() { }
+    wThread();
+    virtual ~wThread();
 
-    virtual int PrepareRun() = 0;
-    virtual int Run() = 0;
+    virtual wStatus PrepareRun() = 0;
+    virtual wStatus Run() = 0;
 
-    int StartThread(int join = 1);
-    int StopThread();
+    wStatus StartThread(int join = 1);
+    wStatus StopThread();
+    wStatus CancelThread();
+
+    // 唤醒线程
     int Wakeup();
+    // 线程同步控制
     int CondBlock();
-
-    pthread_t GetTid() {
-        return mTid;
-    }
 	
 private:
-    static void* ThreadWrapper(void *pvArgs);
-
+    static void* ThreadWrapper(void *arg);
 protected:
-    int CancelThread() {
-        return PthreadCall("pthread_cancle", pthread_cancel(mTid));
-    }
-    bool IsBlocked() {
-        return mRunStatus == kThreadBlocked;
-    }
-    bool IsRunning() {
-        return mRunStatus == kThreadRunning;
-    }
-    bool IsStopped() {
-        return mRunStatus == kThreadStopped;
+    inline bool IsBlocked() {
+        return mState == kThreadBlocked;
     }
 
-    enum pthreadStatus {
+    inline bool IsRunning() {
+        return mState == kThreadRunning;
+    }
+
+    inline bool IsStopped() {
+        return mState == kThreadStopped;
+    }
+
+    enum State_t {
         kThreadInit = 0,
         kThreadBlocked = 1,
         kThreadRunning = 2,
         kThreadStopped = 3
     };
 
-    pthreadStatus mRunStatus;
+    wStatus mStatus;
+    State_t mState;
 
-    pthread_t mTid;
-    pthread_attr_t mAttr;
     wMutex *mMutex;
     wCond *mCond;
+
+    // 线程属性
+    pthread_t mTid;
+    pthread_attr_t mAttr;
 };
 
 }	// namespace hnet

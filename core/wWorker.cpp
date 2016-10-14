@@ -18,6 +18,7 @@ namespace hnet {
 wWorker::wWorker(std::string title, uint32_t slot, wMaster* master) : mMaster(master), mTitle(title), mPid(-1),
 mPriority(0), mRlimitCore(kRlimitCore), mSlot(slot) {
 	SAFE_NEW(wChannelSocket(), mChannel);
+	SAFE_NEW(wWorkerIpc(this), mIpc);
 }
 
 wWorker::~wWorker() {
@@ -68,9 +69,12 @@ wStatus wWorker::Prepare() {
 		return mStatus;
 	}
 
-    // 开启worker进程通信线程
-    mMaster->mEnv->Schedule(wWorkerIpc::ChannelIpc, this);
-	
+    // 开启worker ipc进程通信线程
+	if (mIpc != NULL) {
+		mStatus = mIpc->StartThread();
+	} else {
+		mStatus = wStatus::IOError("wWorker::Prepare, start thread failed", "new ipc failed");
+	}
 	return mStatus;
 }
 

@@ -20,19 +20,7 @@ wWorkerIpc::~wWorkerIpc() {
 	CleanTask();
 }
 
-void wWorkerIpc::ChannelIpc(void* arg) {
-    wWorker* worker = reinterpret_cast<wWorker* >(arg);
-    wWorkerIpc *ipc;
-    SAFE_NEW(wWorkerIpc(worker), ipc);
-    if (ipc != NULL) {
-    	if (ipc->Prepare().Ok()) {
-    		ipc->Start();
-    	}
-    	SAFE_DELETE(ipc);
-    }
-}
-
-wStatus wWorkerIpc::Prepare() {
+wStatus wWorkerIpc::PrepareRun() {
 	if (!InitEpoll().Ok()) {
 		return mStatus;
 	}
@@ -58,7 +46,7 @@ wStatus wWorkerIpc::Prepare() {
 	return mStatus;
 }
 
-wStatus wWorkerIpc::Start() {
+wStatus wWorkerIpc::Run() {
 	while (true) {
 		Recv();
 	}

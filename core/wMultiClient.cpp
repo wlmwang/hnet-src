@@ -85,7 +85,7 @@ wStatus wMultiClient::Prepare() {
 
 wStatus wMultiClient::Start() {
     
-    // 开启心跳线程
+	// 添加心跳任务到线程池中
     if (mCheckSwitch) {
         mEnv->Schedule(wMultiClient::CheckTimer, this);
     }
@@ -212,6 +212,11 @@ void wMultiClient::CheckTimer(void* arg) {
     
     if (client->mHeartbeatTimer.CheckTimer(interval/1000)) {
         client->CheckTimeout();
+    }
+
+    // 重新将心跳任务添加到线程池中
+    if (client->mCheckSwitch) {
+    	client->mEnv->Schedule(wMultiClient::CheckTimer, client);
     }
 }
 

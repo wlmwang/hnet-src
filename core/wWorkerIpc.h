@@ -12,22 +12,20 @@
 #include <sys/epoll.h>
 #include "wCore.h"
 #include "wStatus.h"
-#include "wNoncopyable.h"
+#include "wThread.h"
 
 namespace hnet {
 
 class wTask;
 class wWorker;
 
-class wWorkerIpc : public wNoncopyable {
+class wWorkerIpc : public wThread {
 public:
 	wWorkerIpc(wWorker *worker);
 	~wWorkerIpc();
 
-	wStatus Prepare();
-	wStatus Start();
-	
-	static void ChannelIpc(void* arg);
+	wStatus PrepareRun();
+	wStatus Run();
 
 protected:
     // 事件读写主调函数
