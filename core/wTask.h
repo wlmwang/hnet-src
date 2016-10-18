@@ -17,7 +17,6 @@ namespace hnet {
 class wSocket;
 class wServer;
 class wMultiClient;
-class wWorkerIpc;
 
 class wTask : private wNoncopyable {
 public:
@@ -27,40 +26,6 @@ public:
     virtual const char* Name() {
         return "wTask";
     }
-
-    // 同步发送确切长度消息
-    // wStatus返回不为空，则task被关闭
-    // size = -1 对端发生错误|稍后重试|对端关闭
-    // size >= 0 发送字符
-    wStatus SyncSend(char cmd[], size_t len, ssize_t *size);
-    
-    // SyncSend的异步发送版本
-    wStatus AsyncSend(char cmd[], size_t len);
-
-    // 同步接受确切长度消息
-    // 调用者：保证此sock未加入epoll中，否则出现事件竞争！另外也要确保buf有足够长的空间接受自此同步消息
-    // wStatus返回不为空，则socket被关闭
-    // size = -1 对端发生错误|稍后重试
-    // size = 0  对端关闭
-    // size > 0  接受字符
-    wStatus SyncRecv(char cmd[], size_t len, ssize_t *size, uint32_t timeout /*s*/);
-
-    inline wSocket *Socket() {
-        return mSocket;
-    }
-    
-    inline size_t SendLen() {
-        return mSendLen;
-    }
-    
-    inline int32_t Type() {
-        return mType;
-    }
-
-protected:
-    friend class wServer;
-    friend class wMultiClient;
-    friend class wWorkerIpc;
 
     // 登录验证
     virtual wStatus Login() {
@@ -110,6 +75,36 @@ protected:
     	mClient = client;
     }
 
+    // 同步发送确切长度消息
+    // wStatus返回不为空，则task被关闭
+    // size = -1 对端发生错误|稍后重试|对端关闭
+    // size >= 0 发送字符
+    wStatus SyncSend(char cmd[], size_t len, ssize_t *size);
+    
+    // SyncSend的异步发送版本
+    wStatus AsyncSend(char cmd[], size_t len);
+
+    // 同步接受确切长度消息
+    // 调用者：保证此sock未加入epoll中，否则出现事件竞争！另外也要确保buf有足够长的空间接受自此同步消息
+    // wStatus返回不为空，则socket被关闭
+    // size = -1 对端发生错误|稍后重试
+    // size = 0  对端关闭
+    // size > 0  接受字符
+    wStatus SyncRecv(char cmd[], size_t len, ssize_t *size, uint32_t timeout /*s*/);
+
+    inline wSocket *Socket() {
+        return mSocket;
+    }
+    
+    inline size_t SendLen() {
+        return mSendLen;
+    }
+    
+    inline int32_t Type() {
+        return mType;
+    }
+
+protected:
     int8_t mState;
     wStatus mStatus;
 

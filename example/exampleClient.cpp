@@ -31,14 +31,13 @@ int main(int argc, const char *argv[]) {
     cmd.mLen = static_cast<uint8_t>(l);
 
 	ssize_t size;
-	s = client->Task()->SyncSend(reinterpret_cast<char *>(&cmd), sizeof(cmd), &size);
+	s = client->SyncSend(reinterpret_cast<char *>(&cmd), sizeof(cmd), &size);
 	if (!s.Ok()) {
 		std::cout << "client send failed" << s.ToString() << std::endl;
 		return -1;
 	}
 
-	s = client->Task()->SyncRecv(cmd, sizeof(cmd), &size, 30);
-
+	s = client->SyncRecv(reinterpret_cast<char *>(&cmd), sizeof(cmd), &size);
 	if (!s.Ok()) {
 		std::cout << "client recv failed" << s.ToString() << std::endl;
 		return -1;

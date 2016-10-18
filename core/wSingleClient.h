@@ -22,8 +22,14 @@ public:
     ~wSingleClient();
 
     wStatus Connect(std::string ipaddr, uint16_t port, std::string protocol = "TCP");
-    wTask* Task() { return mTask;}
-    
+
+    wStatus SyncSend(char cmd[], size_t len, ssize_t *size) {
+    	return mStatus = mTask->SyncSend(cmd, len, size);
+    }
+
+    wStatus SyncRecv(char cmd[], size_t len, ssize_t *size, uint32_t timeout = 30) {
+    	return mStatus = mTask->SyncRecv(cmd, len, size, timeout);
+    }
 protected:
     wStatus mStatus;
     wTask* mTask;
