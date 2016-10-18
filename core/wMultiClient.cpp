@@ -23,7 +23,7 @@ wMultiClient::~wMultiClient() {
 }
 
 wStatus wMultiClient::AddConnect(int type, std::string ipaddr, uint16_t port, std::string protocol) {
-    if (type >= kNumShard) {
+    if (type >= kClientNumShard) {
         return mStatus = wStatus::IOError("wMultiClient::AddConnect failed", "overload type");
     }
 
@@ -67,6 +67,8 @@ wStatus wMultiClient::AddConnect(int type, std::string ipaddr, uint16_t port, st
             SAFE_DELETE(mTask);
         } else if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
             SAFE_DELETE(mTask);
+        } else {
+        	mTask->SetClient(this);
         }
     }
     return mStatus;
@@ -166,8 +168,8 @@ wStatus wMultiClient::Recv() {
 }
 
 wStatus wMultiClient::Broadcast(char *cmd, size_t len, int type) {
-    if (type == kNumShard) {
-        for (int i = 0; i < kNumShard; i++) {
+    if (type == kClientNumShard) {
+        for (int i = 0; i < kClientNumShard; i++) {
             mTaskPoolMutex[i].Lock();
             if (mTaskPool[i].size() > 0) {
                 for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
@@ -223,7 +225,7 @@ void wMultiClient::CheckTimer(void* arg) {
 void wMultiClient::CheckTimeout() {
     uint64_t nowTm = misc::GetTimeofday();
     
-    for (int i = 0; i < kNumShard; i++) {
+    for (int i = 0; i < kClientNumShard; i++) {
         mTaskPoolMutex[i].Lock();
         if (mTaskPool[i].size() > 0) {
             for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
@@ -307,7 +309,7 @@ wStatus wMultiClient::CleanTask() {
     }
     mEpollFD = kFDUnknown;
 
-    for (int i = 0; i < kNumShard; i++) {
+    for (int i = 0; i < kClientNumShard; i++) {
         mTaskPoolMutex[i].Lock();
         CleanTaskPool(mTaskPool[i]);
         mTaskPoolMutex[i].Unlock();

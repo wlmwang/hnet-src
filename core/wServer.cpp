@@ -164,7 +164,7 @@ wStatus wServer::Recv() {
 				mStatus = task->TaskSend(&size);
 				if (!mStatus.Ok()) {
 				    if (!RemoveTask(task).Ok()) {
-					return mStatus;
+				    	return mStatus;
 				    }
 				}
 		    }
@@ -228,13 +228,15 @@ wStatus wServer::AcceptConn(wTask *task) {
 		    SAFE_DELETE(mTask);
 		} else if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
 		    SAFE_DELETE(mTask);
+		} else {
+			mTask->SetServer(this);
 		}
     }
     return mStatus;
 }
 
 wStatus wServer::Broadcast(char *cmd, int len) {
-    for (int i = 0; i < kNumShard; i++) {
+    for (int i = 0; i < kServerNumShard; i++) {
     	mTaskPoolMutex[i].Lock();
 	    if (mTaskPool[i].size() > 0) {
 			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
@@ -313,6 +315,8 @@ wStatus wServer::Listener2Epoll() {
 		    if (!AddTask(task).Ok()) {
 				SAFE_DELETE(task);
 				break;
+		    } else {
+		    	task->SetServer(this);
 		    }
 		} else {
 			break;
@@ -361,7 +365,7 @@ wStatus wServer::CleanTask() {
     }
     mEpollFD = kFDUnknown;
 
-    for (int i = 0; i < kNumShard; i++) {
+    for (int i = 0; i < kServerNumShard; i++) {
     	mTaskPoolMutex[i].Lock();
     	CleanTaskPool(mTaskPool[i]);
     	mTaskPoolMutex[i].Unlock();
@@ -423,7 +427,7 @@ void wServer::CheckTimer(void* arg) {
 
 void wServer::CheckTimeout() {
     uint64_t nowTm = misc::GetTimeofday();
-    for (int i = 0; i < kNumShard; i++) {
+    for (int i = 0; i < kServerNumShard; i++) {
     	mTaskPoolMutex[i].Lock();
 	    if (mTaskPool[i].size() > 0) {
 			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {

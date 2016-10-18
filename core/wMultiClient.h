@@ -20,8 +20,8 @@
 
 namespace hnet {
 
-const int kNumShardBits = 4;
-const int kNumShard = 1 << kNumShardBits;
+const int kClientNumShardBits = 4;
+const int kClientNumShard = 1 << kClientNumShardBits;
 
 class wEnv;
 class wTask;
@@ -41,7 +41,7 @@ public:
     
     // 异步广播消息
     // 当 type== kNumShard 广播所有类型下的所有客户端
-    wStatus Broadcast(char *cmd, size_t len, int type = kNumShard);
+    wStatus Broadcast(char *cmd, size_t len, int type = kClientNumShard);
     wStatus Send(wTask *task, char *cmd, size_t len);
 
     wStatus Prepare();
@@ -90,8 +90,8 @@ protected:
 
     // task|pool
     wTask *mTask;
-    std::vector<wTask*> mTaskPool[kNumShard];
-    wMutex mTaskPoolMutex[kNumShard];
+    std::vector<wTask*> mTaskPool[kClientNumShard];
+    wMutex mTaskPoolMutex[kClientNumShard];
 };
 
 }	// namespace hnet

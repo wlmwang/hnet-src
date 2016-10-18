@@ -20,8 +20,8 @@
 
 namespace hnet {
 
-const int kNumShardBits = 8;
-const int kNumShard = 1 << kNumShardBits;
+const int kServerNumShardBits = 8;
+const int kServerNumShard = 1 << kServerNumShardBits;
 
 class wEnv;
 class wTask;
@@ -74,7 +74,7 @@ protected:
     // 散列到mTaskPool的某个分组中
     static uint32_t Shard(wSocket* sock) {
         uint32_t hash = misc::Hash(sock->Host().c_str(), sock->Host().size(), 0);
-        return hash >> (32 - kNumShardBits);
+        return hash >> (32 - kServerNumShardBits);
     }
 
     // 事件读写主调函数
@@ -117,8 +117,8 @@ protected:
 
     // task|pool
     wTask *mTask;
-    std::vector<wTask*> mTaskPool[kNumShard];
-    wMutex mTaskPoolMutex[kNumShard];
+    std::vector<wTask*> mTaskPool[kServerNumShard];
+    wMutex mTaskPoolMutex[kServerNumShard];
 };
 
 }	// namespace hnet

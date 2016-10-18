@@ -8,31 +8,20 @@
 #include "wStatus.h"
 #include "wMisc.h"
 #include "wLog.h"
-#include "wCommand.h"
 #include "wTcpTask.h"
 #include "wConfig.h"
 #include "wServer.h"
 #include "wMaster.h"
+#include "exampleCmd.h"
 
 using namespace hnet;
-
-const uint8_t CMD_EXAMPLE_REQ = 100;
-struct ExampleReqCmd_s : public wCommand {
-    ExampleReqCmd_s(uint8_t para) : wCommand(CMD_EXAMPLE_REQ, para) { }
-};
-const uint8_t EXAMPLE_REQ_ECHO = 0;
-struct ExampleReqEcho_t : public ExampleReqCmd_s {
-    int8_t mLen;
-    char mCmd[512];
-    ExampleReqEcho_t() : ExampleReqCmd_s(EXAMPLE_REQ_ECHO) { }
-};
 
 class ExampleTask : public wTcpTask {
 public:
 	ExampleTask(wSocket *socket, int32_t type) : wTcpTask(socket, type) {
 		REG_DISP(mDispatch, Name(), CMD_EXAMPLE_REQ, EXAMPLE_REQ_ECHO, &ExampleTask::ExampleEcho);
 	}
-    virtual const char* Name() const {
+    virtual const char* Name() {
 		return "ExampleTask";
     }
 
@@ -41,8 +30,14 @@ public:
 
 int ExampleTask::ExampleEcho(char buf[], uint32_t len) {
 	struct ExampleReqEcho_t* cmd = reinterpret_cast<struct ExampleReqEcho_t*>(buf);
-	ssize_t size;
-	SyncSend(cmd->mCmd, cmd->mLen, &size);
+	std::cout << cmd->mCmd << std::endl;
+
+	// 异步发送
+	AsyncSend(buf, len);
+
+	// 同步发送
+	//ssize_t size;
+	//SyncSend(buf, len, &size);
 	return 0;
 }
 
