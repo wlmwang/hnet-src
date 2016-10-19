@@ -12,9 +12,7 @@
 
 namespace hnet {
 
-wSingleClient::wSingleClient() : mTask (NULL) {
-    //
-}
+wSingleClient::wSingleClient() : mTask (NULL) { }
 
 wSingleClient::~wSingleClient() {
     SAFE_DELETE(mTask);

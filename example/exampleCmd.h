@@ -11,7 +11,7 @@
 #define _W_EXAMPLE_H_
 
 const uint8_t CMD_EXAMPLE_REQ = 100;
-struct ExampleReqCmd_s : public wCommand {
+struct ExampleReqCmd_s : public hnet::wCommand {
     ExampleReqCmd_s(uint8_t para) : wCommand(CMD_EXAMPLE_REQ, para) { }
 };
 

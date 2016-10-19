@@ -44,7 +44,7 @@ public:
     wStatus Broadcast(char *cmd, size_t len, int type = kClientNumShard);
     wStatus Send(wTask *task, char *cmd, size_t len);
 
-    wStatus Prepare();
+    wStatus PrepareStart();
     wStatus Start();
     
     virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr, int type = 0);

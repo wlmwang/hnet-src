@@ -10,8 +10,7 @@
 #include "wLog.h"
 #include "wTcpTask.h"
 #include "wConfig.h"
-#include "wServer.h"
-#include "wMaster.h"
+#include "wMultiClient.h"
 #include "exampleCmd.h"
 
 using namespace hnet;
@@ -38,12 +37,11 @@ int ExampleTask::ExampleEcho(char buf[], uint32_t len) {
 	return 0;
 }
 
-class ExampleServer : public wServer {
-public:
-	virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr) {
-	    SAFE_NEW(ExampleTask(sock, Shard(sock)), *ptr);
+class ExampleClient : public wMultiClient {
+	virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr, int type = 0) {
+	    SAFE_NEW(ExampleTask(sock, type), *ptr);
 	    if (*ptr == NULL) {
-			return wStatus::IOError("ExampleServer::NewTcpTask", "ExampleTask new failed");
+	        return wStatus::IOError("ExampleClient::NewTcpTask", "new failed");
 	    }
 	    return mStatus;
 	}
@@ -68,33 +66,41 @@ int main(int argc, const char *argv[]) {
 		std::cout << kSoftwareName << kSoftwareVer << std::endl;
 		return -1;
 	}
-	bool daemon;
-	if (config->GetConf("daemon", &daemon) && daemon == true) {
-		std::string lock_path;
-		config->GetConf("lock_path", &lock_path);
-		if (!misc::InitDaemon(lock_path).Ok()) {
-			std::cout << "create daemon failed" << std::endl;
-			return -1;
-		}
-	}
 
-	ExampleServer* server;
-	SAFE_NEW(ExampleServer, server);
-	if (server == NULL) {
+	std::string host;
+    int16_t port = 0;
+    if (!config->GetConf("host", &host) || !config->GetConf("port", &port)) {
+    	return -1;
+    }
+
+    ExampleClient* client;
+	SAFE_NEW(ExampleClient, client);
+	if (client == NULL) {
 		return -1;
 	}
 
-	wMaster* master;
-	SAFE_NEW(wMaster("EXAMPLE", server, config), master);
-	if (master != NULL) {
-		s = master->PrepareStart();
-		if (s.Ok()) {
-			wStatus s = master->MasterStart();
-			std::cout << "master start:" << s.ToString() << std::endl;
-		} else {
-			std::cout << "master prepare start:" << s.ToString() << std::endl;
+	// 发送command
+    const char* str = "hello hnet!";
+    struct ExampleReqEcho_t cmd;
+    size_t l = strlen(str) + 1;
+    memcpy(cmd.mCmd, str, l);
+    cmd.mLen = static_cast<uint8_t>(l);
+
+	s = client->PrepareStart();
+	if (s.Ok()) {
+		int type = 1;
+		s = client->AddConnect(type, host, port);
+		if (!s.Ok()) {
+			std::cout << "add connect:" << s.ToString() << std::endl;
 			return -1;
 		}
+		client->Broadcast(reinterpret_cast<char *>(&cmd), sizeof(cmd), type);
+
+		//wStatus s = client->Start();
+		//std::cout << "client start:" << s.ToString() << std::endl;
+	} else {
+		std::cout << "client prepare start:" << s.ToString() << std::endl;
+		return -1;
 	}
 
 	LOG_SHUTDOWN_ALL();

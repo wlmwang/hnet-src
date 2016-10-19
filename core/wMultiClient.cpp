@@ -78,7 +78,7 @@ wStatus wMultiClient::DisConnect(wTask* task) {
     return RemoveTask(task);
 }
 
-wStatus wMultiClient::Prepare() {
+wStatus wMultiClient::PrepareStart() {
     if (!InitEpoll().Ok()) {
        return mStatus;
     }
