@@ -16,10 +16,6 @@ namespace hnet {
 class wUnixTask : public wTask {
 public:
     wUnixTask(wSocket *socket, int32_t type = 0) : wTask(socket, type) { }
-    
-    virtual const char* Name() {
-    	return "wUnixTask";
-    }
 };
 
 }	// namespace hnet

@@ -46,10 +46,7 @@ wStatus wTask::TaskRecv(ssize_t *size) {
     }
     mRecvLen += *size;
     mRecvWrite += *size;
-   
-    //LOG_DEBUG(kErrLogKey, "[system] recv buf(%d-%d) rw(%d-%d) len(%d) leftlen(%d) movelen(%d) recvLen(%d) *size(%d)",
-        //mRecvBuff, buffend, mRecvRead, mRecvWrite, len, leftlen, mRecvRead-mRecvBuff, mRecvLen, *size);
-    
+
     // 消息解析
     auto handleFunc = [this] (char* buf, uint32_t len, char* nextbuf) {
         this->mStatus = this->Handlemsg(buf, len);
@@ -268,20 +265,14 @@ wStatus wTask::SyncRecv(char cmd[], size_t len, ssize_t *size, uint32_t timeout)
 }
 
 wStatus wTask::Handlemsg(char cmd[], uint32_t len) {
-	struct wCommand *nullcmd = reinterpret_cast<struct wCommand*>(cmd);
-	if (nullcmd->GetId() == CmdId(kCmdNull, kParaNull)) {
+	struct wCommand *basecmd = reinterpret_cast<struct wCommand*>(cmd);
+	if (basecmd->GetId() == CmdId(kCmdNull, kParaNull)) {
 		mHeartbeat = 0;
 		mStatus = wStatus::Nothing();
 	} else {
-		auto pf = mDispatch.GetFuncT(Name(), nullcmd->GetId());
-		if (pf != NULL) {
-			if (pf->mFunc(cmd, len) == 0) {
-				mStatus = wStatus::Nothing();
-			} else {
-				mStatus = wStatus::IOError("wTask::Handlemsg, result error", "not return 0");
-			}
-		} else {
-			mStatus = wStatus::IOError("wTask::Handlemsg, invalid msg", "no method find");
+		struct Message_t message(cmd, len);
+		if (mDispatch(basecmd->GetId(), &message) == false) {
+			mStatus = wStatus::IOError("wTask::Handlemsg, invalid message", "no method find");
 		}
 	}
 	return mStatus;

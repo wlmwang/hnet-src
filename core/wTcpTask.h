@@ -18,10 +18,6 @@ class wSocket;
 class wTcpTask : public wTask {
 public:
     wTcpTask(wSocket *socket, int32_t type = 0) : wTask(socket, type) { }
-    
-    virtual const char* Name() {
-    	return "wTcpTask";
-    }
 };
 
 }	// namespace hnet

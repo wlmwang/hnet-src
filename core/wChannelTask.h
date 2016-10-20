@@ -19,15 +19,11 @@ class wWorker;
 class wChannelTask : public wTask {
 public:
     wChannelTask(wSocket *socket, wWorker *worker = NULL);
-    
-    virtual const char* Name() {
-		return "wChannelTask";
-    }
-    
-    DEC_FUNC(ChannelOpen);
-    DEC_FUNC(ChannelClose);
-    DEC_FUNC(ChannelQuit);
-    DEC_FUNC(ChannelTerminate);
+
+    int ChannelOpen(struct Message_t *msg);
+    int ChannelClose(struct Message_t *msg);
+    int ChannelQuit(struct Message_t *msg);
+    int ChannelTerminate(struct Message_t *msg);
     
 protected:
     wWorker *mWorker;

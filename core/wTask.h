@@ -14,6 +14,13 @@
 
 namespace hnet {
 
+// 消息绑定函数参数类型
+struct Message_t {
+	char* 		mBuf;
+	uint32_t 	mLen;
+	Message_t(char buf[], uint32_t len) : mBuf(buf), mLen(len) { }
+};
+
 class wSocket;
 class wServer;
 class wMultiClient;
@@ -22,10 +29,6 @@ class wTask : private wNoncopyable {
 public:
     wTask(wSocket *socket, int32_t type = 0);
     virtual ~wTask();
-    
-    virtual const char* Name() {
-        return "wTask";
-    }
 
     // 登录验证
     virtual wStatus Login() {
@@ -126,15 +129,17 @@ protected:
 
     wServer* mServer;
     wMultiClient* mClient;
+
     // 0为服务器，1为客户端
     uint8_t mSCType;
 
 protected:
-    // 路由规则
-    DEC_DISP(mDispatch);
-    void RegisterFunc(uint8_t cmd, uint8_t para, TaskDisp func) {
-        REG_DISP(mDispatch, Name(), cmd, para, func);
+    // 消息路由器
+    template<typename T = wTask>
+    void AddHandler(int8_t cmd, int8_t para, int (T::*func)(struct Message_t *argv), T* target) {
+    	mDispatch.AddHandler(CmdId(cmd, para), std::bind(func, target, std::placeholders::_1));
     }
+    wDispatch<std::function<int(struct Message_t *argv)>, struct Message_t*, uint16_t> mDispatch;
 };
 
 }	// namespace hnet
