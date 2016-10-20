@@ -84,8 +84,6 @@ public:
         SetAllowed(sizeof(void*) >= 8 ? 1000 : 0);
     }
 
-    // If another mmap slot is available, acquire it and return true.
-    // Else return false.
     bool Acquire() {
         if (GetAllowed() <= 0) {
             return false;
@@ -100,7 +98,6 @@ public:
         }
     }
 
-    // Release a slot acquired by a previous call to Acquire() that returned true.
     void Release() {
         wMutexWrapper l(&mMutex);
         SetAllowed(GetAllowed() + 1);
@@ -429,7 +426,6 @@ private:
         }
     }
 
-    // BGThread() is the body of the background thread
     // 后台任务线程主函数
     void BGThread();
     // 后台任务线程入口函数，为主函数BGThread的包装器
@@ -443,7 +439,6 @@ private:
     pthread_t mBgthread;     // 后台任务消费线程id
     bool mStartedBgthread;	// 是否已开启了后台任务消费线程
 
-    // Entry per Schedule() call
     // 线程队列节点结构体
     struct BGItem { void* arg; void (*function)(void*); };
     typedef std::deque<BGItem> BGQueue;
@@ -464,9 +459,7 @@ void wPosixEnv::Schedule(void (*function)(void*), void* arg) {
     // 后台任务线程未开启
     if (!mStartedBgthread) {
         mStartedBgthread = true;
-        PthreadCall(
-        "create thread",
-        pthread_create(&mBgthread, NULL,  &wPosixEnv::BGThreadWrapper, this));
+        PthreadCall("create thread", pthread_create(&mBgthread, NULL,  &wPosixEnv::BGThreadWrapper, this));
     }
 
     // 任务链表为空，唤醒任务消费线程
@@ -485,7 +478,7 @@ void wPosixEnv::Schedule(void (*function)(void*), void* arg) {
 // 后台任务线程主函数，是消费任务的守护线程
 void wPosixEnv::BGThread() {
     while (true) {
-        // Wait until there is an item that is ready to run
+        // 等待任务
         PthreadCall("lock", pthread_mutex_lock(&mMutex));
         while (mQueue.empty()) {
             PthreadCall("wait", pthread_cond_wait(&mBgsignal, &mMutex));

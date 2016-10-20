@@ -13,7 +13,7 @@
 
 namespace hnet {
 
-wMultiClient::wMultiClient() : mEnv(wEnv::Default()), mCheckSwitch(false), mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL) {
+wMultiClient::wMultiClient() : mEnv(wEnv::Default()), mCheckSwitch(true), mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
@@ -82,11 +82,10 @@ wStatus wMultiClient::PrepareStart() {
     if (!InitEpoll().Ok()) {
        return mStatus;
     }
-    return mStatus = PrepareRun();
+    return mStatus;
 }
 
 wStatus wMultiClient::Start() {
-    
 	// 添加心跳任务到线程池中
     if (mCheckSwitch) {
         mEnv->Schedule(wMultiClient::CheckTimer, this);
@@ -95,8 +94,16 @@ wStatus wMultiClient::Start() {
     // 进入服务主服务
     while (true) {
         Recv();
-        Run();
     }
+    return mStatus;
+}
+
+wStatus wMultiClient::PrepareRun() {
+    return mStatus;
+}
+
+wStatus wMultiClient::Run() {
+	return Start();
 }
 
 wStatus wMultiClient::NewTcpTask(wSocket* sock, wTask** ptr, int type) {
@@ -207,15 +214,13 @@ void wMultiClient::CheckTimer(void* arg) {
     wMultiClient* client = reinterpret_cast<wMultiClient* >(arg);
 
     uint64_t interval = misc::GetTimeofday() - client->mLatestTm;
-    if (interval < 100*1000) {
-        return;
+    if (interval >= 100*1000) {
+    	client->mLatestTm += interval;
+        if (client->mHeartbeatTimer.CheckTimer(interval/1000)) {
+            client->CheckTimeout();
+        }
     }
-    client->mLatestTm += interval;
     
-    if (client->mHeartbeatTimer.CheckTimer(interval/1000)) {
-        client->CheckTimeout();
-    }
-
     // 重新将心跳任务添加到线程池中
     if (client->mCheckSwitch) {
     	client->mEnv->Schedule(wMultiClient::CheckTimer, client);

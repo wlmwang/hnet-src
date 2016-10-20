@@ -17,6 +17,7 @@
 #include "wMisc.h"
 #include "wSocket.h"
 #include "wTimer.h"
+#include "wThread.h"
 
 namespace hnet {
 
@@ -28,7 +29,7 @@ class wTask;
 
 // 多类型客户端（类型为0-15）
 // 多用于与服务端长连，守护监听服务端消息
-class wMultiClient : private wNoncopyable {
+class wMultiClient : private wThread {
 public:
     wMultiClient();
     virtual ~wMultiClient();
@@ -47,16 +48,11 @@ public:
     wStatus PrepareStart();
     wStatus Start();
     
+    virtual wStatus PrepareRun();
+    virtual wStatus Run();
+
     virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr, int type = 0);
     virtual wStatus NewUnixTask(wSocket* sock, wTask** ptr, int type = 0);
-
-    virtual wStatus PrepareRun() {
-        return mStatus;
-    }
-
-    virtual wStatus Run() {
-        return mStatus;
-    }
 	
     virtual void CheckTimeout();
 

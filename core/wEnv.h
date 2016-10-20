@@ -189,12 +189,6 @@ public:
     void StartThread(void (*f)(void*), void* a) {
         return mTarget->StartThread(f, a);
     }
-
-    /*
-    virtual wStatus NewLogger(const std::string& fname, Logger** result) {
-        return mTarget->NewLogger(fname, result);
-    }
-    */
    
     uint64_t NowMicros() {
         return mTarget->NowMicros();

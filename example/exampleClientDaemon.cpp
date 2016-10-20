@@ -62,6 +62,15 @@ int main(int argc, const char *argv[]) {
 		std::cout << kSoftwareName << kSoftwareVer << std::endl;
 		return -1;
 	}
+	bool daemon;
+	if (config->GetConf("daemon", &daemon) && daemon == true) {
+		std::string lock_path;
+		config->GetConf("lock_path", &lock_path);
+		if (!misc::InitDaemon(lock_path).Ok()) {
+			std::cout << "create daemon failed" << std::endl;
+			return -1;
+		}
+	}
 
 	std::string host;
     int16_t port = 0;
@@ -90,10 +99,9 @@ int main(int argc, const char *argv[]) {
 			std::cout << "add connect:" << s.ToString() << std::endl;
 			return -1;
 		}
-		client->Broadcast(reinterpret_cast<char *>(&cmd), sizeof(cmd), type);
 
-		//wStatus s = client->Start();
-		//std::cout << "client start:" << s.ToString() << std::endl;
+		wStatus s = client->Start();
+		std::cout << "client start:" << s.ToString() << std::endl;
 	} else {
 		std::cout << "client prepare start:" << s.ToString() << std::endl;
 		return -1;

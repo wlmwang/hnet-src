@@ -18,7 +18,7 @@
 
 namespace hnet {
 
-wServer::wServer() : mEnv(wEnv::Default()), mExiting(false), mCheckSwitch(false), mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL) {
+wServer::wServer() : mEnv(wEnv::Default()), mExiting(false), mCheckSwitch(true), mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
@@ -410,13 +410,11 @@ void wServer::CheckTimer(void* arg) {
     wServer* server = reinterpret_cast<wServer* >(arg);
 
     uint64_t interval = misc::GetTimeofday() - server->mLatestTm;
-    if (interval < 100*1000) {
-		return;
-    }
-    server->mLatestTm += interval;
-    
-    if (server->mHeartbeatTimer.CheckTimer(interval/1000)) {
-		server->CheckTimeout();
+    if (interval >= 100*1000) {
+    	server->mLatestTm += interval;
+        if (server->mHeartbeatTimer.CheckTimer(interval/1000)) {
+    		server->CheckTimeout();
+        }
     }
 
     // 重新将心跳任务添加到线程池中
