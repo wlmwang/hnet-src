@@ -20,10 +20,10 @@ class wChannelTask : public wTask {
 public:
     wChannelTask(wSocket *socket, wWorker *worker = NULL);
 
-    int ChannelOpen(struct Message_t *msg);
-    int ChannelClose(struct Message_t *msg);
-    int ChannelQuit(struct Message_t *msg);
-    int ChannelTerminate(struct Message_t *msg);
+    int ChannelOpen(struct Request_t *request);
+    int ChannelClose(struct Request_t *request);
+    int ChannelQuit(struct Request_t *request);
+    int ChannelTerminate(struct Request_t *request);
     
 protected:
     wWorker *mWorker;

@@ -19,18 +19,18 @@ using namespace hnet;
 class ExampleTask : public wTcpTask {
 public:
 	ExampleTask(wSocket *socket, int32_t type) : wTcpTask(socket, type) {
-		AddHandler(CMD_EXAMPLE_REQ, EXAMPLE_REQ_ECHO, &ExampleTask::ExampleEcho, this);
+		On(CMD_EXAMPLE_REQ, EXAMPLE_REQ_ECHO, &ExampleTask::ExampleEcho, this);
 	}
-	int ExampleEcho(struct Message_t *msg);
+	int ExampleEcho(struct Request_t *request);
 };
 
-int ExampleTask::ExampleEcho(struct Message_t *msg) {
-	struct ExampleReqEcho_t* cmd = reinterpret_cast<struct ExampleReqEcho_t*>(msg->mBuf);
+int ExampleTask::ExampleEcho(struct Request_t *request) {
+	struct ExampleReqEcho_t* cmd = reinterpret_cast<struct ExampleReqEcho_t*>(request->mBuf);
 
 	std::cout << "receive from client：" << cmd->mCmd << std::endl;
 
 	// 异步发送
-	AsyncSend(msg->mBuf, msg->mLen);
+	AsyncSend(request->mBuf, request->mLen);
 	return 0;
 }
 

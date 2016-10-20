@@ -13,7 +13,8 @@
 
 namespace hnet {
 
-wMultiClient::wMultiClient() : mEnv(wEnv::Default()), mCheckSwitch(true), mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL) {
+wMultiClient::wMultiClient() : mEnv(wEnv::Default()), mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
+mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
@@ -86,14 +87,10 @@ wStatus wMultiClient::PrepareStart() {
 }
 
 wStatus wMultiClient::Start() {
-	// 添加心跳任务到线程池中
-    if (mCheckSwitch) {
-        mEnv->Schedule(wMultiClient::CheckTimer, this);
-    }
-
     // 进入服务主服务
     while (true) {
         Recv();
+        CheckTick();
     }
     return mStatus;
 }
@@ -210,26 +207,35 @@ wStatus wMultiClient::Send(wTask *task, char *cmd, size_t len) {
     return mStatus;
 }
 
-void wMultiClient::CheckTimer(void* arg) {
-    wMultiClient* client = reinterpret_cast<wMultiClient* >(arg);
+void wMultiClient::CheckTick() {
+	mMutex.Lock();
+	mTick = misc::GetTimeofday() - mLatestTm;
+    if (mTick < 100*1000) {
+    	return;
+    }
+    mLatestTm += mTick;
 
-    uint64_t interval = misc::GetTimeofday() - client->mLatestTm;
-    if (interval >= 100*1000) {
-    	client->mLatestTm += interval;
-        if (client->mHeartbeatTimer.CheckTimer(interval/1000)) {
-            client->CheckTimeout();
-        }
+    // 添加任务到线程池中
+    if (mScheduleOk == true) {
+    	mScheduleOk = false;
+		mEnv->Schedule(wMultiClient::ScheduleRun, this);
     }
-    
-    // 重新将心跳任务添加到线程池中
-    if (client->mCheckSwitch) {
-    	client->mEnv->Schedule(wMultiClient::CheckTimer, client);
-    }
+    mMutex.Unlock();
 }
 
-void wMultiClient::CheckTimeout() {
+void wMultiClient::ScheduleRun(void* argv) {
+    wMultiClient* client = reinterpret_cast<wMultiClient* >(argv);
+
+    client->mMutex.Lock();
+    if (client->mHeartbeatTurn && client->mHeartbeatTimer.CheckTimer(client->mTick/1000)) {
+    	client->CheckHeartBeat();
+    }
+    client->mScheduleOk = true;
+    client->mMutex.Unlock();
+}
+
+void wMultiClient::CheckHeartBeat() {
     uint64_t nowTm = misc::GetTimeofday();
-    
     for (int i = 0; i < kClientNumShard; i++) {
         mTaskPoolMutex[i].Lock();
         if (mTaskPool[i].size() > 0) {

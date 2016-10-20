@@ -18,7 +18,8 @@
 
 namespace hnet {
 
-wServer::wServer() : mEnv(wEnv::Default()), mExiting(false), mCheckSwitch(true), mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL) {
+wServer::wServer() : mEnv(wEnv::Default()), mExiting(false), mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
+mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
@@ -41,11 +42,6 @@ wStatus wServer::SingleStart(bool daemon) {
 		return mStatus;
     }
     
-    // 添加心跳任务到线程池中
-    if (mCheckSwitch) {
-		mEnv->Schedule(wServer::CheckTimer, this);
-    }
-    
     // 进入服务主循环
     while (daemon) {
     	if (mExiting) {
@@ -56,6 +52,7 @@ wStatus wServer::SingleStart(bool daemon) {
 		Recv();
 		HandleSignal();
 		Run();
+		CheckTick();
     }
     return mStatus;
 }
@@ -65,11 +62,6 @@ wStatus wServer::WorkerStart(bool daemon) {
 		return mStatus;
     } else if (!Listener2Epoll().Ok()) {
 		return mStatus;
-    }
-    
-    // 添加心跳任务到线程池中
-    if (mCheckSwitch) {
-		mEnv->Schedule(wServer::CheckTimer, this);
     }
 
     // 进入服务主循环
@@ -82,6 +74,7 @@ wStatus wServer::WorkerStart(bool daemon) {
 		Recv();
 		HandleSignal();
 		Run();
+		CheckTick();
     }
     return mStatus;
 }
@@ -406,24 +399,34 @@ wStatus wServer::CleanListener() {
     return mStatus;
 }
 
-void wServer::CheckTimer(void* arg) {
-    wServer* server = reinterpret_cast<wServer* >(arg);
-
-    uint64_t interval = misc::GetTimeofday() - server->mLatestTm;
-    if (interval >= 100*1000) {
-    	server->mLatestTm += interval;
-        if (server->mHeartbeatTimer.CheckTimer(interval/1000)) {
-    		server->CheckTimeout();
-        }
+void wServer::CheckTick() {
+	mMutex.Lock();
+	mTick = misc::GetTimeofday() - mLatestTm;
+    if (mTick < 100*1000) {
+    	return;
     }
+    mLatestTm += mTick;
 
-    // 重新将心跳任务添加到线程池中
-    if (server->mCheckSwitch) {
-    	server->mEnv->Schedule(wServer::CheckTimer, server);
+    // 添加任务到线程池中
+    if (mScheduleOk == true) {
+    	mScheduleOk = false;
+		mEnv->Schedule(wServer::ScheduleRun, this);
     }
+    mMutex.Unlock();
 }
 
-void wServer::CheckTimeout() {
+void wServer::ScheduleRun(void* argv) {
+    wServer* server = reinterpret_cast<wServer* >(argv);
+
+    server->mMutex.Lock();
+    if (server->mHeartbeatTurn && server->mHeartbeatTimer.CheckTimer(server->mTick/1000)) {
+    	server->CheckHeartBeat();
+    }
+    server->mScheduleOk = true;
+    server->mMutex.Unlock();
+}
+
+void wServer::CheckHeartBeat() {
     uint64_t nowTm = misc::GetTimeofday();
     for (int i = 0; i < kServerNumShard; i++) {
     	mTaskPoolMutex[i].Lock();

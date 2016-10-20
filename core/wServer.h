@@ -48,6 +48,9 @@ public:
     // 异步广播消息
     wStatus Broadcast(char *cmd, int len);
 
+    // 检查时钟周期tick
+    void CheckTick();
+
     // 新建客户端
     virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr);
     virtual wStatus NewUnixTask(wSocket* sock, wTask** ptr);
@@ -63,7 +66,7 @@ public:
     virtual wStatus HandleSignal();
 
     // 连接检测（心跳）
-    virtual void CheckTimeout();
+    virtual void CheckHeartBeat();
     
     // single|worker进程退出函数
     virtual void ProcessExit() { }
@@ -96,18 +99,23 @@ protected:
     std::vector<wTask*>::iterator RemoveTaskPool(wTask *task);
     wStatus CleanTaskPool(std::vector<wTask*> pool);
 
-    static void CheckTimer(void* arg);
+    static void ScheduleRun(void* argv);
 
     wStatus mStatus;
     wEnv *mEnv;
     bool mExiting;
 
-    // 心跳开关，默认关闭。强烈建议移动互联网环境下打开，而非依赖keepalive机制保活
-    bool mCheckSwitch;
     // 服务器当前时间 微妙
     uint64_t mLatestTm;
-    // 定时器
+    uint64_t mTick;
+
+    // 心跳任务，强烈建议移动互联网环境下打开，而非依赖keepalive机制保活
+    bool mHeartbeatTurn;
+    // 心跳定时器
     wTimer mHeartbeatTimer;
+
+    bool mScheduleOk;
+    wMutex mMutex;
 
     // 多监听服务
     std::vector<wSocket *> mListenSock;

@@ -10,15 +10,15 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
-#include "wDispatch.h"
+#include "wEvent.h"
 
 namespace hnet {
 
 // 消息绑定函数参数类型
-struct Message_t {
-	char* 		mBuf;
-	uint32_t 	mLen;
-	Message_t(char buf[], uint32_t len) : mBuf(buf), mLen(len) { }
+struct Request_t {
+	char* mBuf;
+	uint32_t mLen;
+	Request_t(char buf[], uint32_t len) : mBuf(buf), mLen(len) { }
 };
 
 class wSocket;
@@ -136,10 +136,10 @@ protected:
 protected:
     // 消息路由器
     template<typename T = wTask>
-    void AddHandler(int8_t cmd, int8_t para, int (T::*func)(struct Message_t *argv), T* target) {
-    	mDispatch.AddHandler(CmdId(cmd, para), std::bind(func, target, std::placeholders::_1));
+    void On(int8_t cmd, int8_t para, int (T::*func)(struct Request_t *argv), T* target) {
+    	mEvent.On(CmdId(cmd, para), std::bind(func, target, std::placeholders::_1));
     }
-    wDispatch<std::function<int(struct Message_t *argv)>, struct Message_t*, uint16_t> mDispatch;
+    wEvent<uint16_t, std::function<int(struct Request_t *argv)>, struct Request_t*> mEvent;
 };
 
 }	// namespace hnet
