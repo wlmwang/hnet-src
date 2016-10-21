@@ -123,14 +123,13 @@ wStatus wServer::Recv() {
     ssize_t size;
     for (int i = 0 ; i < iRet ; i++) {
 		task = reinterpret_cast<wTask *>(evt[i].data.ptr);
+		// 加锁
+		int type = task->Type();
+		mTaskPoolMutex[type].Lock();
 		if (task->Socket()->FD() == kFDUnknown) {
-		    if (!RemoveTask(task).Ok()) {
-				return mStatus;
-		    }
+			mStatus = RemoveTask(task);
 		} else if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
-		    if (!RemoveTask(task).Ok()) {
-				return mStatus;
-		    }
+		    mStatus = RemoveTask(task);
 		} else if (task->Socket()->ST() == kStListen && task->Socket()->SS() == kSsListened) {
 		    if (evt[i].events & EPOLLIN) {
 				mStatus = AcceptConn(task);
@@ -142,26 +141,24 @@ wStatus wServer::Recv() {
 				// 套接口准备好了读取操作
 				mStatus = task->TaskRecv(&size);
 				if (!mStatus.Ok()) {
-				    if (!RemoveTask(task).Ok()) {
-						return mStatus;
-				    }
+					mStatus = RemoveTask(task);
 				}
 		    } else if (evt[i].events & EPOLLOUT) {
 				// 清除写事件
 				if (task->SendLen() == 0) {
 				    AddTask(task, EPOLLIN, EPOLL_CTL_MOD, false);
-				    continue;
-				}
-				// 套接口准备好了写入操作
-				// 写入失败，半连接，对端读关闭
-				mStatus = task->TaskSend(&size);
-				if (!mStatus.Ok()) {
-				    if (!RemoveTask(task).Ok()) {
-				    	return mStatus;
-				    }
+				} else {
+					// 套接口准备好了写入操作
+					// 写入失败，半连接，对端读关闭
+					mStatus = task->TaskSend(&size);
+					if (!mStatus.Ok()) {
+						mStatus = RemoveTask(task);
+					}
 				}
 		    }
 		}
+		// 解锁
+		mTaskPoolMutex[type].Unlock();
     }
     return mStatus;
 }
@@ -221,8 +218,6 @@ wStatus wServer::AcceptConn(wTask *task) {
 		    SAFE_DELETE(mTask);
 		} else if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
 		    SAFE_DELETE(mTask);
-		} else {
-			mTask->SetServer(this);
 		}
     }
     return mStatus;
@@ -230,19 +225,17 @@ wStatus wServer::AcceptConn(wTask *task) {
 
 wStatus wServer::Broadcast(char *cmd, int len) {
     for (int i = 0; i < kServerNumShard; i++) {
-    	mTaskPoolMutex[i].Lock();
 	    if (mTaskPool[i].size() > 0) {
 			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
 				Send(*it, cmd, len);
 			}
 	    }
-    	mTaskPoolMutex[i].Unlock();
     }
     return mStatus;
 }
 
 wStatus wServer::Send(wTask *task, char *cmd, size_t len) {
-    if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected 
+    if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected
     	&& (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
 		mStatus = task->Send2Buf(cmd, len);
 		if (mStatus.Ok()) {
@@ -308,8 +301,6 @@ wStatus wServer::Listener2Epoll() {
 		    if (!AddTask(task).Ok()) {
 				SAFE_DELETE(task);
 				break;
-		    } else {
-		    	task->SetServer(this);
 		    }
 		} else {
 			break;
@@ -326,11 +317,9 @@ wStatus wServer::AddTask(wTask* task, int ev, int op, bool newconn) {
     if (epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt) == -1) {
 		return mStatus = wStatus::IOError("wServer::AddTask, epoll_ctl() failed", strerror(errno));
     }
-
+    task->SetServer(this);
     if (newconn) {
-    	mTaskPoolMutex[task->Type()].Lock();
     	AddToTaskPool(task);
-    	mTaskPoolMutex[task->Type()].Unlock();
     }
     return mStatus;
 }
@@ -341,14 +330,10 @@ wStatus wServer::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter) {
     if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, task->Socket()->FD(), &evt) < 0) {
 		return mStatus = wStatus::IOError("wServer::RemoveTask, epoll_ctl() failed", strerror(errno));
     }
-
-    int32_t type =  task->Type();
-    mTaskPoolMutex[type].Lock();
     std::vector<wTask*>::iterator it = RemoveTaskPool(task);
     if (iter != NULL) {
     	*iter = it;
     }
-    mTaskPoolMutex[type].Unlock();
     return mStatus;
 }
 
@@ -357,11 +342,8 @@ wStatus wServer::CleanTask() {
 		return mStatus = wStatus::IOError("wServer::CleanTask, close() failed", strerror(errno));
     }
     mEpollFD = kFDUnknown;
-
     for (int i = 0; i < kServerNumShard; i++) {
-    	mTaskPoolMutex[i].Lock();
     	CleanTaskPool(mTaskPool[i]);
-    	mTaskPoolMutex[i].Unlock();
     }
     return mStatus;
 }
@@ -400,30 +382,29 @@ wStatus wServer::CleanListener() {
 }
 
 void wServer::CheckTick() {
-	mMutex.Lock();
+	mScheduleMutex.Lock();
 	mTick = misc::GetTimeofday() - mLatestTm;
-    if (mTick < 100*1000) {
-    	return;
-    }
-    mLatestTm += mTick;
+	if (mTick >= 10*1000) {
+	    mLatestTm += mTick;
 
-    // 添加任务到线程池中
-    if (mScheduleOk == true) {
-    	mScheduleOk = false;
-		mEnv->Schedule(wServer::ScheduleRun, this);
-    }
-    mMutex.Unlock();
+	    // 添加任务到线程池中
+	    if (mScheduleOk == true) {
+	    	mScheduleOk = false;
+			mEnv->Schedule(wServer::ScheduleRun, this);
+	    }
+	}
+	mScheduleMutex.Unlock();
 }
 
 void wServer::ScheduleRun(void* argv) {
     wServer* server = reinterpret_cast<wServer* >(argv);
 
-    server->mMutex.Lock();
+    server->mScheduleMutex.Lock();
     if (server->mHeartbeatTurn && server->mHeartbeatTimer.CheckTimer(server->mTick/1000)) {
     	server->CheckHeartBeat();
     }
     server->mScheduleOk = true;
-    server->mMutex.Unlock();
+    server->mScheduleMutex.Unlock();
 }
 
 void wServer::CheckHeartBeat() {
@@ -440,7 +421,7 @@ void wServer::CheckHeartBeat() {
 						(*it)->HeartbeatSend();
 						// 心跳超限
 					    if ((*it)->HeartbeatOut()) {
-							RemoveTask(*it, &it);
+					    	RemoveTask(*it, &it);
 					    }
 					}
 			    }

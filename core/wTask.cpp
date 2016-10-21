@@ -14,7 +14,8 @@
 namespace hnet {
 
 wTask::wTask(wSocket* socket, int32_t type) : mType(type), mSocket(socket), mHeartbeat(0), 
-mRecvRead(mRecvBuff), mRecvWrite(mRecvBuff), mRecvLen(0), mSendRead(mSendBuff), mSendWrite(mSendBuff), mSendLen(0), mServer(NULL), mClient(NULL), mSCType(0) { }
+mRecvRead(mRecvBuff), mRecvWrite(mRecvBuff), mRecvLen(0), mSendRead(mSendBuff), mSendWrite(mSendBuff),
+mSendLen(0), mServer(NULL), mClient(NULL), mSCType(0) { }
 
 wTask::~wTask() {
     SAFE_DELETE(mSocket);
@@ -23,8 +24,7 @@ wTask::~wTask() {
 wStatus wTask::HeartbeatSend() {
     mHeartbeat++;
     struct wCommand cmd;
-    ssize_t size;
-    return SyncSend(reinterpret_cast<char *>(&cmd), sizeof(cmd), &size);
+    return AsyncSend(reinterpret_cast<char *>(&cmd), sizeof(cmd));
 }
 
 wStatus wTask::TaskRecv(ssize_t *size) {
@@ -270,9 +270,9 @@ wStatus wTask::Handlemsg(char cmd[], uint32_t len) {
 		mHeartbeat = 0;
 		mStatus = wStatus::Nothing();
 	} else {
-		struct Message_t message(cmd, len);
-		if (mDispatch(basecmd->GetId(), &message) == false) {
-			mStatus = wStatus::IOError("wTask::Handlemsg, invalid message", "no method find");
+		struct Request_t request(cmd, len);
+		if (mEvent(basecmd->GetId(), &request) == false) {
+			mStatus = wStatus::IOError("wTask::Handlemsg, invalid request", "no method find");
 		}
 	}
 	return mStatus;

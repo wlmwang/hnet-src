@@ -43,10 +43,10 @@ public:
     // WorkerStart在worker进程提供服务
     wStatus WorkerStart(bool daemon = true);
     
-    // 异步发送消息
-    wStatus Send(wTask *task, char *cmd, size_t len);
     // 异步广播消息
     wStatus Broadcast(char *cmd, int len);
+    // 异步发送消息
+    wStatus Send(wTask *task, char *cmd, size_t len);
 
     // 检查时钟周期tick
     void CheckTick();
@@ -90,7 +90,7 @@ protected:
     // 添加到epoll侦听事件队列
     wStatus Listener2Epoll();
     wStatus CleanListener();
-    
+
     wStatus AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool newconn = true);
     wStatus RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL);
     wStatus CleanTask();
@@ -115,7 +115,7 @@ protected:
     wTimer mHeartbeatTimer;
 
     bool mScheduleOk;
-    wMutex mMutex;
+    wMutex mScheduleMutex;
 
     // 多监听服务
     std::vector<wSocket *> mListenSock;
