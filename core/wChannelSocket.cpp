@@ -53,7 +53,7 @@ wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     mSendTm = misc::GetTimeofday();
     
     // 去除消息头
-    struct ChannelReqCmd_s *channel = reinterpret_cast<struct ChannelReqCmd_s*>(buf + sizeof(int));
+    struct ChannelReqCmd_s *channel = reinterpret_cast<struct ChannelReqCmd_s*>(buf + sizeof(uint32_t));
     // msghdr.msg_control 缓冲区必须与 cmsghdr 结构对齐
     union {
         struct cmsghdr  cm;
@@ -137,8 +137,8 @@ wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
             // [system] recvmsg() truncated data
         }
         // 是否是同步 打开fd文件描述符 的channel
-        if (*size == sizeof(struct ChannelReqOpen_t) + sizeof(int)) {
-            struct ChannelReqOpen_t *channel = reinterpret_cast<struct ChannelReqOpen_t*> (buf + sizeof(int));
+        if (*size == sizeof(struct ChannelReqOpen_t) + sizeof(uint32_t)) {
+            struct ChannelReqOpen_t *channel = reinterpret_cast<struct ChannelReqOpen_t*> (buf + sizeof(uint32_t));
             if (channel->GetCmd() == CMD_CHANNEL_REQ && channel->GetPara() == CHANNEL_REQ_OPEN) {
                 if (cmsg.cm.cmsg_len < static_cast<socklen_t>(CMSG_LEN(sizeof(int)))) {
                     mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", "returned too small ancillary data");
