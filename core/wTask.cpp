@@ -175,11 +175,11 @@ wStatus wTask::Send2Buf(char cmd[], size_t len) {
     ssize_t writelen =  mSendWrite - mSendRead;
     ssize_t leftlen = buffend - mSendWrite;
     if ((writelen >= 0 && leftlen >= static_cast<ssize_t>(len + sizeof(uint32_t))) || (writelen < 0 && abs(writelen) >= static_cast<ssize_t>(len + sizeof(int)))) {
-    	coding.EncodeFixed32(mSendWrite, static_cast<uint32_t>(len));
+    	coding::EncodeFixed32(mSendWrite, static_cast<uint32_t>(len));
     	memcpy(mSendWrite += sizeof(uint32_t), cmd, len);
     	mSendWrite += len;
     } else if (writelen >= 0 && leftlen < static_cast<ssize_t>(len + sizeof(uint32_t))) {
-    	coding.EncodeFixed32(mTempBuff, static_cast<uint32_t>(len));
+    	coding::EncodeFixed32(mTempBuff, static_cast<uint32_t>(len));
     	memcpy(mTempBuff + sizeof(uint32_t), cmd, len);
 
     	memcpy(mSendWrite, mTempBuff, leftlen);
@@ -198,7 +198,7 @@ wStatus wTask::SyncSend(char cmd[], size_t len, ssize_t *size) {
     if (len < kMinPackageSize || len > kMaxPackageSize) {
         return mStatus = wStatus::IOError("wTask::SyncSend, message length error", "out range");
     }
-    coding.EncodeFixed32(mTempBuff, static_cast<uint32_t>(len));
+    coding::EncodeFixed32(mTempBuff, static_cast<uint32_t>(len));
     memcpy(mTempBuff + sizeof(uint32_t), cmd, len);
     return mStatus = mSocket->SendBytes(mTempBuff, len + sizeof(uint32_t), size);
 }
