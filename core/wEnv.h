@@ -7,6 +7,7 @@
 #ifndef _W_ENV_H_
 #define _W_ENV_H_
 
+#include <stdarg.h>
 #include <string>
 #include <deque>
 #include <set>
@@ -57,13 +58,22 @@ public:
     virtual wStatus Sync() = 0;
 };
 
+// 日志
+class wLogger : private wNoncopyable {
+public:
+	wLogger() { }
+    virtual ~wLogger() { }
+
+    // 写一条指定格式的日志到文件中
+    virtual void Logv(const char* format, va_list ap) = 0;
+};
+
 // 文件锁（句柄）
 class wFileLock : private wNoncopyable {
 public:
     wFileLock() { }
     virtual ~wFileLock() { }
 };
-
 
 class wEnv : private wNoncopyable {
 public:
@@ -115,8 +125,9 @@ public:
     virtual void StartThread(void (*function)(void* arg), void* arg) = 0;
 
     // 返回日志对象
-    //virtual wStatus NewLogger(const std::string& fname, wLogger** result) = 0;
+    virtual wStatus NewLogger(const std::string& fname, wLogger** result) = 0;
 
+    // 返回微妙
     virtual uint64_t NowMicros() = 0;
 
     // Sleep/delay the thread for the prescribed number of micro-seconds.
@@ -189,7 +200,11 @@ public:
     void StartThread(void (*f)(void*), void* a) {
         return mTarget->StartThread(f, a);
     }
-   
+
+    virtual wStatus NewLogger(const std::string& fname, wLogger** result) {
+      return mTarget->NewLogger(fname, result);
+    }
+
     uint64_t NowMicros() {
         return mTarget->NowMicros();
     }

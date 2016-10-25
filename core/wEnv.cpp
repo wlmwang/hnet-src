@@ -4,6 +4,9 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include <algorithm>
+#include <sys/time.h>
+#include <time.h>
 #include <dirent.h>
 #include <pthread.h>
 #include <sys/mman.h>
@@ -194,6 +197,84 @@ public:
         }
         return result;
     }
+};
+
+// 日志类
+class wPosixLogger : public wLogger {
+private:
+	wMutex mMutex;
+	FILE* mFile;
+	// 获取当前线程id函数指针
+	uint64_t (*mGettid)();
+
+public:
+	wPosixLogger(FILE* f, uint64_t (*gettid)()) : mFile(f), mGettid(gettid) { }
+
+	virtual ~wPosixLogger() {
+		fclose(mFile);
+	}
+
+  // 写日志。最大3000字节，多的截断
+	virtual void Logv(const char* format, va_list ap) {
+		mMutex.Lock();
+		const uint64_t thread_id = (*mGettid)();
+
+		// 尝试两种缓冲方式 字符串整理
+		char buffer[500];
+		for (int iter = 0; iter < 2; iter++) {
+			char* base;   // 缓冲地址
+			int bufsize;  // 缓冲长度
+			if (iter == 0) {
+				bufsize = sizeof(buffer);
+				base = buffer;
+			} else {
+				bufsize = 30000;
+				SAFE_NEW_VEC(bufsize, char, base);
+			}
+			char* p = base;
+			char* limit = base + bufsize;
+
+			struct timeval now_tv;
+			gettimeofday(&now_tv, NULL);
+			const time_t seconds = now_tv.tv_sec;
+			struct tm t;
+			localtime_r(&seconds, &t);
+			p += snprintf(p, limit - p, "%04d/%02d/%02d-%02d:%02d:%02d.%06d %llx ",
+					t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
+					static_cast<int>(now_tv.tv_usec), static_cast<long long unsigned int>(thread_id));
+
+			if (p < limit) {
+				va_list backup_ap;
+				va_copy(backup_ap, ap);
+				p += vsnprintf(p, limit - p, format, backup_ap);
+				va_end(backup_ap);
+			}
+
+			if (p >= limit) {
+				if (iter == 0) {
+					continue;
+				} else {
+					p = limit - 1;
+				}
+			}
+
+			// 结尾非\n
+			if (p == base || p[-1] != '\n') {
+				*p++ = '\n';
+			}
+
+			assert(p <= limit);
+			fwrite(base, 1, p - base, mFile);
+			fflush(mFile);
+
+			// 如果是new申请的缓冲地址，则它不会等于buffer的栈地址
+			if (base != buffer) {
+				SAFE_DELETE_VEC(base);
+			}
+			break;
+		}
+		mMutex.Unlock();
+	}
 };
 
 // 文件加/解独占锁
@@ -405,7 +486,19 @@ public:
         memcpy(&thread_id, &tid, std::min(sizeof(thread_id), sizeof(tid)));
         return thread_id;
     }
-   
+
+    // 日志对象
+    virtual wStatus NewLogger(const std::string& fname, wLogger** result) {
+		FILE* f = fopen(fname.c_str(), "w");
+		if (f == NULL) {
+			*result = NULL;
+			return IOError(fname, errno);
+		} else {
+			SAFE_NEW(wPosixLogger(f, &wPosixEnv::gettid), *result);
+			return wStatus::Nothing();
+		}
+    }
+
     // 当前微妙时间
     virtual uint64_t NowMicros() {
         struct timeval tv;
@@ -497,6 +590,7 @@ void wPosixEnv::BGThread() {
 namespace {
 
 struct StartThreadState_t { void (*user_function)(void*);	void* arg;};
+
 }	// namespace
 
 // 线程启动包装器
@@ -577,6 +671,16 @@ wStatus ReadFileToString(wEnv* env, const std::string& fname, std::string* data)
     SAFE_DELETE_VEC(space);
     SAFE_DELETE(file);
     return s;
+}
+
+// 写日志函数接口
+void Log(wLogger* log, const char* format, ...) {
+	if (log != NULL) {
+		va_list ap;
+		va_start(ap, format);
+		log->Logv(format, ap);
+		va_end(ap);
+	}
 }
 
 // 实例化env对象
