@@ -8,6 +8,7 @@
 #include "wMisc.h"
 
 namespace hnet {
+
 void wMsgQueue::SetBuffer(char buf[], int len) {
 	char *p = buf;
 	// 前4位开始地址

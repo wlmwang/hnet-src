@@ -31,7 +31,7 @@ public:
     // 
     // PTHREAD_PROCESS_PRIVATE： 单进程锁，默认设置
     // PTHREAD_PROCESS_SHARED： 进程间，共享锁（锁变量需进程间共享。如在共享内存中）
-    wMutex(int kind = PTHREAD_MUTEX_FAST_NP, int pshared = PTHREAD_PROCESS_PRIVATE) {
+	explicit wMutex(int kind = PTHREAD_MUTEX_FAST_NP, int pshared = PTHREAD_PROCESS_PRIVATE) {
         PthreadCall("mutexattr_init", pthread_mutexattr_init(&mAttr));
         PthreadCall("mutexattr_settype", pthread_mutexattr_settype(&mAttr, kind));
         PthreadCall("mutexattr_setpshared", pthread_mutexattr_setpshared(&mAttr, pshared));
@@ -45,7 +45,7 @@ public:
 
     // 阻塞获取锁
     // 0 成功 EINVAL  锁不合法，mMutex 未被初始化 EDEADLK   重复加锁错误
-    int Lock() {
+    inline int Lock() {
         return PthreadCall("mutex_lock", pthread_mutex_lock(&mMutex));
     }
 
@@ -57,7 +57,7 @@ public:
     
     // 非阻塞获取锁
     // 0 成功 EBUSY 锁正在使用 EINVAL 锁不合法，mMutex 未被初始化 EAGAIN Mutex的lock count(锁数量)已经超过 递归索的最大值，无法再获得该mutex锁
-    int TryLock() {
+    inline int TryLock() {
         return pthread_mutex_trylock(&mMutex);
     }
 
@@ -73,6 +73,7 @@ public:
     explicit wMutexWrapper(wMutex* mutex) : mMutex(mutex) {
         mMutex->Lock();
     }
+
     ~wMutexWrapper() {
         mMutex->Unlock();
     }
@@ -84,8 +85,8 @@ private:
 class wCond : private wNoncopyable {
 public:
     // PTHREAD_PROCESS_PRIVATE：单进程条件变量，默认设置
-    // PTHREAD_PROCESS_SHARED：进程间，共享条件变量（条件变量需进程间共享。如在共享内存中） 
-    wCond(int pshared = PTHREAD_PROCESS_PRIVATE) {
+    // PTHREAD_PROCESS_SHARED：进程间，共享条件变量（条件变量需进程间共享。如在共享内存中）
+	explicit wCond(int pshared = PTHREAD_PROCESS_PRIVATE) {
         PthreadCall("condattr_init", pthread_condattr_init(&mAttr));
         PthreadCall("condattr_setpshared", pthread_condattr_setpshared(&mAttr, pshared));
         PthreadCall("cond_init", pthread_cond_init(&mCond, &mAttr));
@@ -96,25 +97,25 @@ public:
         PthreadCall("cond_destroy", pthread_cond_destroy(&mCond));
     }
 
-    int Broadcast() {
+    inline int Broadcast() {
         return PthreadCall("cond_broadcast", pthread_cond_broadcast(&mCond));
     }
 
     // 唤醒等待中的线程
     // 使用pthread_cond_signal不会有"惊群现象"产生，他最多只给一个线程发信号
-    int Signal() {
+    inline int Signal() {
         return PthreadCall("cond_signal", pthread_cond_signal(&mCond));
     }
 
     // 阻塞等待特定的条件变量满足
     // stMutex 需要等待的互斥体
-    int Wait(wMutex &stMutex){
+    inline int Wait(wMutex &stMutex){
         return PthreadCall("cond_wait", pthread_cond_wait(&mCond, &stMutex.mMutex));
     }
 
     // 带超时的等待条件
     // stMutex 需要等待的互斥体  tsptr 超时时间
-    int TimedWait(wMutex &stMutex, struct timespec *tsptr) {
+    inline int TimedWait(wMutex &stMutex, struct timespec *tsptr) {
         return pthread_cond_timedwait(&mCond, &stMutex.mMutex, tsptr);
     }
 

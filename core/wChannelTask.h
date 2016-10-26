@@ -24,7 +24,6 @@ public:
     int ChannelClose(struct Request_t *request);
     int ChannelQuit(struct Request_t *request);
     int ChannelTerminate(struct Request_t *request);
-    
 protected:
     wWorker *mWorker;
 };

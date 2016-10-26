@@ -29,12 +29,12 @@ public:
     ~wPing();
     wStatus Open();
     wStatus Close();
-    wStatus SetTimeout(float fTimeout = 0.1 /** 秒 */);
+    wStatus SetTimeout(float timeout = 0.1);
     wStatus Ping(const char *ip);
 
 protected:
-    wStatus SetSendTimeout(float fTimeout = 0.1);
-    wStatus SetRecvTimeout(float fTimeout = 0.1);
+    wStatus SetSendTimeout(float timeout = 0.1);
+    wStatus SetRecvTimeout(float timeout = 0.1);
     wStatus SendPacket();
     wStatus RecvPacket();
     int Pack();

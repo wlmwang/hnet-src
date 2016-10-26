@@ -23,6 +23,18 @@ public:
     virtual ~wConfig();
     virtual wStatus GetOption(int argc, const char *argv[]);
 
+    inline wStatus Setproctitle(const char* pretitle, const char* title) {
+    	return mProcTitle->Setproctitle(pretitle, title);
+    }
+
+    inline wStatus InitProcTitle(int argc, const char *argv[]) {
+        SAFE_NEW(wProcTitle(argc, argv), mProcTitle);
+        if (mProcTitle == NULL) {
+            return wStatus::IOError("wConfig::InitProcTitle", "new failed");
+        }
+        return mProcTitle->InitSetproctitle();
+    }
+
     template<typename T>
     bool GetConf(std::string key, T* val) {
     	std::map<std::string, void*>::iterator it = mConf.find(key);
@@ -32,13 +44,7 @@ public:
     	}
     	return false;
     }
-
-    inline wStatus Setproctitle(const char* pretitle, const char* title) {
-    	return mProcTitle->Setproctitle(pretitle, title);
-    }
 protected:
-    wStatus InitProcTitle(int argc, const char *argv[]);
-
     wStatus mStatus;
     wMemPool *mPool;
     std::map<std::string, void*> mConf;

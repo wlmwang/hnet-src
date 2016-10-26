@@ -41,37 +41,37 @@ wStatus wPing::Open() {
     return mStatus = wStatus::Nothing();
 }
 
-wStatus wPing::SetTimeout(float fTimeout) {
-    mStatus = SetSendTimeout(fTimeout);
+wStatus wPing::SetTimeout(float timeout) {
+    mStatus = SetSendTimeout(timeout);
     if (!mStatus.Ok()) {
         return mStatus;
     }
-    return mStatus = SetRecvTimeout(fTimeout);
+    return mStatus = SetRecvTimeout(timeout);
 }
 
-wStatus wPing::SetSendTimeout(float fTimeout) {
-    struct timeval stTimetv;
-    stTimetv.tv_sec = (int)fTimeout>=0 ? (int)fTimeout : 0;
-    stTimetv.tv_usec = (int)((fTimeout - (int)fTimeout) * 1000000);
-    if (stTimetv.tv_usec < 0 || stTimetv.tv_usec >= 1000000 || (stTimetv.tv_sec == 0 && stTimetv.tv_usec == 0)) {
-        stTimetv.tv_sec = 0;
-        stTimetv.tv_usec = 700000;
+wStatus wPing::SetSendTimeout(float timeout) {
+    struct timeval tv;
+    tv.tv_sec = timeout>=0 ? static_cast<int>(timeout) : 0;
+    tv.tv_usec = static_cast<int>((timeout - static_cast<int>(timeout)) * 1000000);
+    if (tv.tv_usec < 0 || tv.tv_usec >= 1000000 || (tv.tv_sec == 0 && tv.tv_usec == 0)) {
+    	tv.tv_sec = 0;
+        tv.tv_usec = 700000;
     }
-    if (setsockopt(mFD, SOL_SOCKET, SO_SNDTIMEO, &stTimetv, sizeof(stTimetv)) == -1) {
+    if (setsockopt(mFD, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) == -1) {
         return mStatus = wStatus::IOError("wPing::SetSendTimeout, setsockopt SO_SNDTIMEO failed", strerror(errno));
     }
     return mStatus = wStatus::Nothing();
 }
 
 wStatus wPing::SetRecvTimeout(float fTimeout) {
-    struct timeval stTimetv;
-    stTimetv.tv_sec = (int)fTimeout>=0 ? (int)fTimeout : 0;
-    stTimetv.tv_usec = (int)((fTimeout - (int)fTimeout) * 1000000);
-    if (stTimetv.tv_usec < 0 || stTimetv.tv_usec >= 1000000 || (stTimetv.tv_sec == 0 && stTimetv.tv_usec == 0)) {
-        stTimetv.tv_sec = 0;
-        stTimetv.tv_usec = 700000;
+    struct timeval tv;
+    tv.tv_sec = timeout>=0 ? static_cast<int>(timeout) : 0;
+    tv.tv_usec = static_cast<int>((timeout - static_cast<int>(timeout)) * 1000000);
+    if (tv.tv_usec < 0 || tv.tv_usec >= 1000000 || (tv.tv_sec == 0 && tv.tv_usec == 0)) {
+    	tv.tv_sec = 0;
+        tv.tv_usec = 700000;
     }
-    if (setsockopt(mFD, SOL_SOCKET, SO_RCVTIMEO, &stTimetv, sizeof(stTimetv)) == -1) {
+    if (setsockopt(mFD, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
         return mStatus = wStatus::IOError("wPing::SetRecvTimeout, setsockopt SO_RCVTIMEO failed", strerror(errno));
     }
     return mStatus = wStatus::Nothing();
@@ -85,7 +85,6 @@ wStatus wPing::Ping(const char *ip) {
     mStrIp = ip;
     bzero(&mDestAddr, sizeof(mDestAddr));
     mDestAddr.sin_family = AF_INET;
-
     unsigned long inaddr = 0l;
     if ((inaddr = inet_addr(mStrIp.c_str())) == INADDR_NONE) {
         /*
@@ -113,9 +112,9 @@ wStatus wPing::Ping(const char *ip) {
 // 发送num个ICMP报文
 wStatus wPing::SendPacket() {
     // 设置ICMP报头
-    int iLen = Pack();
+    int len = Pack();
 
-    if (sendto(mFD, mSendpacket, iLen, 0, (struct sockaddr *)&mDestAddr, sizeof(mDestAddr)) < iLen) {
+    if (sendto(mFD, mSendpacket, len, 0, reinterpret_cast<struct sockaddr *>(&mDestAddr), sizeof(mDestAddr)) < len) {
         return wStatus::IOError("wPing::Ping, sendto ping error", strerror(errno));
     }
     return wStatus::Nothing();
@@ -130,11 +129,11 @@ wStatus wPing::RecvPacket() {
     memset(mRecvpacket, 0, sizeof(mRecvpacket));
     memset(mCtlpacket, 0, sizeof(mCtlpacket));
     
-    int iLen = 0, i = 0;
+    int len = 0, i = 0;
     for (i = 0; i < kRetryTimes; i++) {
         iov.iov_base = mRecvpacket;
         iov.iov_len = sizeof(mRecvpacket);
-        msg.msg_name = (struct sockaddr *)&mFromAddr;	// fixed
+        msg.msg_name = reinterpret_cast<struct sockaddr *>(&mFromAddr);
         
         msg.msg_namelen = sizeof(struct sockaddr_in);
         msg.msg_iov = &iov;
@@ -142,8 +141,8 @@ wStatus wPing::RecvPacket() {
         msg.msg_control = mCtlpacket;
         msg.msg_controllen = sizeof(mCtlpacket);
 
-        iLen = recvmsg(mFD, &msg, 0);
-        if (iLen < 0) {
+        len = recvmsg(mFD, &msg, 0);
+        if (len < 0) {
             if (errno == EINTR) {
                 continue;
             } else if(errno == EAGAIN) {
@@ -152,10 +151,10 @@ wStatus wPing::RecvPacket() {
             } else {
                 return wStatus::IOError("wPing::Ping, ping recvmsg error, ip: " + mStrIp, strerror(errno));
             }
-        } else if (iLen == 0) {
+        } else if (len == 0) {
             return wStatus::IOError("wPing::Ping, ping recvmsg return 0, ip: ", mStrIp);
         } else {
-            struct ip *iphdr = (struct ip *)mRecvpacket;
+            struct ip *iphdr = reinterpret_cast<struct ip *>(mRecvpacket);
             if (iphdr->ip_p == IPPROTO_ICMP && iphdr->ip_src.s_addr == mDestAddr.sin_addr.s_addr) {
                 break;
             }
@@ -165,7 +164,7 @@ wStatus wPing::RecvPacket() {
     if (i >= kRetryTimes) {
         return wStatus::IOError("wPing::Ping, ping recvmsg retry over times, ip: ", mStrIp);
     }
-    if (Unpack(mRecvpacket, iLen) < 0) {
+    if (Unpack(mRecvpacket, len) < 0) {
         return wStatus::Corruption("wPing::Ping, parse error, ip: ", mStrIp);
     }
     
@@ -175,7 +174,7 @@ wStatus wPing::RecvPacket() {
 // 设置ICMP请求报头
 int wPing::Pack() {
     memset(mSendpacket, 0, sizeof(mSendpacket));
-    struct icmp *icmp = (struct icmp*) mSendpacket;
+    struct icmp *icmp = reinterpret_cast<struct icmp*>(mSendpacket);
 
     icmp->icmp_type = ICMP_ECHO;
     icmp->icmp_code = 0;
@@ -185,33 +184,33 @@ int wPing::Pack() {
     icmp->icmp_data[0] = kIcmpData;
 
     // 校验算法
-    int iLen = 8 + kDataSize;
+    int len = 8 + kDataSize;
     icmp->icmp_cksum = 0;
-    icmp->icmp_cksum = CalChksum((unsigned short *)icmp, iLen);
-    return iLen;
+    icmp->icmp_cksum = CalChksum(reinterpret_cast<unsigned short *>(icmp), len);
+    return len;
 }
 
 // 剥去ICMP报头
-int wPing::Unpack(char *pBuffer, int iLen) {
-    if (iLen == 0) {
+int wPing::Unpack(char buf[], int len) {
+    if (len == 0) {
         return -7;
     }
-    if (pBuffer == NULL) {
+    if (buf == NULL) {
         return -8;
     }
 
-    struct ip *ip = (struct ip *)pBuffer;
+    struct ip *ip = reinterpret_cast<struct ip *>(buf);
     if (ip->ip_p != IPPROTO_ICMP) {
         return -2;
     }
 	
     // 越过ip报头,指向ICMP报头
     int iphdrlen = ip->ip_hl << 2;
-    struct icmp *icmp = (struct icmp *) (pBuffer + iphdrlen); 
+    struct icmp *icmp = reinterpret_cast<struct icmp *>(buf + iphdrlen);
 
     // ICMP报头及ICMP数据报的总长度
-    iLen -= iphdrlen;
-    if (iLen < 8) {
+    len -= iphdrlen;
+    if (len < 8) {
         return -3;
     }
 
@@ -220,7 +219,7 @@ int wPing::Unpack(char *pBuffer, int iLen) {
         if (icmp->icmp_id != mPid) {
             return -4;
         }
-        if(iLen < 16) {
+        if(len < 16) {
             return -5;
         }
         if (icmp->icmp_data[0] != kIcmpData) {
@@ -246,7 +245,7 @@ unsigned short wPing::CalChksum(unsigned short *addr, int len) {
     // 若ICMP报头为奇数个字节，会剩下最后一字节。把最后一个字节视为一个2字节数据的高字节，这个2字节数据的低字节为0，继续累加
     unsigned short answer = 0;
     if (nleft == 1) {
-        *(unsigned char *)(&answer) = *(unsigned char *)w;
+        *(reinterpret_cast<unsigned char *>(&answer)) = *(reinterpret_cast<unsigned char *>(w));
         sum += answer;
     }
 

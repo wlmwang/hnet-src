@@ -121,12 +121,4 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
     return mStatus = InitProcTitle(argc, argv);
 }
 
-wStatus wConfig::InitProcTitle(int argc, const char *argv[]) {
-    SAFE_NEW(wProcTitle(argc, argv), mProcTitle);
-    if (mProcTitle == NULL) {
-        return wStatus::IOError("wConfig::InitProcTitle", "new failed");
-    }
-    return mProcTitle->InitSetproctitle();
-}
-
 }   // namespace hnet

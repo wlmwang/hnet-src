@@ -24,13 +24,11 @@ public:
 
     // 设置进程标题
     wStatus Setproctitle(const char *title, const char *pretitle = NULL);
-
 protected:
     // 务必在设置进程标题之前调用
     wStatus SaveArgv();
 
     wStatus mStatus;
-    
     int mArgc;
     const char *mOsArgvLast;
     // 原生参数

@@ -32,7 +32,7 @@ public:
 
     virtual wStatus Close();
 
-    int& operator[](uint8_t i);
+    inline int& operator[](uint8_t i);
 
 protected:
     virtual wStatus Bind(string host, uint16_t port = 0) {

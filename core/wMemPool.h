@@ -21,10 +21,9 @@ public:
     char* Allocate(size_t bytes);
     char* AllocateAligned(size_t bytes);
 
-    size_t MemoryUsage() const {
+    inline size_t MemoryUsage() const {
         return mBlocksMemory + mBlocks.capacity() * sizeof(char*);
     }
-
 protected:
     enum { kBlockSize = kPageSize};
     char* AllocateFallback(size_t bytes);
