@@ -19,6 +19,7 @@ class wRandomAccessFile;
 class wWritableFile;
 class wFileLock;
 class wLogger;
+class wSem;
 
 // 平台类
 class wEnv : private wNoncopyable {
@@ -37,6 +38,20 @@ public:
 
     // 创建写入文件对象
     virtual wStatus NewWritableFile(const std::string& fname, wWritableFile** result) = 0;
+
+    // 返回日志对象
+    virtual wStatus NewLogger(const std::string& fname, wLogger** result) = 0;
+
+    // 返回信号量对象，进程间同步
+    virtual wStatus NewSem(const std::string& devshm, wSem** result) = 0;
+
+    // 锁文件
+    virtual wStatus LockFile(const std::string& fname, wFileLock** lock) = 0;
+
+    // 解锁文件
+    // 要求：先调用 LockFile 成功
+    // 要求：锁住还未锁定成功
+    virtual wStatus UnlockFile(wFileLock* lock) = 0;
 
     virtual bool FileExists(const std::string& fname) = 0;
 
@@ -57,22 +72,11 @@ public:
     // 重命名文件名
     virtual wStatus RenameFile(const std::string& src, const std::string& target) = 0;
 
-    // 锁文件
-    virtual wStatus LockFile(const std::string& fname, wFileLock** lock) = 0;
-
-    // 解锁文件
-    // 要求：先调用 LockFile 成功
-    // 要求：锁住还未锁定成功
-    virtual wStatus UnlockFile(wFileLock* lock) = 0;
-
     // 添加任务到后台任务消费线程中
     virtual void Schedule(void (*function)(void* arg), void* arg) = 0;
 
     // 开启新线程
     virtual void StartThread(void (*function)(void* arg), void* arg) = 0;
-
-    // 返回日志对象
-    virtual wStatus NewLogger(const std::string& fname, wLogger** result) = 0;
 
     // 返回微妙
     virtual uint64_t NowMicros() = 0;

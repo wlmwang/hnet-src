@@ -15,11 +15,6 @@ namespace hnet {
 
 class wMemPool;
 
-template<typename Key, class Comparator>
-class wSkipList {
-	//
-};
-
 }
 
 #endif

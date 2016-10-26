@@ -8,64 +8,97 @@
 #define _W_SEM_H_
 
 #include <sys/ipc.h>
-#include <sys/sem.h>
 #include <semaphore.h>
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
 
-// 信号量操作。主要应用在多进程间互斥锁
 namespace hnet {
 
+// 信号量接口类
+// 进程同步
 class wSem : private wNoncopyable {
 public:
-    // pshared 0线程共享 1进程共享
-    // value 信号量初值，最大值为SEM_VALUE_MAX
-    wSem(int pshared = 0, int value = 0) : mStatus(), mPshared(pshared), mValue(value) {
-        if (sem_init(&mSem, mPshared, mValue) < 0) {
-            mStatus = wStatus::NotSupported("wSem::wSem", "sem_init error");
+	wSem() { }
+
+	virtual ~wSem() { }
+
+	virtual wStatus Open(const std::string& devshm, int oflag = O_CREAT, mode_t mode= 0644, unsigned int value = 1) = 0;
+
+	// 阻塞等待信号，获取拥有权（P操作）
+	virtual wStatus Wait() = 0;
+
+	// 非阻塞版本 等待信号，获取拥有权（P操作）
+	virtual wStatus TryWait() = 0;
+
+	// 发出信号即释放拥有权（V操作）
+	virtual wStatus Post() = 0;
+
+	// 关闭信号量
+	virtual wStatus Close() = 0;
+
+	// 删除系统中的信号量（一定要清除，否则即使进程退出，系统也会占用该资源。/dev/shm中一个文件）
+	virtual wStatus Destroy() = 0;
+};
+
+
+// 信号量实现类
+
+// 有名信号量操作类
+class wPosixSem : public wSem {
+public:
+	wPosixSem() { }
+
+	virtual ~wPosixSem() {
+		Close();
+		Destroy();
+    }
+
+	virtual wStatus Open(const std::string& devshm, int oflag = O_CREAT, mode_t mode = 0644, unsigned int value = 1) {
+		mDevshm = devshm;
+		mSemId = sem_open(devshm.c_str(), oflag, mode, value);
+		if (mSemId == SEM_FAILED) {
+			return mStatus = wStatus::IOError("wPosixSem::Open", strerror(error));
+		}
+		return mStatus = wStatus::Nothing();
+	}
+
+	virtual wStatus Wait() {
+        if (sem_wait(mSemId) == -1) {
+            return mStatus = wStatus::IOError("wSem::Wait", strerror(error));
         }
+        return mStatus = wStatus::Nothing();
     }
 
-    ~wSem() {
-        sem_destroy(&mSem);
-    }
-
-    // 阻塞等待信号，获取拥有权（原子的从信号量的值减去一个"1"）
-    // ==0成功 	==-1失败（设置errno）
-    // EINTR 调用被信号处理中断
-    // EINVAL 不是有效的信号量
-    wStatus Wait() {
-        if (sem_wait(&mSem) != 0) {
-            return wStatus::NotSupported("wSem::Wait", "sem_wait error");
+	virtual wStatus TryWait() {
+        if (sem_trywait(mSemId) == -1) {
+            return mStatus = wStatus::IOError("wSem::TryWait", strerror(error));	// EAGAIN
         }
-        return wStatus::Nothing();
+        return mStatus = wStatus::Nothing();
     }
 
-    // 等待信号，获取拥有权（可以获取时，直接将信号量sem减1，否则返回错误代码）
-    // ==0成功 	==-1失败（设置errno）
-    // EAGAIN 除了锁定无法进行别的操作(如信号量当前是0值)
-    wStatus TryWait() {
-        if (sem_trywait(&mSem) != 0) {
-            return wStatus::NotSupported("wSem::Post", "sem_trywait error");
+	virtual wStatus Post() {
+        if (sem_post(mSemId) == -1) {
+            return mStatus = wStatus::IOError("wSem::Post", strerror(error));
         }
-        return wStatus::Nothing();
+        return mStatus = wStatus::Nothing();
     }
 
-    // 发出信号即释放拥有权（原子的从信号量的值增加一个"1"）
-    // ==0成功 ==-1失败（设置errno）
-    wStatus Post() {
-        if (sem_post(&mSem) != 0) {
-            return wStatus::NotSupported("wSem::Post", "sem_post error");
+	virtual wStatus Close() {
+        if (sem_close(mSemId) == -1) {
+            mStatus = wStatus::IOError("wPosixSem::Close", strerror(error));
         }
-        return wStatus::Nothing();
-    }
+	}
 
+	virtual wStatus Destroy() {
+        if (sem_unlink(mDevshm.c_str()) == -1) {
+            mStatus = wStatus::IOError("wPosixSem::Close", strerror(error));
+        }
+	}
 protected:
     wStatus mStatus;
-    sem_t mSem;
-    int mPshared;
-    int mValue;
+    sem_t *mSemId;
+    std::string mDevshm;
 };
 
 }	// namespace hnet

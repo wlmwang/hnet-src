@@ -26,6 +26,7 @@ const int kServerNumShard = 1 << kServerNumShardBits;
 class wEnv;
 class wTask;
 class wMaster;
+class wSem;
 
 // 服务基础类
 class wServer : private wNoncopyable {
@@ -127,6 +128,11 @@ protected:
     wTask *mTask;
     std::vector<wTask*> mTaskPool[kServerNumShard];
     wMutex mTaskPoolMutex[kServerNumShard];
+
+    // 惊群锁
+    bool mUseAcceptTurn;
+    bool mAcceptHeld;
+    wSem *mAcceptSem;
 };
 
 }	// namespace hnet

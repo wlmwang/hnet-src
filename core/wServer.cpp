@@ -11,6 +11,7 @@
 #include <poll.h> 
 #include "wServer.h"
 #include "wEnv.h"
+#include "wSem.h"
 #include "wTcpSocket.h"
 #include "wUnixSocket.h"
 #include "wTcpTask.h"
@@ -18,19 +19,27 @@
 
 namespace hnet {
 
+const char kAcceptName[] = "hnet.accept";
+
 wServer::wServer() : mEnv(wEnv::Default()), mExiting(false), mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
-mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL) {
+mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mUseAcceptTurn(true), mAcceptHeld(false), mAcceptSem(NULL) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
 
 wServer::~wServer() {
     CleanTask();
+    SAFE_DELETE(mAcceptSem);
 }
 
 wStatus wServer::PrepareStart(std::string ipaddr, uint16_t port, std::string protocol) {
     if (!AddListener(ipaddr, port, protocol).Ok()) {
 		return mStatus;
+    } else if (mUseAcceptTurn == true) {
+    	mStatus = mEnv->NewSem(kAcceptName, &mAcceptSem);
+    	if (!mStatus.Ok()) {
+    		return mStatus;
+    	}
     }
     return mStatus = PrepareRun();
 }
@@ -112,10 +121,19 @@ wStatus wServer::NewUnixTask(wSocket* sock, wTask** ptr) {
 }
 
 wStatus wServer::Recv() {
+	// 申请锁
+	if (mUseAcceptTurn == true && mAcceptHeld == false) {
+		mStatus = mAcceptSem->TryWait();
+		if (!mStatus.Ok()) {
+			return mStatus;
+		}
+		mAcceptHeld = true;
+	}
+
     std::vector<struct epoll_event> evt(kListenBacklog);
     int iRet = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
     if (iRet == -1) {
-		return mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", strerror(errno));
+		mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", strerror(errno));
     }
     
     // 事件循环
@@ -160,6 +178,12 @@ wStatus wServer::Recv() {
 		// 解锁
 		mTaskPoolMutex[type].Unlock();
     }
+
+    // 释放锁
+	if (mUseAcceptTurn == true && mAcceptHeld == true) {
+		mAcceptSem->Post();
+		mAcceptHeld = false;
+	}
     return mStatus;
 }
 

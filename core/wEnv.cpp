@@ -16,6 +16,7 @@
 #include "wEnv.h"
 #include "wFile.h"
 #include "wLogger.h"
+#include "wSem.h"
 #include "wMutex.h"
 
 namespace hnet {
@@ -81,6 +82,63 @@ public:
         return wStatus();
     }
 
+    virtual wStatus NewSem(const std::string& devshm, wSem** result) {
+    	SAFE_NEW(wPosixSem, *result);
+    	wStatus s = (*result)->Open(devshm);
+    	if (!s.Ok()) {
+    		SAFE_DELETE(*result);
+    	}
+    	return s;
+    }
+
+    // 创建文件锁
+    virtual wStatus LockFile(const std::string& fname, wFileLock** lock) {
+        *lock = NULL;
+        int fd = open(fname.c_str(), O_RDWR | O_CREAT, 0644);
+        if (fd < 0) {
+            return wStatus::IOError(fname, strerror(errno));
+        } else if (!mLocks.Insert(fname)) {   // 重复加锁
+            close(fd);
+            return wStatus::IOError("lock " + fname, "already held by process");
+        } else if (LockOrUnlock(fd, true) == -1) {
+            close(fd);
+            mLocks.Remove(fname);
+            return wStatus::IOError("lock " + fname, strerror(errno));
+        } else {
+            wPosixFileLock* my_lock;
+            SAFE_NEW(wPosixFileLock(), my_lock);
+            my_lock->mFD = fd;
+            my_lock->mName = fname;
+            *lock = my_lock;
+        }
+        return wStatus();
+    }
+
+    // 释放锁
+    virtual wStatus UnlockFile(wFileLock* lock) {
+        wPosixFileLock* my_lock = reinterpret_cast<wPosixFileLock*>(lock);
+        wStatus result;
+        if (LockOrUnlock(my_lock->mFD, false) == -1) {
+            return wStatus::IOError("unlock", strerror(errno));
+        }
+        mLocks.Remove(my_lock->mName);
+        close(my_lock->mFD);
+        SAFE_DELETE(my_lock);
+        return wStatus();
+    }
+
+    // 日志对象
+    virtual wStatus NewLogger(const std::string& fname, wLogger** result) {
+		FILE* f = fopen(fname.c_str(), "w");
+		if (f == NULL) {
+			*result = NULL;
+			return wStatus::IOError(fname, strerror(errno));
+		} else {
+			SAFE_NEW(wPosixLogger(f, &wPosixEnv::gettid), *result);
+		}
+		return wStatus();
+    }
+
     virtual bool FileExists(const std::string& fname) {
         return access(fname.c_str(), F_OK) == 0;
     }
@@ -137,54 +195,6 @@ public:
             return wStatus::IOError(src, strerror(errno));
         }
         return wStatus();
-    }
-
-    // 创建文件锁
-    virtual wStatus LockFile(const std::string& fname, wFileLock** lock) {
-        *lock = NULL;
-        int fd = open(fname.c_str(), O_RDWR | O_CREAT, 0644);
-        if (fd < 0) {
-            return wStatus::IOError(fname, strerror(errno));
-        } else if (!mLocks.Insert(fname)) {   // 重复加锁
-            close(fd);
-            return wStatus::IOError("lock " + fname, "already held by process");
-        } else if (LockOrUnlock(fd, true) == -1) {
-            close(fd);
-            mLocks.Remove(fname);
-            return wStatus::IOError("lock " + fname, strerror(errno));
-        } else {
-            wPosixFileLock* my_lock;
-            SAFE_NEW(wPosixFileLock(), my_lock);
-            my_lock->mFD = fd;
-            my_lock->mName = fname;
-            *lock = my_lock;
-        }
-        return wStatus();
-    }
-
-    // 释放锁
-    virtual wStatus UnlockFile(wFileLock* lock) {
-        wPosixFileLock* my_lock = reinterpret_cast<wPosixFileLock*>(lock);
-        wStatus result;
-        if (LockOrUnlock(my_lock->mFD, false) == -1) {
-            return wStatus::IOError("unlock", strerror(errno));
-        }
-        mLocks.Remove(my_lock->mName);
-        close(my_lock->mFD);
-        SAFE_DELETE(my_lock);
-        return wStatus();
-    }
-
-    // 日志对象
-    virtual wStatus NewLogger(const std::string& fname, wLogger** result) {
-		FILE* f = fopen(fname.c_str(), "w");
-		if (f == NULL) {
-			*result = NULL;
-			return wStatus::IOError(fname, strerror(errno));
-		} else {
-			SAFE_NEW(wPosixLogger(f, &wPosixEnv::gettid), *result);
-		}
-		return wStatus();
     }
 
     // 当前微妙时间
