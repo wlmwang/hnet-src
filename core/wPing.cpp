@@ -63,7 +63,7 @@ wStatus wPing::SetSendTimeout(float timeout) {
     return mStatus = wStatus::Nothing();
 }
 
-wStatus wPing::SetRecvTimeout(float fTimeout) {
+wStatus wPing::SetRecvTimeout(float timeout) {
     struct timeval tv;
     tv.tv_sec = timeout>=0 ? static_cast<int>(timeout) : 0;
     tv.tv_usec = static_cast<int>((timeout - static_cast<int>(timeout)) * 1000000);

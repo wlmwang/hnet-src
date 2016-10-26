@@ -154,9 +154,4 @@ wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     return mStatus;
 }
 
-int& wChannelSocket::operator[](uint8_t i) {
-    assert(i == 0 || i == 1);
-    return mChannel[i];
-}
-
 }   // namespace hnet

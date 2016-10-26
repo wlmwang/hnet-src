@@ -32,7 +32,10 @@ public:
 
     virtual wStatus Close();
 
-    inline int& operator[](uint8_t i);
+    inline int& operator[](uint8_t i) {
+        assert(i == 0 || i == 1);
+        return mChannel[i];
+    }
 
 protected:
     virtual wStatus Bind(string host, uint16_t port = 0) {

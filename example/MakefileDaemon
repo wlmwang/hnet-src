@@ -22,7 +22,9 @@ INCPATH=-I./$(COREPATH) -I./$(COMMPATH) -I./$(VENDOR)/tinyxml -I/usr/local/inclu
 SRCPATH=./
 OBJECTS=./$(COREPATH)/wCrc32c.o \
 		./$(COREPATH)/wEnv.o \
+		./$(COREPATH)/wFile.o \
 		./$(COREPATH)/wLog.o \
+		./$(COREPATH)/wLogger.o \
 		./$(COREPATH)/wMisc.o \
 		./$(COREPATH)/wMemPool.o \
 		./$(COREPATH)/wPing.o \
