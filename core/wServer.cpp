@@ -121,65 +121,56 @@ wStatus wServer::NewUnixTask(wSocket* sock, wTask** ptr) {
 }
 
 wStatus wServer::Recv() {
-	// 惊群锁
-	if (mUseAcceptTurn == true && mAcceptHeld == false) {
-		mStatus = mAcceptSem->TryWait();
-		if (!mStatus.Ok()) {
-			return mStatus;
-		}
+	if (mUseAcceptTurn == false || (mUseAcceptTurn == true && mAcceptHeld == true) || (mUseAcceptTurn == true && mAcceptHeld == false && mAcceptSem->TryWait().Ok())) {
 		mAcceptHeld = true;
-	}
-
-    std::vector<struct epoll_event> evt(kListenBacklog);
-    int iRet = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
-    if (iRet == -1) {
-		mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", strerror(errno));
-    }
-    
-    // 事件循环
-    wTask* task;
-    ssize_t size;
-    for (int i = 0 ; i < iRet ; i++) {
-		task = reinterpret_cast<wTask *>(evt[i].data.ptr);
-		// 加锁
-		int type = task->Type();
-		mTaskPoolMutex[type].Lock();
-		if (task->Socket()->FD() == kFDUnknown) {
-			mStatus = RemoveTask(task);
-		} else if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
-		    mStatus = RemoveTask(task);
-		} else if (task->Socket()->ST() == kStListen && task->Socket()->SS() == kSsListened) {
-		    if (evt[i].events & EPOLLIN) {
-				mStatus = AcceptConn(task);
-		    } else {
-				mStatus = wStatus::IOError("wServer::Recv, accept error", "listen socket error event");
-		    }
-		} else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
-		    if (evt[i].events & EPOLLIN) {
-				// 套接口准备好了读取操作
-				mStatus = task->TaskRecv(&size);
-				if (!mStatus.Ok()) {
-					mStatus = RemoveTask(task);
-				}
-		    } else if (evt[i].events & EPOLLOUT) {
-				// 清除写事件
-				if (task->SendLen() == 0) {
-				    AddTask(task, EPOLLIN, EPOLL_CTL_MOD, false);
-				} else {
-					// 套接口准备好了写入操作
-					// 写入失败，半连接，对端读关闭
-					mStatus = task->TaskSend(&size);
+		// 事件循环
+	    std::vector<struct epoll_event> evt(kListenBacklog);
+	    int iRet = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
+	    if (iRet == -1) {
+			mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", strerror(errno));
+	    }
+	    wTask* task;
+	    ssize_t size;
+	    for (int i = 0 ; i < iRet ; i++) {
+			task = reinterpret_cast<wTask *>(evt[i].data.ptr);
+			// 加锁
+			int type = task->Type();
+			mTaskPoolMutex[type].Lock();
+			if (task->Socket()->FD() == kFDUnknown) {
+				mStatus = RemoveTask(task);
+			} else if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
+			    mStatus = RemoveTask(task);
+			} else if (task->Socket()->ST() == kStListen && task->Socket()->SS() == kSsListened) {
+			    if (evt[i].events & EPOLLIN) {
+					mStatus = AcceptConn(task);
+			    } else {
+					mStatus = wStatus::IOError("wServer::Recv, accept error", "listen socket error event");
+			    }
+			} else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
+			    if (evt[i].events & EPOLLIN) {
+					// 套接口准备好了读取操作
+					mStatus = task->TaskRecv(&size);
 					if (!mStatus.Ok()) {
 						mStatus = RemoveTask(task);
 					}
-				}
-		    }
-		}
-		// 解锁
-		mTaskPoolMutex[type].Unlock();
-    }
-
-    // 释放锁
+			    } else if (evt[i].events & EPOLLOUT) {
+					// 清除写事件
+					if (task->SendLen() == 0) {
+					    AddTask(task, EPOLLIN, EPOLL_CTL_MOD, false);
+					} else {
+						// 套接口准备好了写入操作
+						// 写入失败，半连接，对端读关闭
+						mStatus = task->TaskSend(&size);
+						if (!mStatus.Ok()) {
+							mStatus = RemoveTask(task);
+						}
+					}
+			    }
+			}
+			// 解锁
+			mTaskPoolMutex[type].Unlock();
+	    }
+	}
 	if (mUseAcceptTurn == true && mAcceptHeld == true) {
 		mAcceptSem->Post();
 		mAcceptHeld = false;
