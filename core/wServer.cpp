@@ -19,12 +19,14 @@
 
 namespace hnet {
 
-const char kAcceptName[] = "hnet.accept";
-
 wServer::wServer() : mEnv(wEnv::Default()), mExiting(false), mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
 mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mUseAcceptTurn(true), mAcceptHeld(false), mAcceptSem(NULL) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
+    if (mUseAcceptTurn == true) {
+    	mStatus = mEnv->NewSem(NULL, &mAcceptSem);
+    	assert(mStatus.Ok());
+    }
 }
 
 wServer::~wServer() {
@@ -35,11 +37,6 @@ wServer::~wServer() {
 wStatus wServer::PrepareStart(std::string ipaddr, uint16_t port, std::string protocol) {
     if (!AddListener(ipaddr, port, protocol).Ok()) {
 		return mStatus;
-    } else if (mUseAcceptTurn == true) {
-    	mStatus = mEnv->NewSem(kAcceptName, &mAcceptSem);
-    	if (!mStatus.Ok()) {
-    		return mStatus;
-    	}
     }
     return mStatus = PrepareRun();
 }
@@ -51,6 +48,9 @@ wStatus wServer::SingleStart(bool daemon) {
 		return mStatus;
     }
     
+    // 单进程关闭惊群锁
+    mUseAcceptTurn = false;
+
     // 进入服务主循环
     while (daemon) {
     	if (mExiting) {
@@ -121,7 +121,7 @@ wStatus wServer::NewUnixTask(wSocket* sock, wTask** ptr) {
 }
 
 wStatus wServer::Recv() {
-	// 申请锁
+	// 惊群锁
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {
 		mStatus = mAcceptSem->TryWait();
 		if (!mStatus.Ok()) {
@@ -192,7 +192,7 @@ wStatus wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_un sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);
-		mStatus = task->Socket()->Accept(&fd, (struct sockaddr*)&sockAddr, &sockAddrSize);
+		mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize);
 		if (!mStatus.Ok()) {
 		    return mStatus;
 		}
@@ -214,7 +214,7 @@ wStatus wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_in sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);	
-		mStatus = task->Socket()->Accept(&fd, (struct sockaddr*)&sockAddr, &sockAddrSize);
+		mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize);
 		if (!mStatus.Ok()) {
 		    return mStatus;
 		}
@@ -406,40 +406,40 @@ wStatus wServer::CleanListener() {
 }
 
 void wServer::CheckTick() {
-	mScheduleMutex.Lock();
-	mTick = misc::GetTimeofday() - mLatestTm;
-	if (mTick >= 10*1000) {
-	    mLatestTm += mTick;
-
-	    // 添加任务到线程池中
-	    if (mScheduleOk == true) {
-	    	mScheduleOk = false;
-			mEnv->Schedule(wServer::ScheduleRun, this);
-	    }
+	if (mScheduleMutex.TryLock() == 0) {
+		mTick = misc::GetTimeofday() - mLatestTm;
+		if (mTick >= 10*1000) {
+		    mLatestTm += mTick;
+		    // 添加任务到线程池中
+		    if (mScheduleOk == true) {
+		    	mScheduleOk = false;
+				mEnv->Schedule(wServer::ScheduleRun, this);
+		    }
+		}
 	}
 	mScheduleMutex.Unlock();
 }
 
 void wServer::ScheduleRun(void* argv) {
     wServer* server = reinterpret_cast<wServer* >(argv);
-
-    server->mScheduleMutex.Lock();
-    if (server->mHeartbeatTurn && server->mHeartbeatTimer.CheckTimer(server->mTick/1000)) {
-    	server->CheckHeartBeat();
-    }
-    server->mScheduleOk = true;
+	if (server->mScheduleMutex.Lock() == 0) {
+	    if (server->mHeartbeatTurn && server->mHeartbeatTimer.CheckTimer(server->mTick/1000)) {
+	    	server->CheckHeartBeat();
+	    }
+	    server->mScheduleOk = true;
+	}
     server->mScheduleMutex.Unlock();
 }
 
 void wServer::CheckHeartBeat() {
-    uint64_t nowTm = misc::GetTimeofday();
+    uint64_t tm = misc::GetTimeofday();
     for (int i = 0; i < kServerNumShard; i++) {
     	mTaskPoolMutex[i].Lock();
 	    if (mTaskPool[i].size() > 0) {
 			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
 			    if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected) {
 					// 上一次发送时间间隔
-					uint64_t interval = nowTm - (*it)->Socket()->SendTm();
+					uint64_t interval = tm - (*it)->Socket()->SendTm();
 					if (interval >= kKeepAliveTm*1000) {
 						// 发送心跳
 						(*it)->HeartbeatSend();

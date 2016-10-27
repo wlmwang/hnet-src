@@ -24,7 +24,6 @@ public:
 	char *CreateShm();
 	char *AttachShm();
 	char *AllocShm(size_t size = 0);
-
 protected:
 	struct Shmhead_t;
 

@@ -7,7 +7,6 @@
 #ifndef _W_SEM_H_
 #define _W_SEM_H_
 
-#include <sys/ipc.h>
 #include <semaphore.h>
 #include "wCore.h"
 #include "wStatus.h"
@@ -16,14 +15,15 @@
 namespace hnet {
 
 // 信号量接口类
-// 进程同步
+// 用于多进程同步操作
 class wSem : private wNoncopyable {
 public:
-	wSem() { }
+	wSem(const std::string* devshm = NULL) { }
 
 	virtual ~wSem() { }
 
-	virtual wStatus Open(const std::string& devshm, int oflag = O_CREAT, mode_t mode= 0644, unsigned int value = 1) = 0;
+	// devshm = NULL时有创建无名信号量，否则创建有名信号量
+	virtual wStatus Open(int oflag = O_CREAT, mode_t mode= 0644, unsigned int value = 1) = 0;
 
 	// 阻塞等待信号，获取拥有权（P操作）
 	virtual wStatus Wait() = 0;
@@ -34,9 +34,6 @@ public:
 	// 发出信号即释放拥有权（V操作）
 	virtual wStatus Post() = 0;
 
-	// 关闭信号量
-	virtual wStatus Close() = 0;
-
 	// 删除系统中的信号量（一定要清除，否则即使进程退出，系统也会占用该资源。/dev/shm中一个文件）
 	virtual wStatus Destroy() = 0;
 };
@@ -44,61 +41,71 @@ public:
 
 // 信号量实现类
 
-// 有名信号量操作类
+// 信号量操作类(有名&&无名)
 class wPosixSem : public wSem {
 public:
-	wPosixSem() { }
+	wPosixSem(const std::string* devshm = NULL) : mDevshm(devshm) { }
 
 	virtual ~wPosixSem() {
-		Close();
 		Destroy();
     }
 
-	virtual wStatus Open(const std::string& devshm, int oflag = O_CREAT, mode_t mode = 0644, unsigned int value = 1) {
-		mDevshm = devshm;
-		mSemId = sem_open(devshm.c_str(), oflag, mode, value);
-		if (mSemId == SEM_FAILED) {
-			return mStatus = wStatus::IOError("wPosixSem::Open", strerror(error));
+	virtual wStatus Open(int oflag = O_CREAT, mode_t mode = 0644, unsigned int value = 1) {
+		if (mDevshm != NULL) {
+			// 有名信号量
+			sem_t* id = sem_open((*mDevshm).c_str(), oflag, mode, value);
+			if (id == SEM_FAILED) {
+				return wStatus::IOError("wPosixSem::Open, sem_open() failed", strerror(errno));
+			}
+			mSemId = *id;
+		} else {
+			// 无名信号量
+			if (sem_init(&mSemId, 1 /* 多进程共享 */, value /* 初值为value */) == -1) {
+				return wStatus::IOError("wPosixSem::Open, sem_init() failed", strerror(errno));
+			}
 		}
-		return mStatus = wStatus::Nothing();
+		return wStatus();
 	}
 
 	virtual wStatus Wait() {
-        if (sem_wait(mSemId) == -1) {
-            return mStatus = wStatus::IOError("wSem::Wait", strerror(error));
+        if (sem_wait(&mSemId) == -1) {
+            return wStatus::IOError("wSem::Wait, sem_wait() failed", strerror(errno));
         }
-        return mStatus = wStatus::Nothing();
+        return wStatus();
     }
 
 	virtual wStatus TryWait() {
-        if (sem_trywait(mSemId) == -1) {
-            return mStatus = wStatus::IOError("wSem::TryWait", strerror(error));	// EAGAIN
+        if (sem_trywait(&mSemId) == -1) {
+            return wStatus::IOError("wSem::TryWait, sem_trywait() failed", strerror(errno));	// EAGAIN
         }
-        return mStatus = wStatus::Nothing();
+        return wStatus();
     }
 
 	virtual wStatus Post() {
-        if (sem_post(mSemId) == -1) {
-            return mStatus = wStatus::IOError("wSem::Post", strerror(error));
+        if (sem_post(&mSemId) == -1) {
+            return wStatus::IOError("wSem::Post, sem_post() failed", strerror(errno));
         }
-        return mStatus = wStatus::Nothing();
+        return wStatus();
     }
 
-	virtual wStatus Close() {
-        if (sem_close(mSemId) == -1) {
-            mStatus = wStatus::IOError("wPosixSem::Close", strerror(error));
-        }
-	}
-
 	virtual wStatus Destroy() {
-        if (sem_unlink(mDevshm.c_str()) == -1) {
-            mStatus = wStatus::IOError("wPosixSem::Close", strerror(error));
-        }
+		if (mDevshm != NULL) {
+			// 只有最后一个进程 sem_unlink 有效
+	        if (sem_close(&mSemId) == -1) {
+	            return wStatus::IOError("wPosixSem::Close, sem_close() failed", strerror(errno));
+	        } else if (sem_unlink((*mDevshm).c_str()) == -1) {
+	        	return wStatus::IOError("wPosixSem::Close, sem_unlink() failed", strerror(errno));
+	        }
+		} else {
+	        if (sem_destroy(&mSemId) == -1) {
+	            return wStatus::IOError("wPosixSem::Close, sem_destroy() failed", strerror(errno));
+	        }
+		}
+		return wStatus();
 	}
 protected:
-    wStatus mStatus;
-    sem_t *mSemId;
-    std::string mDevshm;
+	sem_t mSemId;
+	const std::string* mDevshm;
 };
 
 }	// namespace hnet

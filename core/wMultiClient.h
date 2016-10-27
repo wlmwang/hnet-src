@@ -86,7 +86,7 @@ protected:
     wTimer mHeartbeatTimer;
 
     bool mScheduleOk;
-    wMutex mMutex;
+    wMutex mScheduleMutex;
 
     int32_t mEpollFD;
     uint64_t mTimeout;

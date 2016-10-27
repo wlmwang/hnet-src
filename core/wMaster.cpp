@@ -241,8 +241,6 @@ wStatus wMaster::ReapChildren() {
 
 				// 关闭channel
 				mWorkerPool[i]->Channel()->Close();
-				// 释放进程表项
-				//mWorkerPool[i]->mPid = -1;
 			}
 			
 			// 重启worker
@@ -500,7 +498,7 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 	case kProcessJustSpawn:
 		worker->mRespawn = 0;
 		worker->mJustSpawn = 1;
-		worker->mDetached = 0;    	
+		worker->mDetached = 0;
 
 	case kProcessJustRespawn:
 		worker->mRespawn = 1;

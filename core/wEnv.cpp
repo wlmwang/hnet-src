@@ -82,9 +82,9 @@ public:
         return wStatus();
     }
 
-    virtual wStatus NewSem(const std::string& devshm, wSem** result) {
-    	SAFE_NEW(wPosixSem, *result);
-    	wStatus s = (*result)->Open(devshm);
+    virtual wStatus NewSem(const std::string* devshm, wSem** result) {
+    	SAFE_NEW(wPosixSem(devshm), *result);
+    	wStatus s = (*result)->Open();
     	if (!s.Ok()) {
     		SAFE_DELETE(*result);
     	}

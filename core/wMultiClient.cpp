@@ -270,28 +270,29 @@ wStatus wMultiClient::CleanTaskPool(std::vector<wTask*> pool) {
 }
 
 void wMultiClient::CheckTick() {
-	mMutex.Lock();
-	mTick = misc::GetTimeofday() - mLatestTm;
-	if (mTick >= 10*1000) {
-	    mLatestTm += mTick;
-	    // 添加任务到线程池中
-	    if (mScheduleOk == true) {
-	    	mScheduleOk = false;
-			mEnv->Schedule(wMultiClient::ScheduleRun, this);
-	    }
+	if (mScheduleMutex.TryLock() == 0) {
+		mTick = misc::GetTimeofday() - mLatestTm;
+		if (mTick >= 10*1000) {
+		    mLatestTm += mTick;
+		    // 添加任务到线程池中
+		    if (mScheduleOk == true) {
+		    	mScheduleOk = false;
+				mEnv->Schedule(wMultiClient::ScheduleRun, this);
+		    }
+		}
 	}
-    mMutex.Unlock();
+	mScheduleMutex.Unlock();
 }
 
 void wMultiClient::ScheduleRun(void* argv) {
     wMultiClient* client = reinterpret_cast<wMultiClient* >(argv);
-
-    client->mMutex.Lock();
-    if (client->mHeartbeatTurn && client->mHeartbeatTimer.CheckTimer(client->mTick/1000)) {
-    	client->CheckHeartBeat();
-    }
-    client->mScheduleOk = true;
-    client->mMutex.Unlock();
+	if (client->mScheduleMutex.Lock() == 0) {
+	    if (client->mHeartbeatTurn && client->mHeartbeatTimer.CheckTimer(client->mTick/1000)) {
+	    	client->CheckHeartBeat();
+	    }
+	    client->mScheduleOk = true;
+	}
+    client->mScheduleMutex.Unlock();
 }
 
 void wMultiClient::CheckHeartBeat() {

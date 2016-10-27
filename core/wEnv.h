@@ -43,7 +43,7 @@ public:
     virtual wStatus NewLogger(const std::string& fname, wLogger** result) = 0;
 
     // 返回信号量对象，进程间同步
-    virtual wStatus NewSem(const std::string& devshm, wSem** result) = 0;
+    virtual wStatus NewSem(const std::string *devshm, wSem** result) = 0;
 
     // 锁文件
     virtual wStatus LockFile(const std::string& fname, wFileLock** lock) = 0;
