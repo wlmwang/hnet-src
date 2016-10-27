@@ -32,6 +32,7 @@ OBJECTS=./$(COREPATH)/wCrc32c.o \
 		./$(COREPATH)/wProcTitle.o \
 		./$(COREPATH)/wSignal.o \
 		./$(COREPATH)/wMemPool.o \
+		./$(COREPATH)/wShm.o \
 		./$(COREPATH)/wThread.o \
 		./$(COREPATH)/wSocket.o \
 		./$(COREPATH)/wChannelSocket.o \

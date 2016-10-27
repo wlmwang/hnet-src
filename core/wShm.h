@@ -10,35 +10,52 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include "wCore.h"
+#include "wStatus.h"
 #include "wNoncopyable.h"
 
 namespace hnet {
 
 // 共享内存管理
-// 注意：此对象本身并不共享内存中，所以需在共享内存上额外存储头信息shmhead_t，长度为sizeof(struct shmhead_t)
 class wShm : private wNoncopyable {
 public:
-	wShm(const char *filename, int pipeid = 'i', size_t size = MSG_QUEUE_LEN);
-	~wShm();
+	virtual ~wShm() { }
 
-	char *CreateShm();
-	char *AttachShm();
-	char *AllocShm(size_t size = 0);
-protected:
-	struct Shmhead_t;
-
-	char mFilename[255];
-	int mPipeId;
-	key_t mKey;
-	int mShmId;
-	size_t mSize;
-	struct shmhead_t *mShmhead;	// 共享内存头信息
+	virtual wStatus CreateShm(char* ptr, int pipeid = 'i') = 0;
+	virtual wStatus AttachShm(char* ptr, int pipeid = 'i') = 0;
+	virtual wStatus AllocShm(char* ptr, size_t size = 0) = 0;
+	virtual wStatus Destroy() = 0;
 };
 
-struct wShm::Shmhead_t {
-	char *mStart;	//共享内存开始地址
-	char *mEnd;		//共享内存结束地址
-	char *mUsedOff;	//已被分配共享内存偏移地址offset，即下次可使用的开始地址
+
+// 共享内存实现类
+
+// 共享内存额外存储头信息Shmhead_t结构体
+struct Shmhead_t {
+	// 共享内存开始地址
+	char *mStart;
+
+	// 共享内存结束地址
+	char *mEnd;
+
+	// 已被分配共享内存偏移地址offset，即下次可使用的开始地址
+	char *mUsedOff;
+};
+
+class wPosixShm : public wShm {
+public:
+	wPosixShm(const std::string *filename, size_t size = kMsgQueueLen);
+	virtual ~wPosixShm();
+
+	wStatus CreateShm(char* ptr, int pipeid = 'i');
+	wStatus AttachShm(char* ptr, int pipeid = 'i');
+	wStatus AllocShm(char* ptr, size_t size = 0);
+	wStatus Destroy();
+
+protected:
+	int mShmId;
+	size_t mSize;
+	std::string mFilename;
+	struct Shmhead_t *mShmhead;
 };
 
 }	// namespace hnet
