@@ -11,19 +11,18 @@
 #
 
 CXX=g++ -std=c++11
-CXXFLAGS=-O3 -Wall -Wno-invalid-offsetof -DUSE_LOG4CPP -DLINUX -D_DEBUG_ #-D_MEM_CHECK
-LDFLAGS=-L/usr/local/lib -ltinyxml -llog4cpp -lpthread
+CXXFLAGS=-O3 -Wall -Wno-invalid-offsetof -D_DEBUG_ #-D_MEM_CHECK
+LDFLAGS=-L/usr/local/lib -ltinyxml -lpthread
 
 COREPATH=../core
 COMMPATH=../command
 VENDOR=../vendor
-INCPATH=-I./$(COREPATH) -I./$(COMMPATH) -I./$(VENDOR)/tinyxml -I/usr/local/include/log4cpp
+INCPATH=-I./$(COREPATH) -I./$(COMMPATH) -I./$(VENDOR)/tinyxml
 
 SRCPATH=./
 OBJECTS=./$(COREPATH)/wCrc32c.o \
 		./$(COREPATH)/wEnv.o \
 		./$(COREPATH)/wFile.o \
-		./$(COREPATH)/wLog.o \
 		./$(COREPATH)/wLogger.o \
 		./$(COREPATH)/wMisc.o \
 		./$(COREPATH)/wMemPool.o \

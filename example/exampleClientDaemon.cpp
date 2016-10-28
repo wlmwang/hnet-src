@@ -7,7 +7,6 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wMisc.h"
-#include "wLog.h"
 #include "wTcpTask.h"
 #include "wConfig.h"
 #include "wMultiClient.h"
@@ -107,6 +106,5 @@ int main(int argc, const char *argv[]) {
 		return -1;
 	}
 
-	LOG_SHUTDOWN_ALL();
 	return 0;
 }
