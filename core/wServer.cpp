@@ -249,10 +249,34 @@ wStatus wServer::Broadcast(char *cmd, int len) {
     return mStatus;
 }
 
+wStatus wServer::Broadcast(const google::protobuf::Message* msg) {
+    for (int i = 0; i < kServerNumShard; i++) {
+	    if (mTaskPool[i].size() > 0) {
+			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
+				Send(*it, msg);
+			}
+	    }
+    }
+    return mStatus;
+}
+
 wStatus wServer::Send(wTask *task, char *cmd, size_t len) {
     if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected
     	&& (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
 		mStatus = task->Send2Buf(cmd, len);
+		if (mStatus.Ok()) {
+		    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+		}
+    } else {
+		mStatus = wStatus::IOError("wServer::Send, send error", "socket cannot send message");
+    }
+    return mStatus;
+}
+
+wStatus wServer::Send(wTask *task, const google::protobuf::Message* msg) {
+    if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected
+    	&& (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
+		mStatus = task->Send2Buf(msg);
 		if (mStatus.Ok()) {
 		    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
 		}

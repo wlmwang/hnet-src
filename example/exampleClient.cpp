@@ -8,7 +8,7 @@
 #include "wStatus.h"
 #include "wConfig.h"
 #include "wSingleClient.h"
-#include "exampleCmd.h"
+#include "example.pb.h"
 
 using namespace hnet;
 
@@ -50,27 +50,24 @@ int main(int argc, const char *argv[]) {
     	std::cout << "client connect failed" << s.ToString() << std::endl;
     	return -1;
     }
+    ssize_t size;
 
-    // 发送command
-    const char* str = "hello hnet!";
-    struct ExampleReqEcho_t cmd;
-    size_t l = strlen(str) + 1;
-    memcpy(cmd.mCmd, str, l);
-    cmd.mLen = static_cast<uint8_t>(l);
-
-	ssize_t size;
-	s = client->SyncSend(reinterpret_cast<char *>(&cmd), sizeof(cmd), &size);
+    // 发送protobuf
+    example::ExampleEchoReq req;
+    req.set_cmd("hello hnet~");
+	s = client->SyncSend(&req, &size);
 	if (!s.Ok()) {
 		std::cout << "client send failed" << s.ToString() << std::endl;
 		return -1;
 	}
 
-	s = client->SyncRecv(reinterpret_cast<char *>(&cmd), sizeof(cmd), &size);
+	example::ExampleEchoRes res;
+	s = client->SyncRecv(&res, &size);
 	if (!s.Ok()) {
 		std::cout << "client receive failed" << s.ToString() << std::endl;
 		return -1;
 	}
 
-	std::cout << "receive from server：" << cmd.mCmd << std::endl;
+	std::cout << res.ret() << " ：" << res.cmd() << std::endl;
 	return 0;
 }

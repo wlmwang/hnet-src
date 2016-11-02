@@ -20,11 +20,34 @@
 namespace hnet {
 namespace coding {
 
+void EncodeFixed8(char* dst, uint8_t value);
+void EncodeFixed16(char* dst, uint16_t value);
 void EncodeFixed32(char* dst, uint32_t value);
 void EncodeFixed64(char* dst, uint64_t value);
 
 void PutFixed32(std::string* dst, uint32_t value);
 void PutFixed64(std::string* dst, uint64_t value);
+
+inline uint8_t DecodeFixed8(const char* ptr) {
+    if (kLittleEndian) {
+        uint8_t result;
+        memcpy(&result, ptr, sizeof(result));  // gcc optimizes this to a plain load
+        return result;
+    } else {
+        return static_cast<uint8_t>(static_cast<unsigned char>(ptr[0]));
+    }
+}
+
+inline uint16_t DecodeFixed16(const char* ptr) {
+    if (kLittleEndian) {
+        uint16_t result;
+        memcpy(&result, ptr, sizeof(result));  // gcc optimizes this to a plain load
+        return result;
+    } else {
+        return ((static_cast<uint32_t>(static_cast<unsigned char>(ptr[0])))
+            | (static_cast<uint32_t>(static_cast<unsigned char>(ptr[1])) << 8));
+    }
+}
 
 inline uint32_t DecodeFixed32(const char* ptr) {
     if (kLittleEndian) {

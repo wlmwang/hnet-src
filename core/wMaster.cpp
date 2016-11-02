@@ -13,6 +13,7 @@
 #include "wWorker.h"
 #include "wChannelCmd.h" // *channel*_t
 #include "wChannelSocket.h"
+#include "wTask.h"
 #include "wConfig.h"
 #include "wServer.h"
 
@@ -307,8 +308,8 @@ void wMaster::SignalWorker(int signo) {
 
 	char *ptr = NULL;
 	if (!other) {
-		SAFE_NEW_VEC(size + sizeof(int), char, ptr);
-		coding::EncodeFixed32(ptr, size);
+		// wcommand消息长度
+		SAFE_NEW_VEC(size + sizeof(uint8_t) + sizeof(uint32_t), char, ptr);
 	}
 	
 	for (uint32_t i = 0; i < kMaxProcess; i++) {
@@ -328,9 +329,9 @@ void wMaster::SignalWorker(int signo) {
 		
         if (!other) {
 	        /* TODO: EAGAIN */
-			ssize_t ret;
-			memcpy(ptr + sizeof(int), reinterpret_cast<char *>(ch), size);
-			if (mWorkerPool[i]->Channel()->SendBytes(ptr, size + sizeof(int), &ret).Ok()) {
+        	ssize_t ret;
+        	wTask::Assertbuf(ptr, reinterpret_cast<char*>(ch), size);
+			if (mWorkerPool[i]->Channel()->SendBytes(ptr, size + sizeof(uint8_t) + sizeof(uint32_t), &ret).Ok()) {
 				if (signo == SIGQUIT || signo == SIGTERM) {
 					mWorkerPool[i]->mExiting = 1;
 				}
@@ -362,8 +363,7 @@ void wMaster::SignalWorker(int signo) {
 void wMaster::PassOpenChannel(struct ChannelReqOpen_t *ch) {
 	char *ptr;
 	size_t size = sizeof(struct ChannelReqOpen_t);
-	SAFE_NEW_VEC(size + sizeof(int), char, ptr);
-	coding::EncodeFixed32(ptr, size);
+	SAFE_NEW_VEC(size + sizeof(uint8_t) + sizeof(uint32_t), char, ptr);
 
 	ssize_t ret;
 	for (uint32_t i = 0; i < kMaxProcess; i++) {
@@ -373,8 +373,8 @@ void wMaster::PassOpenChannel(struct ChannelReqOpen_t *ch) {
         }
 
         /* TODO: EAGAIN */
-		memcpy(ptr + sizeof(int), reinterpret_cast<char*>(ch), size);
-		mWorkerPool[i]->Channel()->SendBytes(ptr, size + sizeof(int), &ret);
+		wTask::Assertbuf(ptr, reinterpret_cast<char*>(ch), size);
+		mWorkerPool[i]->Channel()->SendBytes(ptr, size + sizeof(uint8_t) + sizeof(uint32_t), &ret);
     }
     SAFE_DELETE_VEC(ptr);
 }
@@ -382,8 +382,7 @@ void wMaster::PassOpenChannel(struct ChannelReqOpen_t *ch) {
 void wMaster::PassCloseChannel(struct ChannelReqClose_t *ch) {
 	char *ptr;
 	size_t size = sizeof(struct ChannelReqClose_t);
-	SAFE_NEW_VEC(size + sizeof(int), char, ptr);
-	coding::EncodeFixed32(ptr, size);
+	SAFE_NEW_VEC(size + sizeof(uint8_t) + sizeof(uint32_t), char, ptr);
 
     ssize_t ret;
 	for (uint32_t i = 0; i < kMaxProcess; i++) {
@@ -393,7 +392,7 @@ void wMaster::PassCloseChannel(struct ChannelReqClose_t *ch) {
 		}
         
         /* TODO: EAGAIN */
-		memcpy(ptr + sizeof(int), reinterpret_cast<char*>(ch), size);
+		wTask::Assertbuf(ptr, reinterpret_cast<char*>(ch), size);
 		mWorkerPool[i]->Channel()->SendBytes(ptr, size + sizeof(int), &ret);
     }
     SAFE_DELETE_VEC(ptr);

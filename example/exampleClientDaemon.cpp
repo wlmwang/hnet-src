@@ -10,25 +10,23 @@
 #include "wTcpTask.h"
 #include "wConfig.h"
 #include "wMultiClient.h"
-#include "exampleCmd.h"
+#include "example.pb.h"
 
 using namespace hnet;
 
 class ExampleTask : public wTcpTask {
 public:
 	ExampleTask(wSocket *socket, int32_t type) : wTcpTask(socket, type) {
-		On(CMD_EXAMPLE_REQ, EXAMPLE_REQ_ECHO, &ExampleTask::ExampleEcho, this);
+		On("example.ExampleEchoRes", &ExampleTask::ExampleEchoRes, this);
 	}
-	int ExampleEcho(struct Request_t *request);
+	int ExampleEchoRes(struct Request_t *request);
 };
 
-int ExampleTask::ExampleEcho(struct Request_t *request) {
-	struct ExampleReqEcho_t* cmd = reinterpret_cast<struct ExampleReqEcho_t*>(request->mBuf);
+int ExampleTask::ExampleEchoRes(struct Request_t *request) {
+	example::ExampleEchoRes res;
+	res.ParseFromArray(request->mBuf, request->mLen);
 
-	std::cout << "receive from client：" << cmd->mCmd << std::endl;
-
-	// 异步发送
-	AsyncSend(request->mBuf, request->mLen);
+	std::cout << res.ret() << " ：" << res.cmd() << std::endl;
 	return 0;
 }
 
@@ -82,13 +80,6 @@ int main(int argc, const char *argv[]) {
 	if (client == NULL) {
 		return -1;
 	}
-
-	// 发送command
-    const char* str = "hello hnet!";
-    struct ExampleReqEcho_t cmd;
-    size_t l = strlen(str) + 1;
-    memcpy(cmd.mCmd, str, l);
-    cmd.mLen = static_cast<uint8_t>(l);
 
 	s = client->PrepareStart();
 	if (s.Ok()) {

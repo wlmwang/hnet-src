@@ -79,7 +79,7 @@ const uint32_t  kMsgQueueLen = 16777216;
 // 512k 客户端task消息缓冲大小
 const uint32_t  kPackageSize = 524288;
 const uint32_t  kMaxPackageSize = 524284;
-const uint32_t  kMinPackageSize = 1;
+const uint32_t  kMinPackageSize = 3;
 
 //进程相关
 const uint32_t	kMaxProcess = 1024;
@@ -105,6 +105,10 @@ const char      kLockPath[] = "hnet.lock";
 const char      kAcceptMutex[] = "hnet.mutex.bin";
 
 const char      kToken[] = "Anny Wang";
+
+// message消息协议
+const int8_t	kMpCommand = 1;
+const int8_t	kMpProtobuf = 2;
 
 using namespace std;
 

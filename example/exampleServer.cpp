@@ -11,25 +11,28 @@
 #include "wConfig.h"
 #include "wServer.h"
 #include "wMaster.h"
-#include "exampleCmd.h"
+#include "example.pb.h"
 
 using namespace hnet;
 
 class ExampleTask : public wTcpTask {
 public:
 	ExampleTask(wSocket *socket, int32_t type) : wTcpTask(socket, type) {
-		On(CMD_EXAMPLE_REQ, EXAMPLE_REQ_ECHO, &ExampleTask::ExampleEcho, this);
+		On("example.ExampleEchoReq", &ExampleTask::ExampleEchoReq, this);
 	}
-	int ExampleEcho(struct Request_t *request);
+	int ExampleEchoReq(struct Request_t *request);
 };
 
-int ExampleTask::ExampleEcho(struct Request_t *request) {
-	struct ExampleReqEcho_t* cmd = reinterpret_cast<struct ExampleReqEcho_t*>(request->mBuf);
+int ExampleTask::ExampleEchoReq(struct Request_t *request) {
+	example::ExampleEchoReq req;
+	req.ParseFromArray(request->mBuf, request->mLen);
 
-	std::cout << "receive from client：" << cmd->mCmd << std::endl;
+	std::cout << "receive from client：" << req.cmd() << std::endl;
 
-	// 异步发送
-	AsyncSend(request->mBuf, request->mLen);
+	// 响应
+	example::ExampleEchoRes res;
+	res.set_cmd("echo:" + req.cmd());
+	AsyncSend(&res);
 	return 0;
 }
 

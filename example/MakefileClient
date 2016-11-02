@@ -12,12 +12,13 @@
 
 CXX=g++ -std=c++11
 CXXFLAGS=-O3 -Wall -Wno-invalid-offsetof -D_DEBUG_ #-D_MEM_CHECK
-LDFLAGS=-L/usr/local/lib -ltinyxml -lpthread
+LDFLAGS=-L/usr/local/lib -ltinyxml -lpthread -lprotobuf
 
 COREPATH=../core
 COMMPATH=../command
+MSGPATH=../message
 VENDOR=../vendor
-INCPATH=-I./$(COREPATH) -I./$(COMMPATH) -I./$(VENDOR)/tinyxml
+INCPATH=-I./$(COREPATH) -I./$(COMMPATH) -I./$(MSGPATH) -I./$(VENDOR)/tinyxml
 
 SRCPATH=./
 OBJECTS=./$(COREPATH)/wCrc32c.o \
@@ -47,6 +48,7 @@ OBJECTS=./$(COREPATH)/wCrc32c.o \
 		./$(COREPATH)/wConfig.o \
 		./$(COREPATH)/wServer.o \
 		\
+		./$(MSGPATH)/example.pb.o \
 		./$(SRCPATH)/exampleClient.o
 
 TARGET=exampleclient

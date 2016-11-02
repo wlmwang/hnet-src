@@ -191,8 +191,27 @@ wStatus wMultiClient::Broadcast(char *cmd, size_t len, int type) {
     return mStatus;
 }
 
+wStatus wMultiClient::Broadcast(const google::protobuf::Message* msg, int type) {
+    if (type == kClientNumShard) {
+        for (int i = 0; i < kClientNumShard; i++) {
+            if (mTaskPool[i].size() > 0) {
+                for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
+                    Send(*it, msg);
+                }
+            }
+        }
+    } else {
+        if (mTaskPool[type].size() > 0) {
+            for (std::vector<wTask*>::iterator it = mTaskPool[type].begin(); it != mTaskPool[type].end(); it++) {
+                Send(*it, msg);
+            }
+        }
+    }
+    return mStatus;
+}
+
 wStatus wMultiClient::Send(wTask *task, char *cmd, size_t len) {
-    if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected 
+    if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected
         && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
         mStatus = task->Send2Buf(cmd, len);
         if (mStatus.Ok()) {
@@ -204,6 +223,18 @@ wStatus wMultiClient::Send(wTask *task, char *cmd, size_t len) {
     return mStatus;
 }
 
+wStatus wMultiClient::Send(wTask *task, const google::protobuf::Message* msg) {
+    if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected 
+        && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
+        mStatus = task->Send2Buf(msg);
+        if (mStatus.Ok()) {
+            return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+        }
+    } else {
+        mStatus = wStatus::IOError("wMultiClient::Send, send error", "socket cannot send message");
+    }
+    return mStatus;
+}
 
 wStatus wMultiClient::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter) {
     struct epoll_event evt;

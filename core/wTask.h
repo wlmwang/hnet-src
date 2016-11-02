@@ -7,6 +7,7 @@
 #ifndef _W_TASK_H_
 #define _W_TASK_H_
 
+#include <google/protobuf/message.h>
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
@@ -55,6 +56,30 @@ public:
     // 异步发送：将待发送客户端消息写入buf，等待TaskSend发送
     // wStatus返回不为空，则task被关闭
     wStatus Send2Buf(char cmd[], size_t len);
+    wStatus Send2Buf(const google::protobuf::Message* msg);
+
+    // 同步发送确切长度消息
+    // wStatus返回不为空，则task被关闭
+    // size = -1 对端发生错误|稍后重试|对端关闭
+    // size >= 0 发送字符
+    wStatus SyncSend(char cmd[], size_t len, ssize_t *size);
+    wStatus SyncSend(const google::protobuf::Message* msg, ssize_t *size);
+    
+    // SyncSend的异步发送版本
+    wStatus AsyncSend(char cmd[], size_t len);
+    wStatus AsyncSend(const google::protobuf::Message* msg);
+
+    // 同步接受一条合法的、非心跳消息
+    // 调用者：保证此sock未加入epoll中，否则出现事件竞争！另外也要确保buf有足够长的空间接受自此同步消息
+    // wStatus返回不为空，则socket被关闭
+    // size = -1 对端发生错误|稍后重试
+    // size = 0  对端关闭
+    // size > 0  接受字符
+    wStatus SyncRecv(char cmd[], ssize_t *size, uint32_t timeout = 30);
+    wStatus SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t timeout = 30);
+
+    static void Assertbuf(char buf[], const char cmd[], size_t len);
+    static void Assertbuf(char buf[], const google::protobuf::Message* msg);
 
     wStatus HeartbeatSend();
 
@@ -67,33 +92,16 @@ public:
     }
 
     // 设置服务端对象（方便异步发送）
-    void SetServer(wServer* server) {
+    inline void SetServer(wServer* server) {
     	mSCType = 0;
     	mServer = server;
     }
 
     // 设置客户端对象（方便异步发送）
-    void SetClient(wMultiClient* client) {
+    inline void SetClient(wMultiClient* client) {
     	mSCType = 1;
     	mClient = client;
     }
-
-    // 同步发送确切长度消息
-    // wStatus返回不为空，则task被关闭
-    // size = -1 对端发生错误|稍后重试|对端关闭
-    // size >= 0 发送字符
-    wStatus SyncSend(char cmd[], size_t len, ssize_t *size);
-    
-    // SyncSend的异步发送版本
-    wStatus AsyncSend(char cmd[], size_t len);
-
-    // 同步接受确切长度消息
-    // 调用者：保证此sock未加入epoll中，否则出现事件竞争！另外也要确保buf有足够长的空间接受自此同步消息
-    // wStatus返回不为空，则socket被关闭
-    // size = -1 对端发生错误|稍后重试
-    // size = 0  对端关闭
-    // size > 0  接受字符
-    wStatus SyncRecv(char cmd[], size_t len, ssize_t *size, uint32_t timeout /*s*/);
 
     inline wSocket *Socket() {
         return mSocket;
@@ -134,12 +142,19 @@ protected:
     uint8_t mSCType;
 
 protected:
-    // 消息路由器
+    // command消息路由器
     template<typename T = wTask>
     void On(int8_t cmd, int8_t para, int (T::*func)(struct Request_t *argv), T* target) {
-    	mEvent.On(CmdId(cmd, para), std::bind(func, target, std::placeholders::_1));
+    	mEventCmd.On(CmdId(cmd, para), std::bind(func, target, std::placeholders::_1));
     }
-    wEvent<uint16_t, std::function<int(struct Request_t *argv)>, struct Request_t*> mEvent;
+    wEvent<uint16_t, std::function<int(struct Request_t *argv)>, struct Request_t*> mEventCmd;
+
+    // protobuf消息路由器
+    template<typename T = wTask>
+    void On(std::string pbname, int (T::*func)(struct Request_t *argv), T* target) {
+    	mEventPb.On(pbname, std::bind(func, target, std::placeholders::_1));
+    }
+    wEvent<std::string, std::function<int(struct Request_t *argv)>, struct Request_t*> mEventPb;
 };
 
 }	// namespace hnet

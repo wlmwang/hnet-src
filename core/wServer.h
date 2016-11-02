@@ -7,6 +7,7 @@
 #ifndef _W_SERVER_H_
 #define _W_SERVER_H_
 
+#include <google/protobuf/message.h>
 #include <algorithm>
 #include <vector>
 #include <sys/epoll.h>
@@ -46,8 +47,10 @@ public:
     
     // 异步广播消息
     wStatus Broadcast(char *cmd, int len);
+    wStatus Broadcast(const google::protobuf::Message* msg);
     // 异步发送消息
     wStatus Send(wTask *task, char *cmd, size_t len);
+    wStatus Send(wTask *task, const google::protobuf::Message* msg);
 
     // 检查时钟周期tick
     void CheckTick();

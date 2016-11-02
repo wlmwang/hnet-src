@@ -7,6 +7,7 @@
 #ifndef _W_SINGLE_CLIENT_H_
 #define _W_SINGLE_CLIENT_H_
 
+#include <google/protobuf/message.h>
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
@@ -26,8 +27,16 @@ public:
     	return mStatus = mTask->SyncSend(cmd, len, size);
     }
 
-    inline wStatus SyncRecv(char cmd[], size_t len, ssize_t *size, uint32_t timeout = 30) {
-    	return mStatus = mTask->SyncRecv(cmd, len, size, timeout);
+    inline wStatus SyncSend(const google::protobuf::Message* msg, ssize_t *size) {
+    	return mStatus = mTask->SyncSend(msg, size);
+    }
+
+    inline wStatus SyncRecv(char cmd[], ssize_t *size, uint32_t timeout = 30) {
+    	return mStatus = mTask->SyncRecv(cmd, size, timeout);
+    }
+
+    inline wStatus SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t timeout = 30) {
+    	return mStatus = mTask->SyncRecv(msg, size, timeout);
     }
 protected:
     wStatus mStatus;

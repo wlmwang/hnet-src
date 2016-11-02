@@ -1,0 +1,16 @@
+
+/**
+ * Copyright (C) Anny Wang.
+ * Copyright (C) Hupu, Inc.
+ */
+
+package example;
+
+message ExampleEchoReq {
+	required string cmd = 1;
+}
+
+message ExampleEchoRes {
+	required string cmd = 1;
+	required int32 ret = 2;
+}
