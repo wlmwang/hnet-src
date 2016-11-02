@@ -211,7 +211,7 @@ wStatus wTask::Send2Buf(char cmd[], size_t len) {
     } else if (writelen >= 0 && leftlen < static_cast<ssize_t>(len + sizeof(uint32_t))) {
     	// 分段剩余足够（两边剩余）
     	Assertbuf(mTempBuff, cmd, len - sizeof(uint8_t));
-
+    	// 复制到发送缓冲区
     	memcpy(mSendWrite, mTempBuff, leftlen);
     	mSendWrite = mSendBuff;
     	memcpy(mSendWrite, mTempBuff + leftlen, sizeof(uint32_t) + len - leftlen);
@@ -242,8 +242,7 @@ wStatus wTask::Send2Buf(const google::protobuf::Message* msg) {
     } else if (writelen >= 0 && leftlen < static_cast<ssize_t>(len + sizeof(uint32_t))) {
     	// 分段剩余足够（两边剩余）
     	Assertbuf(mTempBuff, msg);
-
-        // 复制发送缓冲区
+        // 复制到发送缓冲区
     	memcpy(mSendWrite, mTempBuff, leftlen);
     	mSendWrite = mSendBuff;
     	memcpy(mSendWrite, mTempBuff + leftlen, sizeof(uint32_t) + len - leftlen);
@@ -301,13 +300,14 @@ wStatus wTask::AsyncSend(const google::protobuf::Message* msg) {
 wStatus wTask::SyncRecv(char cmd[], ssize_t *size, uint32_t timeout) {
 	size_t headlen = sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t);
 	size_t recvheadlen = 0, recvbodylen = 0;
-	for (uint64_t step = 1, usc = 1; usc <= timeout*1000000; step <<= 1, usc += step) {
+	for (uint64_t step = 1, usc = 1, timeline = timeout * 1000000; usc <= timeline; step <<= 1, usc += step) {
 		// 头信息
 		mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen, headlen - recvheadlen, size);
         if (!mStatus.Ok()) {
             return mStatus;
+        } else if (*size != -1) {
+        	recvheadlen += *size;
         }
-        recvheadlen += *size;
         if (recvheadlen != headlen) {
         	usleep(step);
         	continue;
@@ -322,7 +322,8 @@ wStatus wTask::SyncRecv(char cmd[], ssize_t *size, uint32_t timeout) {
 
         // 接受消息体
         uint32_t reallen = static_cast<size_t>(coding::DecodeFixed32(mTempBuff) - sizeof(uint8_t) - sizeof(uint16_t));
-        for (; usc <= timeout*1000000; step <<= 1, usc += step) {
+        timeline -= usc;
+        for (step = 1; usc <= timeline; step <<= 1, usc += step) {
     		mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen + recvbodylen, reallen - recvbodylen, size);
             if (!mStatus.Ok()) {
                 return mStatus;
@@ -353,13 +354,14 @@ wStatus wTask::SyncRecv(char cmd[], ssize_t *size, uint32_t timeout) {
 wStatus wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t timeout) {
 	size_t headlen = sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t);
 	size_t recvheadlen = 0, recvbodylen = 0;
-	for (uint64_t step = 1, usc = 1; usc <= timeout*1000000; step <<= 1, usc += step) {
+	for (uint64_t step = 1, usc = 1, timeline = timeout * 1000000; usc <= timeline; step <<= 1, usc += step) {
 		// 头信息
 		mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen, headlen - recvheadlen, size);
         if (!mStatus.Ok()) {
             return mStatus;
+        } else if (*size != -1) {
+        	recvheadlen += *size;
         }
-        recvheadlen += *size;
         if (recvheadlen != headlen) {
         	usleep(step);
         	continue;
@@ -374,7 +376,8 @@ wStatus wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t 
 
         // 接受消息体
         uint32_t reallen = static_cast<size_t>(coding::DecodeFixed32(mTempBuff) - sizeof(uint8_t) - sizeof(uint16_t));
-        for (; usc <= timeout*1000000; step <<= 1, usc += step) {
+        timeline -= usc;
+        for (step = 1; usc <= timeline; step <<= 1, usc += step) {
     		mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen + recvbodylen, reallen - recvbodylen, size);
             if (!mStatus.Ok()) {
                 return mStatus;
@@ -411,7 +414,6 @@ wStatus wTask::Handlemsg(char cmd[], uint32_t len) {
 	if (p == kMpCommand) {
 		struct wCommand *basecmd = reinterpret_cast<struct wCommand*>(cmd);
 		if (basecmd->GetId() == CmdId(kCmdNull, kParaNull)) {
-			// 心跳
 			mHeartbeat = 0;
 			mStatus = wStatus::Nothing();
 		} else {
@@ -422,7 +424,7 @@ wStatus wTask::Handlemsg(char cmd[], uint32_t len) {
 		}
 	} else if (p == kMpProtobuf) {
 		uint16_t l = coding::DecodeFixed16(cmd);
-		std::string name(cmd + sizeof(uint16_t), l);
+		std::string name(cmd + sizeof(uint16_t), l - 1);
 		struct Request_t request(cmd + sizeof(uint16_t) + l, len - sizeof(uint16_t) - l);
 		if (mEventPb(name, &request) == false) {
 			mStatus = wStatus::IOError("wTask::Handlemsg, protobuf invalid request", "no method find");

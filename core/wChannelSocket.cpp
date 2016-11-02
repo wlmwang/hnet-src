@@ -53,7 +53,7 @@ wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     mSendTm = misc::GetTimeofday();
     
     // 去除消息头
-    struct ChannelReqCmd_s *channel = reinterpret_cast<struct ChannelReqCmd_s*>(buf + sizeof(uint32_t));
+    struct ChannelReqCmd_s *channel = reinterpret_cast<struct ChannelReqCmd_s*>(buf + sizeof(uint32_t) + sizeof(uint8_t));
     // msghdr.msg_control 缓冲区必须与 cmsghdr 结构对齐
     union {
         struct cmsghdr  cm;
@@ -84,7 +84,7 @@ wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     
     // 实际的数据缓冲区，I/O向量引用。当要同步文件描述符，iov_base 至少一字节
     struct iovec iov[1];
-    iov[0].iov_base = reinterpret_cast<char *>(buf);
+    iov[0].iov_base = reinterpret_cast<char*>(buf);
     iov[0].iov_len = len;
     msg.msg_iov = iov;
     msg.msg_iovlen = 1;
@@ -138,7 +138,7 @@ wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
         }
         // 是否是同步 打开fd文件描述符 的channel
         if (*size == sizeof(struct ChannelReqOpen_t) + sizeof(uint32_t)) {
-            struct ChannelReqOpen_t *channel = reinterpret_cast<struct ChannelReqOpen_t*> (buf + sizeof(uint32_t));
+            struct ChannelReqOpen_t *channel = reinterpret_cast<struct ChannelReqOpen_t*> (buf + sizeof(uint32_t) + sizeof(uint8_t));
             if (channel->GetCmd() == CMD_CHANNEL_REQ && channel->GetPara() == CHANNEL_REQ_OPEN) {
                 if (cmsg.cm.cmsg_len < static_cast<socklen_t>(CMSG_LEN(sizeof(int)))) {
                     mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", "returned too small ancillary data");

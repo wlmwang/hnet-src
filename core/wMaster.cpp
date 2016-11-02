@@ -363,7 +363,7 @@ void wMaster::SignalWorker(int signo) {
 void wMaster::PassOpenChannel(struct ChannelReqOpen_t *ch) {
 	char *ptr;
 	size_t size = sizeof(struct ChannelReqOpen_t);
-	SAFE_NEW_VEC(size + sizeof(uint8_t) + sizeof(uint32_t), char, ptr);
+	SAFE_NEW_VEC(size + sizeof(uint32_t) + sizeof(uint8_t), char, ptr);
 
 	ssize_t ret;
 	for (uint32_t i = 0; i < kMaxProcess; i++) {
@@ -374,7 +374,7 @@ void wMaster::PassOpenChannel(struct ChannelReqOpen_t *ch) {
 
         /* TODO: EAGAIN */
 		wTask::Assertbuf(ptr, reinterpret_cast<char*>(ch), size);
-		mWorkerPool[i]->Channel()->SendBytes(ptr, size + sizeof(uint8_t) + sizeof(uint32_t), &ret);
+		mWorkerPool[i]->Channel()->SendBytes(ptr, sizeof(uint32_t) + sizeof(uint8_t) + size, &ret);
     }
     SAFE_DELETE_VEC(ptr);
 }
@@ -382,7 +382,7 @@ void wMaster::PassOpenChannel(struct ChannelReqOpen_t *ch) {
 void wMaster::PassCloseChannel(struct ChannelReqClose_t *ch) {
 	char *ptr;
 	size_t size = sizeof(struct ChannelReqClose_t);
-	SAFE_NEW_VEC(size + sizeof(uint8_t) + sizeof(uint32_t), char, ptr);
+	SAFE_NEW_VEC(size + sizeof(uint32_t) + sizeof(uint8_t), char, ptr);
 
     ssize_t ret;
 	for (uint32_t i = 0; i < kMaxProcess; i++) {
@@ -393,7 +393,7 @@ void wMaster::PassCloseChannel(struct ChannelReqClose_t *ch) {
         
         /* TODO: EAGAIN */
 		wTask::Assertbuf(ptr, reinterpret_cast<char*>(ch), size);
-		mWorkerPool[i]->Channel()->SendBytes(ptr, size + sizeof(int), &ret);
+		mWorkerPool[i]->Channel()->SendBytes(ptr, sizeof(uint32_t) + sizeof(uint8_t) + size, &ret);
     }
     SAFE_DELETE_VEC(ptr);
 }
