@@ -115,6 +115,10 @@ public:
         return mType;
     }
 
+    inline int8_t& State() {
+    	return mState;
+    }
+
 protected:
     int8_t mState;
     wStatus mStatus;

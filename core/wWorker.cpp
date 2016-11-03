@@ -71,7 +71,10 @@ wStatus wWorker::Prepare() {
 
     // 开启worker ipc进程通信线程
 	if (mIpc != NULL) {
-		mStatus = mIpc->StartThread();
+		mStatus = mIpc->PrepareStart();
+		if (mStatus.Ok()) {
+			mIpc->StartThread();
+		}
 	} else {
 		mStatus = wStatus::IOError("wWorker::Prepare, start thread failed", "new ipc failed");
 	}

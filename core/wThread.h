@@ -20,52 +20,29 @@ class wCond;
 
 class wThread : private wNoncopyable {
 public:
-    wThread();
+	// join 标明这个线程退出的时候是否保存状态，如果为true表示线程退出保存状态，否则将不保存退出状态
+    wThread(bool join = true);
     virtual ~wThread();
 
-    virtual wStatus PrepareRun() = 0;
-    virtual wStatus Run() = 0;
+    wStatus StartThread();
+    wStatus JoinThread();
 
-    wStatus StartThread(int join = 1);
-    wStatus StopThread();
-    wStatus CancelThread();
+    virtual wStatus RunThread() = 0;
 
-    // 唤醒线程
-    int Wakeup();
-    // 线程同步控制
-    int CondBlock();
-	
-private:
-    static void* ThreadWrapper(void *arg);
+    inline bool Joinable() {
+    	return mJoinable;
+    }
+
 protected:
-    inline bool IsBlocked() {
-        return mState == kThreadBlocked;
-    }
-
-    inline bool IsRunning() {
-        return mState == kThreadRunning;
-    }
-
-    inline bool IsStopped() {
-        return mState == kThreadStopped;
-    }
-
-    enum State_t {
-        kThreadInit = 0,
-        kThreadBlocked = 1,
-        kThreadRunning = 2,
-        kThreadStopped = 3
-    };
+    static void* ThreadWrapper(void *argv);
 
     wStatus mStatus;
-    State_t mState;
-
+    pthread_attr_t mAttr;
+    pthread_t mPthreadId;
+    bool mJoinable;
+    bool mAlive;
     wMutex *mMutex;
     wCond *mCond;
-
-    // 线程属性
-    pthread_t mTid;
-    pthread_attr_t mAttr;
 };
 
 }	// namespace hnet

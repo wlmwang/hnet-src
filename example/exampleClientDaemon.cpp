@@ -26,17 +26,40 @@ int ExampleTask::ExampleEchoRes(struct Request_t *request) {
 	example::ExampleEchoRes res;
 	res.ParseFromArray(request->mBuf, request->mLen);
 
-	std::cout << res.ret() << " ：" << res.cmd() << std::endl;
+	std::cout << res.cmd() << "|" << res.ret() << std::endl;
+
+	// 循环请求
+	example::ExampleEchoReq req;
+	req.set_cmd("hello hnet~");
+	AsyncSend(&req);
 	return 0;
 }
 
 class ExampleClient : public wMultiClient {
+public:
+	ExampleClient(wConfig* config) : wMultiClient(config) { }
+
 	virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr, int type = 0) {
 	    SAFE_NEW(ExampleTask(sock, type), *ptr);
 	    if (*ptr == NULL) {
 	        return wStatus::IOError("ExampleClient::NewTcpTask", "new failed");
 	    }
 	    return mStatus;
+	}
+
+	virtual wStatus PrepareRun() {
+	    std::string host;
+	    int16_t port = 0;
+	    if (mConfig == NULL || !mConfig->GetConf("host", &host) || !mConfig->GetConf("port", &port)) {
+	    	return mStatus = wStatus::IOError("ExampleClient::PrepareRun failed", "mConfig is null or host|port is illegal");
+	    }
+
+		int type = 1;
+		mStatus = AddConnect(type, host, port);
+		if (!mStatus.Ok()) {
+			std::cout << "connect error:" << mStatus.ToString() << std::endl;
+		}
+		return mStatus;
 	}
 };
 
@@ -69,31 +92,30 @@ int main(int argc, const char *argv[]) {
 		}
 	}
 
-	std::string host;
-    int16_t port = 0;
-    if (!config->GetConf("host", &host) || !config->GetConf("port", &port)) {
-    	return -1;
-    }
-
     ExampleClient* client;
-	SAFE_NEW(ExampleClient, client);
+	SAFE_NEW(ExampleClient(config), client);
 	if (client == NULL) {
 		return -1;
 	}
 
 	s = client->PrepareStart();
 	if (s.Ok()) {
-		int type = 1;
-		s = client->AddConnect(type, host, port);
-		if (!s.Ok()) {
-			std::cout << "add connect:" << s.ToString() << std::endl;
-			return -1;
-		}
+		/** 阻塞服务方式运行*/
+		//s = client->Start();
+		//std::cout << "start end:" << s.ToString() << std::endl;
 
-		wStatus s = client->Start();
-		std::cout << "client start:" << s.ToString() << std::endl;
+		/** 守护线程方式运行*/
+		std::cout << "thread start" << std::endl;
+		client->StartThread();
+
+		example::ExampleEchoReq req;
+		req.set_cmd("hello hnet~");
+		client->Broadcast(&req, 1);
+
+		client->JoinThread();
+		std::cout << "thread end" << std::endl;
 	} else {
-		std::cout << "client prepare start:" << s.ToString() << std::endl;
+		std::cout << "prepare error:" << s.ToString() << std::endl;
 		return -1;
 	}
 

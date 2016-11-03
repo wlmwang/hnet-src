@@ -13,8 +13,8 @@
 
 namespace hnet {
 
-wMultiClient::wMultiClient() : mEnv(wEnv::Default()), mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
-mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL) {
+wMultiClient::wMultiClient(wConfig* config) : mEnv(wEnv::Default()), mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
+mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mConfig(config) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
@@ -81,23 +81,20 @@ wStatus wMultiClient::PrepareStart() {
     if (!InitEpoll().Ok()) {
        return mStatus;
     }
-    return mStatus;
+    return mStatus = PrepareRun();
 }
 
 wStatus wMultiClient::Start() {
     // 进入服务主服务
     while (true) {
         Recv();
+        Run();
         CheckTick();
     }
     return mStatus;
 }
 
-wStatus wMultiClient::PrepareRun() {
-    return mStatus;
-}
-
-wStatus wMultiClient::Run() {
+wStatus wMultiClient::RunThread() {
 	return Start();
 }
 
@@ -138,18 +135,16 @@ wStatus wMultiClient::Recv() {
         // 加锁
         int type = task->Type();
         mTaskPoolMutex[type].Lock();
-        if (task->Socket()->FD() == kFDUnknown) {
-            //continue;
-        } else if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
+        if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
             // 给重连做准备
-            task->Socket()->FD() = kFDUnknown;
+        	task->State() = -1;
         } else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
             if (evt[i].events & EPOLLIN) {
                 // 套接口准备好了读取操作
                 mStatus = task->TaskRecv(&size);
                 if (!mStatus.Ok()) {
                     // 给重连做准备
-                    task->Socket()->FD() = kFDUnknown;
+                	task->State() = -1;
                 }
             } else if (evt[i].events & EPOLLOUT) {
                 // 清除写事件
@@ -161,7 +156,7 @@ wStatus wMultiClient::Recv() {
                     mStatus = task->TaskSend(&size);
                     if (!mStatus.Ok()) {
                         // 给重连做准备
-                        task->Socket()->FD() = kFDUnknown;
+                    	task->State() = -1;
                     }
                 }
             }
@@ -240,7 +235,7 @@ wStatus wMultiClient::RemoveTask(wTask* task, std::vector<wTask*>::iterator* ite
     struct epoll_event evt;
     evt.data.fd = task->Socket()->FD();
     if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, task->Socket()->FD(), &evt) < 0) {
-        return mStatus = wStatus::IOError("wMultiClient::RemoveTask, epoll_ctl() failed", strerror(errno));
+        mStatus = wStatus::IOError("wMultiClient::RemoveTask, epoll_ctl() failed", strerror(errno));
     }
     std::vector<wTask*>::iterator it = RemoveTaskPool(task);
     if (iter != NULL) {
@@ -281,7 +276,7 @@ wStatus wMultiClient::AddToTaskPool(wTask* task) {
 
 wStatus wMultiClient::CleanTask() {
     if (close(mEpollFD) == -1) {
-        return mStatus = wStatus::IOError("wMultiClient::CleanTask, close() failed", strerror(errno));
+        mStatus = wStatus::IOError("wMultiClient::CleanTask, close() failed", strerror(errno));
     }
     mEpollFD = kFDUnknown;
     for (int i = 0; i < kClientNumShard; i++) {
@@ -331,25 +326,31 @@ void wMultiClient::CheckHeartBeat() {
     for (int i = 0; i < kClientNumShard; i++) {
         mTaskPoolMutex[i].Lock();
         if (mTaskPool[i].size() > 0) {
-            for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
+            for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end();) {
                 if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected) {
-                    if ((*it)->Socket()->FD() == kFDUnknown) {
-                        // 重连
-                        std::string protocol = (*it)->Socket()->SP() == kSpUnix ? "UNIX": "TCP";
-                        AddConnect((*it)->Type(), (*it)->Socket()->Host(), (*it)->Socket()->Port(), protocol);
-                        RemoveTask(*it, &it);
+                    if ((*it)->State() == -1) {
+                        int type = (*it)->Type();
+						std::string ipaddr = (*it)->Socket()->Host();
+						uint16_t port = (*it)->Socket()->Port();
+						std::string protocol = (*it)->Socket()->SP() == kSpUnix ? "UNIX": "TCP";
+                    	RemoveTask(*it, &it);
+
+                    	// 重连
+                        AddConnect(type, ipaddr, port, protocol);
                     } else {
                         // 上一次发送时间间隔
                         uint64_t interval = nowTm - (*it)->Socket()->SendTm();
                         if (interval >= kKeepAliveTm*1000) {
                             // 发送心跳
                             (*it)->HeartbeatSend();
-                            // 心跳超限
                             if ((*it)->HeartbeatOut()) {
-                                RemoveTask(*it, &it);
+                            	(*it)->State() = -1;
                             }
                         }
+                        it++;
                     }
+                } else {
+                	it++;
                 }
             }
         }

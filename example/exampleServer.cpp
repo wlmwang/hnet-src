@@ -27,11 +27,11 @@ int ExampleTask::ExampleEchoReq(struct Request_t *request) {
 	example::ExampleEchoReq req;
 	req.ParseFromArray(request->mBuf, request->mLen);
 
-	std::cout << "receive from client：" << req.cmd() << std::endl;
+	std::cout << "receive:" << req.cmd() << std::endl;
 
 	// 响应
 	example::ExampleEchoRes res;
-	res.set_cmd("echo:" + req.cmd());
+	res.set_cmd("return:" + req.cmd());
 	res.set_ret(1);
 	AsyncSend(&res);
 	return 0;

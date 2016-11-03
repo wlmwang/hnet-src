@@ -27,12 +27,13 @@ const int kClientNumShard = 1 << kClientNumShardBits;
 
 class wEnv;
 class wTask;
+class wConfig;
 
 // 多类型客户端（类型为0-15）
 // 多用于与服务端长连，守护监听服务端消息
-class wMultiClient : private wThread {
+class wMultiClient : public wThread {
 public:
-    wMultiClient();
+    wMultiClient(wConfig* config);
     virtual ~wMultiClient();
 
     // 添加连接
@@ -51,11 +52,18 @@ public:
     wStatus PrepareStart();
     wStatus Start();
     
+    virtual wStatus RunThread();
+
+    virtual wStatus PrepareRun() {
+    	return mStatus;
+    }
+
+    virtual wStatus Run() {
+    	return mStatus;
+    }
+
     // 检查时钟周期tick
     void CheckTick();
-
-    virtual wStatus PrepareRun();
-    virtual wStatus Run();
 
     virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr, int type = 0);
     virtual wStatus NewUnixTask(wSocket* sock, wTask** ptr, int type = 0);
@@ -98,6 +106,8 @@ protected:
     wTask *mTask;
     std::vector<wTask*> mTaskPool[kClientNumShard];
     wMutex mTaskPoolMutex[kClientNumShard];
+
+    wConfig* mConfig;
 };
 
 }	// namespace hnet

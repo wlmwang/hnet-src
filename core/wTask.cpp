@@ -13,7 +13,7 @@
 
 namespace hnet {
 
-wTask::wTask(wSocket* socket, int32_t type) : mType(type), mSocket(socket), mHeartbeat(0), 
+wTask::wTask(wSocket* socket, int32_t type) : mState(0), mType(type), mSocket(socket), mHeartbeat(0),
 mRecvRead(mRecvBuff), mRecvWrite(mRecvBuff), mRecvLen(0), mSendRead(mSendBuff), mSendWrite(mSendBuff),
 mSendLen(0), mServer(NULL), mClient(NULL), mSCType(0) { }
 
@@ -167,7 +167,7 @@ wStatus wTask::TaskSend(ssize_t *size) {
 void wTask::Assertbuf(char buf[], const google::protobuf::Message* msg) {
 	// 类名 && 长度
 	const std::string& pbName = msg->GetTypeName();
-	uint16_t nameLen = static_cast<uint16_t>(pbName.size() + 1);
+	uint16_t nameLen = static_cast<uint16_t>(pbName.size());
 	// 消息体总长度
 	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + nameLen + msg->ByteSize();
 
@@ -178,7 +178,7 @@ void wTask::Assertbuf(char buf[], const google::protobuf::Message* msg) {
 	// 类名长度
 	coding::EncodeFixed16(buf + sizeof(uint32_t) + sizeof(uint8_t), nameLen);
 	// 类名
-	memcpy(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t), pbName.c_str(), nameLen);
+	memcpy(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t), pbName.data(), nameLen);
     // 消息体
 	msg->SerializeToArray(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + nameLen, msg->ByteSize());
 }
@@ -424,7 +424,7 @@ wStatus wTask::Handlemsg(char cmd[], uint32_t len) {
 		}
 	} else if (p == kMpProtobuf) {
 		uint16_t l = coding::DecodeFixed16(cmd);
-		std::string name(cmd + sizeof(uint16_t), l - 1);
+		std::string name(cmd + sizeof(uint16_t), l);
 		struct Request_t request(cmd + sizeof(uint16_t) + l, len - sizeof(uint16_t) - l);
 		if (mEventPb(name, &request) == false) {
 			mStatus = wStatus::IOError("wTask::Handlemsg, protobuf invalid request", "no method find");

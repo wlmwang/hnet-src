@@ -20,7 +20,7 @@ wWorkerIpc::~wWorkerIpc() {
 	CleanTask();
 }
 
-wStatus wWorkerIpc::PrepareRun() {
+wStatus wWorkerIpc::PrepareStart() {
 	if (!InitEpoll().Ok()) {
 		return mStatus;
 	}
@@ -46,7 +46,7 @@ wStatus wWorkerIpc::PrepareRun() {
 	return mStatus;
 }
 
-wStatus wWorkerIpc::Run() {
+wStatus wWorkerIpc::RunThread() {
 	while (true) {
 		Recv();
 	}

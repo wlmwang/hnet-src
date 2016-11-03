@@ -451,7 +451,7 @@ void wServer::CheckHeartBeat() {
     for (int i = 0; i < kServerNumShard; i++) {
     	mTaskPoolMutex[i].Lock();
 	    if (mTaskPool[i].size() > 0) {
-			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
+			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end();) {
 			    if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected) {
 					// 上一次发送时间间隔
 					uint64_t interval = tm - (*it)->Socket()->SendTm();
@@ -461,8 +461,14 @@ void wServer::CheckHeartBeat() {
 						// 心跳超限
 					    if ((*it)->HeartbeatOut()) {
 					    	RemoveTask(*it, &it);
+					    } else {
+					    	it++;
 					    }
+					} else {
+						it++;
 					}
+			    } else {
+			    	it++;
 			    }
 			}
 	    }

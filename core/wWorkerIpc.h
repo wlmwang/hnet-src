@@ -24,8 +24,8 @@ public:
 	wWorkerIpc(wWorker *worker);
 	~wWorkerIpc();
 
-	wStatus PrepareRun();
-	wStatus Run();
+	wStatus PrepareStart();
+	wStatus RunThread();
 
 protected:
     // 事件读写主调函数

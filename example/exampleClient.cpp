@@ -68,6 +68,6 @@ int main(int argc, const char *argv[]) {
 		return -1;
 	}
 
-	std::cout << res.ret() << " ：" << res.cmd() << std::endl;
+	std::cout << res.cmd() << "|" << res.ret() << std::endl;
 	return 0;
 }
