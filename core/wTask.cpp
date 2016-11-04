@@ -226,7 +226,7 @@ wStatus wTask::Send2Buf(char cmd[], size_t len) {
 
 wStatus wTask::Send2Buf(const google::protobuf::Message* msg) {
 	// 消息体总长度
-	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + (msg->GetTypeName().size()) + msg->ByteSize();
+	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
     if (len < kMinPackageSize || len > kMaxPackageSize) {
         return mStatus = wStatus::IOError("wTask::Send2Buf, google::protobuf::Message length error", "message too large");
     } else if (len > static_cast<uint32_t>(kPackageSize - mSendLen - sizeof(uint32_t))) {
@@ -267,7 +267,7 @@ wStatus wTask::SyncSend(char cmd[], size_t len, ssize_t *size) {
 
 wStatus wTask::SyncSend(const google::protobuf::Message* msg, ssize_t *size) {
 	// 消息体总长度
-	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + (msg->GetTypeName().size()) + msg->ByteSize();
+	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
 	if (len < kMinPackageSize || len > kMaxPackageSize) {
         return mStatus = wStatus::IOError("wTask::SyncSend, google::protobuf::Message length error", "out range");
     }
