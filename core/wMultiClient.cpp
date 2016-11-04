@@ -210,7 +210,7 @@ wStatus wMultiClient::Send(wTask *task, char *cmd, size_t len) {
         && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
         mStatus = task->Send2Buf(cmd, len);
         if (mStatus.Ok()) {
-            return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+        	mStatus = AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
         }
     } else {
         mStatus = wStatus::IOError("wMultiClient::Send, send error", "socket cannot send message");
@@ -223,7 +223,7 @@ wStatus wMultiClient::Send(wTask *task, const google::protobuf::Message* msg) {
         && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
         mStatus = task->Send2Buf(msg);
         if (mStatus.Ok()) {
-            return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+        	mStatus = AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
         }
     } else {
         mStatus = wStatus::IOError("wMultiClient::Send, send error", "socket cannot send message");
