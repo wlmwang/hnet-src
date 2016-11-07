@@ -36,7 +36,7 @@ void wPosixLogger::Logv(const char* format, va_list ap) {
 		localtime_r(&seconds, &t);
 		p += snprintf(p, limit - p, "%04d/%02d/%02d-%02d:%02d:%02d.%06d %llx ",
 				t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
-				static_cast<int>(tv.tv_usec), static_cast<long long unsigned int>(thread_id));
+				static_cast<int>(tv.tv_usec), static_cast<unsigned long long>(thread_id));
 
 		if (p < limit) {
 			va_list backup_ap;

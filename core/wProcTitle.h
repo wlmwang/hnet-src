@@ -15,8 +15,12 @@ namespace hnet {
 
 class wProcTitle : private wNoncopyable {
 public:
+	wProcTitle();
     wProcTitle(int argc, const char *argv[]);
     ~wProcTitle();
+
+    // 务必在设置进程标题之前调用
+    wStatus SaveArgv(int argc, const char *argv[]);
 
     // 移动**environ到堆上，为进程标题做准备。计算**environ指针结尾地址
     // tips：*argv[]与**environ两个变量所占的内存是连续的，并且是**environ紧跟在*argv[]后面
@@ -25,18 +29,13 @@ public:
     // 设置进程标题
     wStatus Setproctitle(const char *title, const char *pretitle = NULL);
 protected:
-    // 务必在设置进程标题之前调用
-    wStatus SaveArgv();
 
     wStatus mStatus;
     int mArgc;
-    const char *mOsArgvLast;
-    // 原生参数
-    const char **mOsArgv;
-    // 堆上参数（正常取该值）
     char **mArgv;
-    // 原生环境变量
     char **mOsEnv;
+    const char **mOsArgv;
+    const char *mOsArgvLast;
 };
 
 }	// namespace hnet

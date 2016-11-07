@@ -9,9 +9,10 @@
 
 namespace hnet {
 
-wProcTitle::wProcTitle(int argc, const char *argv[]) : mArgc(argc), mOsArgv(argv), mOsEnv(environ) {
-    mOsArgvLast = argv[0];
-    SaveArgv();
+wProcTitle::wProcTitle() : mArgc(0), mArgv(NULL), mOsEnv(environ), mOsArgv(NULL), mOsArgvLast(NULL) { }
+
+wProcTitle::wProcTitle(int argc, const char *argv[]) : mArgc(0), mArgv(NULL), mOsEnv(environ), mOsArgv(NULL), mOsArgvLast(NULL) {
+    SaveArgv(argc, argv);
 }
 
 wProcTitle::~wProcTitle() {
@@ -21,14 +22,18 @@ wProcTitle::~wProcTitle() {
     SAFE_DELETE_VEC(mArgv);
 }
 
-wStatus wProcTitle::SaveArgv() {
+wStatus wProcTitle::SaveArgv(int argc, const char *argv[]) {
+	mArgc = argc;
+	mOsArgv = argv;
+	mOsArgvLast = argv[0];
+
     // 初始化argv内存空间
     size_t size = 0;
     SAFE_NEW_VEC(mArgc, char*, mArgv);
     if (mArgv == NULL) {
 	   return mStatus = wStatus::IOError("wProcTitle::SaveArgv", "new failed");
     }
-    for(int i = 0; i < mArgc; ++i) {
+    for (int i = 0; i < mArgc; ++i) {
         // 包含\0结尾
         size = strlen(mOsArgv[i]) + 1;
         SAFE_NEW_VEC(size, char, mArgv[i]);
@@ -67,7 +72,7 @@ wStatus wProcTitle::InitSetproctitle() {
             mOsArgvLast = environ[i] + size;
 
             misc::Cpystrn(p, (u_char *) environ[i], size);
-            environ[i] = (char *) p;    //转化成char
+            environ[i] = reinterpret_cast<char*>(p);
             p += size;
         }
     }
@@ -88,11 +93,11 @@ wStatus wProcTitle::Setproctitle(const char *title, const char *pretitle) {
 
     mOsArgv[1] = NULL;
     u_char* p = misc::Cpystrn((u_char *) mOsArgv[0], pre, mOsArgvLast - mOsArgv[0]);
-    p = misc::Cpystrn(p, (u_char *) title, mOsArgvLast - (char *) p);
+    p = misc::Cpystrn(p, (u_char *) title, mOsArgvLast - reinterpret_cast<char*>(p));
 
     //在原始argv和environ的连续内存中，将修改了的进程名字之外的内存全部清零
-    if(mOsArgvLast - (char *) p) {
-        memset(p, kProcTitlePad, mOsArgvLast - (char *) p);
+    if(mOsArgvLast - reinterpret_cast<char*>(p)) {
+        memset(p, kProcTitlePad, mOsArgvLast - reinterpret_cast<char*>(p));
     }
     return mStatus;
 }

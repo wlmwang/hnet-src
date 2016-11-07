@@ -100,9 +100,9 @@ const char      kSoftwareVer[]    = "0.0.1";
 const uid_t     kDeamonUser = 0;
 const gid_t     kDeamonGroup = 0;
 
-const char      kPidPath[] = "hnet.pid";
 const char      kLockPath[] = "hnet.lock";
-const char      kAcceptMutex[] = "hnet.mutex.bin";
+const char      kPidPath[] = "hnet.pid";
+const char      kLogPath[] = "hnet.log";
 
 const char      kToken[] = "Anny Wang";
 

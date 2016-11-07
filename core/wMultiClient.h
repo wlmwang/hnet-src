@@ -25,7 +25,6 @@ namespace hnet {
 const int kClientNumShardBits = 4;
 const int kClientNumShard = 1 << kClientNumShardBits;
 
-class wEnv;
 class wTask;
 class wConfig;
 
@@ -37,7 +36,7 @@ public:
     virtual ~wMultiClient();
 
     // 添加连接
-    wStatus AddConnect(int type, std::string ipaddr, uint16_t port, std::string protocol = "TCP");
+    wStatus AddConnect(int type, const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
     
     // 断开连接
     wStatus DisConnect(wTask *task);
@@ -85,7 +84,6 @@ protected:
     static void ScheduleRun(void* argv);
    
     wStatus mStatus;
-    wEnv *mEnv;
 
     // 服务器当前时间 微妙
     uint64_t mLatestTm;

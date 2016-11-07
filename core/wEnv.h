@@ -7,6 +7,7 @@
 #ifndef _W_ENV_H_
 #define _W_ENV_H_
 
+#include <vector>
 #include "wCore.h"
 #include "wStatus.h"
 #include "wSlice.h"

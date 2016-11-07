@@ -18,24 +18,29 @@
 #include "wMisc.h"
 #include "wSocket.h"
 #include "wTimer.h"
+#include "wConfig.h"
 
 namespace hnet {
 
 const int kServerNumShardBits = 8;
 const int kServerNumShard = 1 << kServerNumShardBits;
 
-class wEnv;
+class wConfig;
 class wTask;
-class wMaster;
 class wSem;
+class wMaster;
 
 // 服务基础类
 class wServer : private wNoncopyable {
 public:
-    explicit wServer();
+    explicit wServer(wConfig* config);
     virtual ~wServer();
 
-    wStatus PrepareStart(std::string ipaddr, uint16_t port, std::string protocol = "TCP");
+    inline wConfig* Config() {
+    	return mConfig;
+    }
+
+    wStatus PrepareStart(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
 
     // single模式启动服务
     wStatus SingleStart(bool daemon = true);
@@ -90,7 +95,7 @@ protected:
     wStatus AcceptConn(wTask *task);
 
     wStatus InitEpoll();
-    wStatus AddListener(std::string ipaddr, uint16_t port, std::string protocol = "TCP");
+    wStatus AddListener(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
     // 添加到epoll侦听事件队列
     wStatus Listener2Epoll();
     wStatus CleanListener();
@@ -106,7 +111,7 @@ protected:
     static void ScheduleRun(void* argv);
 
     wStatus mStatus;
-    wEnv *mEnv;
+    wConfig* mConfig;
     bool mExiting;
 
     // 服务器当前时间 微妙

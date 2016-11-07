@@ -21,7 +21,7 @@ public:
     wSingleClient();
     ~wSingleClient();
 
-    wStatus Connect(std::string ipaddr, uint16_t port, std::string protocol = "TCP");
+    wStatus Connect(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
 
     inline wStatus SyncSend(char cmd[], size_t len, ssize_t *size) {
     	return mStatus = mTask->SyncSend(cmd, len, size);

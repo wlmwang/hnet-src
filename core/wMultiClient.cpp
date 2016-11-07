@@ -5,15 +5,15 @@
  */
 
 #include "wMultiClient.h"
-#include "wEnv.h"
 #include "wTcpSocket.h"
 #include "wUnixSocket.h"
 #include "wTcpTask.h"
 #include "wUnixTask.h"
+#include "wConfig.h"
 
 namespace hnet {
 
-wMultiClient::wMultiClient(wConfig* config) : mEnv(wEnv::Default()), mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
+wMultiClient::wMultiClient(wConfig* config) : mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
 mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mConfig(config) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
@@ -23,7 +23,7 @@ wMultiClient::~wMultiClient() {
     CleanTask();
 }
 
-wStatus wMultiClient::AddConnect(int type, std::string ipaddr, uint16_t port, std::string protocol) {
+wStatus wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port, std::string protocol) {
     if (type >= kClientNumShard) {
         return mStatus = wStatus::IOError("wMultiClient::AddConnect failed", "overload type");
     }
@@ -303,7 +303,7 @@ void wMultiClient::CheckTick() {
 		    // 添加任务到线程池中
 		    if (mScheduleOk == true) {
 		    	mScheduleOk = false;
-				mEnv->Schedule(wMultiClient::ScheduleRun, this);
+				mConfig->Env()->Schedule(wMultiClient::ScheduleRun, this);
 		    }
 		}
 	}

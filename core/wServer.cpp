@@ -10,7 +10,7 @@
 #include <netinet/tcp.h>
 #include <poll.h> 
 #include "wServer.h"
-#include "wEnv.h"
+#include "wConfig.h"
 #include "wSem.h"
 #include "wTcpSocket.h"
 #include "wUnixSocket.h"
@@ -19,12 +19,12 @@
 
 namespace hnet {
 
-wServer::wServer() : mEnv(wEnv::Default()), mExiting(false), mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
+wServer::wServer(wConfig* config) : mConfig(config), mExiting(false), mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
 mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mUseAcceptTurn(true), mAcceptHeld(false), mAcceptSem(NULL) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
     if (mUseAcceptTurn == true) {
-    	mStatus = mEnv->NewSem(NULL, &mAcceptSem);
+    	mStatus = mConfig->Env()->NewSem(NULL, &mAcceptSem);
     	assert(mStatus.Ok());
     }
 }
@@ -34,7 +34,7 @@ wServer::~wServer() {
     SAFE_DELETE(mAcceptSem);
 }
 
-wStatus wServer::PrepareStart(std::string ipaddr, uint16_t port, std::string protocol) {
+wStatus wServer::PrepareStart(const std::string& ipaddr, uint16_t port, std::string protocol) {
     if (!AddListener(ipaddr, port, protocol).Ok()) {
 		return mStatus;
     }
@@ -286,7 +286,7 @@ wStatus wServer::Send(wTask *task, const google::protobuf::Message* msg) {
     return mStatus;
 }
 
-wStatus wServer::AddListener(std::string ipaddr, uint16_t port, std::string protocol) {
+wStatus wServer::AddListener(const std::string& ipaddr, uint16_t port, std::string protocol) {
     wSocket *socket;
     if (protocol == "TCP") {
 		SAFE_NEW(wTcpSocket(kStListen), socket);
@@ -428,7 +428,7 @@ void wServer::CheckTick() {
 		    // 添加任务到线程池中
 		    if (mScheduleOk == true) {
 		    	mScheduleOk = false;
-				mEnv->Schedule(wServer::ScheduleRun, this);
+				mConfig->Env()->Schedule(wServer::ScheduleRun, this);
 		    }
 		}
 	}

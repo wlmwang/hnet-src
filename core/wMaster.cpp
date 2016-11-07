@@ -7,23 +7,21 @@
 #include "wMaster.h"
 #include "wSlice.h"
 #include "wMisc.h"
-#include "wEnv.h"
 #include "wSigSet.h"
 #include "wSignal.h"
 #include "wWorker.h"
 #include "wChannelCmd.h" // *channel*_t
 #include "wChannelSocket.h"
 #include "wTask.h"
-#include "wConfig.h"
 #include "wServer.h"
 
 namespace hnet {
 
-wMaster::wMaster(std::string title, wServer* server, wConfig* config) : mEnv(wEnv::Default()), mServer(server), mConfig(config), 
-mTitle(title), mPid(getpid()), mSlot(kMaxProcess), mDelay(0), mSigio(0), mLive(1) {
+wMaster::wMaster(const std::string& title, wServer* server) : mServer(server), mPid(getpid()),
+mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0), mLive(1) {
     // pid文件路径
     std::string pid_path;
-	if (mConfig->GetConf("pid_path", &pid_path) && pid_path.size() > 0) {
+	if (mServer->Config()->GetConf("pid_path", &pid_path) && pid_path.size() > 0) {
 		mPidPath = pid_path;
 	} else {
 		mPidPath = kPidPath;
@@ -46,7 +44,7 @@ wStatus wMaster::PrepareStart() {
 
     std::string host;
     int16_t port = 0;
-    if (mConfig == NULL || !mConfig->GetConf("host", &host) || !mConfig->GetConf("port", &port)) {
+    if (mServer->Config() == NULL || !mServer->Config()->GetConf("host", &host) || !mServer->Config()->GetConf("port", &port)) {
     	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mConfig is null or host|port is illegal");
     }
 
@@ -54,13 +52,13 @@ wStatus wMaster::PrepareStart() {
     if (!mStatus.Ok()) {
     	return mStatus;
     }
-    mStatus = mConfig->Setproctitle(kMasterTitle, mTitle.c_str());
+    mStatus = mServer->Config()->Setproctitle(kMasterTitle, mTitle.c_str());
     if (!mStatus.Ok()) {
     	return mStatus;
     }
 
     std::string protocol;
-    if (!mConfig->GetConf("protocol", &protocol)) {
+    if (!mServer->Config()->GetConf("protocol", &protocol)) {
     	mStatus = mServer->PrepareStart(host, port);
     } else {
     	mStatus = mServer->PrepareStart(host, port, protocol);
@@ -360,7 +358,7 @@ void wMaster::SignalWorker(int signo) {
     }
 }
 
-void wMaster::PassOpenChannel(struct ChannelReqOpen_t *ch) {
+void wMaster::PassOpenChannel(const struct ChannelReqOpen_t *ch) {
 	char *ptr;
 	size_t size = sizeof(struct ChannelReqOpen_t);
 	SAFE_NEW_VEC(size + sizeof(uint32_t) + sizeof(uint8_t), char, ptr);
@@ -373,13 +371,13 @@ void wMaster::PassOpenChannel(struct ChannelReqOpen_t *ch) {
         }
 
         /* TODO: EAGAIN */
-		wTask::Assertbuf(ptr, reinterpret_cast<char*>(ch), size);
+		wTask::Assertbuf(ptr, reinterpret_cast<const char*>(ch), size);
 		mWorkerPool[i]->Channel()->SendBytes(ptr, sizeof(uint32_t) + sizeof(uint8_t) + size, &ret);
     }
     SAFE_DELETE_VEC(ptr);
 }
 
-void wMaster::PassCloseChannel(struct ChannelReqClose_t *ch) {
+void wMaster::PassCloseChannel(const struct ChannelReqClose_t *ch) {
 	char *ptr;
 	size_t size = sizeof(struct ChannelReqClose_t);
 	SAFE_NEW_VEC(size + sizeof(uint32_t) + sizeof(uint8_t), char, ptr);
@@ -392,7 +390,7 @@ void wMaster::PassCloseChannel(struct ChannelReqClose_t *ch) {
 		}
         
         /* TODO: EAGAIN */
-		wTask::Assertbuf(ptr, reinterpret_cast<char*>(ch), size);
+		wTask::Assertbuf(ptr, reinterpret_cast<const char*>(ch), size);
 		mWorkerPool[i]->Channel()->SendBytes(ptr, sizeof(uint32_t) + sizeof(uint8_t) + size, &ret);
     }
     SAFE_DELETE_VEC(ptr);
@@ -515,16 +513,16 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 
 wStatus wMaster::CreatePidFile() {
 	string pidstr = logging::NumberToString(mPid);
-	return mStatus = WriteStringToFile(mEnv, pidstr, mPidPath);
+	return mStatus = WriteStringToFile(mServer->Config()->Env(), pidstr, mPidPath);
 }
 
 wStatus wMaster::DeletePidFile() {
-	return mStatus = mEnv->DeleteFile(mPidPath);
+	return mStatus = mServer->Config()->Env()->DeleteFile(mPidPath);
 }
 
-wStatus wMaster::SignalProcess(char* sig) {
+wStatus wMaster::SignalProcess(const char* sig) {
 	std::string str;
-	mStatus = ReadFileToString(mEnv, mPidPath, &str);
+	mStatus = ReadFileToString(mServer->Config()->Env(), mPidPath, &str);
 	if (!mStatus.Ok()) {
 		return mStatus;
 	}

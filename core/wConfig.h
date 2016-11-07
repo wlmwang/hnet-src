@@ -11,11 +11,12 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
+#include "wEnv.h"
 #include "wProcTitle.h"
+#include "wMemPool.h"
+#include "wLogger.h"
 
 namespace hnet {
-
-class wMemPool;
 
 class wConfig : private wNoncopyable {
 public:
@@ -28,15 +29,32 @@ public:
     }
 
     inline wStatus InitProcTitle(int argc, const char *argv[]) {
-        SAFE_NEW(wProcTitle(argc, argv), mProcTitle);
         if (mProcTitle == NULL) {
             return wStatus::IOError("wConfig::InitProcTitle", "new failed");
         }
+        mProcTitle->SaveArgv(argc, argv);
         return mProcTitle->InitSetproctitle();
     }
 
+    inline wStatus InitLogger() {
+    	// 日志初始化
+        std::string log_path;
+    	if (!GetConf("log_path", &log_path) || log_path.size() == 0) {
+    		log_path = kLogPath;
+    	}
+    	mStatus = Env()->NewLogger(log_path, &mLogger);
+    	if (!mStatus.Ok()) {
+    		return wStatus::IOError("wConfig::InitLogger", "new failed");
+    	}
+    	return mStatus;
+    }
+
+    inline wLogger* Logger() {
+    	return mLogger;
+    }
+
     template<typename T>
-    bool GetConf(std::string key, T* val) {
+    bool GetConf(const std::string& key, T* val) {
     	std::map<std::string, void*>::iterator it = mConf.find(key);
     	if (it != mConf.end()) {
     		*val = *(reinterpret_cast<T*>(it->second));
@@ -44,10 +62,17 @@ public:
     	}
     	return false;
     }
+
+    inline wEnv* Env() {
+    	return mEnv;
+    }
 protected:
     wStatus mStatus;
-    wMemPool *mPool;
     std::map<std::string, void*> mConf;
+
+    wEnv* mEnv;
+    wMemPool *mPool;
+    wLogger *mLogger;
     wProcTitle *mProcTitle;
 };
 

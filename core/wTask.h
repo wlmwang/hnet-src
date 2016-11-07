@@ -155,7 +155,7 @@ protected:
 
     // protobuf消息路由器
     template<typename T = wTask>
-    void On(std::string pbname, int (T::*func)(struct Request_t *argv), T* target) {
+    void On(const std::string& pbname, int (T::*func)(struct Request_t *argv), T* target) {
     	mEventPb.On(pbname, std::bind(func, target, std::placeholders::_1));
     }
     wEvent<std::string, std::function<int(struct Request_t *argv)>, struct Request_t*> mEventPb;

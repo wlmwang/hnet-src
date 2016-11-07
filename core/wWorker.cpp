@@ -64,7 +64,7 @@ wStatus wWorker::Prepare() {
 	}
 	
     // 进程标题
-    mStatus = mMaster->mConfig->Setproctitle(kWorkerTitle, mTitle.c_str());
+    mStatus = mMaster->mServer->Config()->Setproctitle(kWorkerTitle, mTitle.c_str());
 	if (!mStatus.Ok()) {
 		return mStatus;
 	}

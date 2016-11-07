@@ -13,6 +13,13 @@
 #include "wNoncopyable.h"
 #include "wMutex.h"
 
+#ifdef _DEBUG_
+#define  LOG_DEBUG(wLogger* logger, fmt, ...)
+#else
+#define  LOG_DEBUG(wLogger* logger, fmt, ...)	Log(logger, fmt, ##__VA_ARGS__)
+#define  LOG_ERROR(wLogger* logger, fmt, ...)	Log(logger, fmt, ##__VA_ARGS__)
+#endif
+
 namespace hnet {
 
 // 日志接口
@@ -28,9 +35,7 @@ public:
 // 写日志函数接口
 extern void Log(wLogger* log, const char* format, ...);
 
-
 // 实现类
-
 // 日志实现类
 class wPosixLogger : public wLogger {
 public:

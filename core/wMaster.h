@@ -17,19 +17,17 @@ namespace hnet {
 
 const char  kMasterTitle[] = " - master process";
 
-class wEnv;
 class wServer;
-class wConfig;
 class wWorker;
 class wWorkerIpc;
 
 class wMaster : private wNoncopyable {
 public:
-    wMaster(std::string title, wServer* server, wConfig* config);
+    wMaster(const std::string& title, wServer* server);
     virtual ~wMaster();
     
     // 发送命令行信号
-    wStatus SignalProcess(char* sig);
+    wStatus SignalProcess(const char* sig);
 
     // 准备启动
     wStatus PrepareStart();
@@ -89,26 +87,25 @@ protected:
     void SignalWorker(int signo);
 
     // 向所有已启动worker传递刚启动worker的channel描述符
-    void PassOpenChannel(struct ChannelReqOpen_t *ch);
+    void PassOpenChannel(const struct ChannelReqOpen_t *ch);
     // 向所有已启动worker传递关闭worker的channel消息
-    void PassCloseChannel(struct ChannelReqClose_t *ch);
+    void PassCloseChannel(const struct ChannelReqClose_t *ch);
 
     // 回收退出进程状态（waitpid以防僵尸进程）
     void WorkerExitStat();
 
     wStatus mStatus;
-    wEnv *mEnv;
     wServer* mServer;
-    wConfig* mConfig;
-    std::string mTitle;    // 进程名
 
-    pid_t mPid;		// master进程id
-    std::string mPidPath;
+    // master进程id
+    pid_t mPid;
     uint8_t mNcpu;
+    std::string mTitle;
+    std::string mPidPath;
 
     // 进程表
-    uint32_t mSlot; // worker分配索引
-    uint32_t mWorkerNum; // worker数量
+    uint32_t mSlot;
+    uint32_t mWorkerNum;
     wWorker *mWorkerPool[kMaxProcess];
 
     int32_t mDelay;
