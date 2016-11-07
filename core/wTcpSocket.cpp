@@ -152,14 +152,13 @@ wStatus wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *
 		}
 	}
 
-	if (mStatus.Ok()) {
+	if (mStatus.Ok() && *fd > 0) {
 		// 设置发送缓冲大小3M
 		socklen_t optVal = 0x300000;
-		if (setsockopt(*fd, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void*>(&optVal), sizeof(socklen_t)) == -1) {
+		if (setsockopt(static_cast<int>(*fd), SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void*>(&optVal), sizeof(socklen_t)) == -1) {
 			mStatus = wStatus::IOError("wTcpSocket::Accept setsockopt() SO_SNDBUF failed", strerror(errno));
 		}
 	}
-
 	return mStatus;
 }
 

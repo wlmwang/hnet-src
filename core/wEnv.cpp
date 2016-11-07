@@ -129,7 +129,7 @@ public:
 
     // 日志对象
     virtual wStatus NewLogger(const std::string& fname, wLogger** result) {
-		FILE* f = fopen(fname.c_str(), "w");
+		FILE* f = fopen(fname.c_str(), "a+");
 		if (f == NULL) {
 			*result = NULL;
 			return wStatus::IOError(fname, strerror(errno));

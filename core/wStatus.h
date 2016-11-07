@@ -25,28 +25,28 @@ public:
         return wStatus();
     }
 
-    static wStatus NotFound(const wSlice& msg, const wSlice& msg2 = wSlice()) {
-        return wStatus(kNotFound, msg, msg2);
+    static wStatus NotFound(const wSlice& msg, const wSlice& msg2 = wSlice(), bool log = true) {
+        return wStatus(kNotFound, msg, msg2, log);
     }
 
-    static wStatus Corruption(const wSlice& msg, const wSlice& msg2 = wSlice()) {
-        return wStatus(kCorruption, msg, msg2);
+    static wStatus Corruption(const wSlice& msg, const wSlice& msg2 = wSlice(), bool log = true) {
+        return wStatus(kCorruption, msg, msg2, log);
     }
 
-    static wStatus NotSupported(const wSlice& msg, const wSlice& msg2 = wSlice()) {
-        return wStatus(kNotSupported, msg, msg2);
+    static wStatus NotSupported(const wSlice& msg, const wSlice& msg2 = wSlice(), bool log = true) {
+        return wStatus(kNotSupported, msg, msg2, log);
     }
 
-    static wStatus InvalidArgument(const wSlice& msg, const wSlice& msg2 = wSlice()) {
-        return wStatus(kInvalidArgument, msg, msg2);
+    static wStatus InvalidArgument(const wSlice& msg, const wSlice& msg2 = wSlice(), bool log = true) {
+        return wStatus(kInvalidArgument, msg, msg2, log);
     }
 
-    static wStatus IOError(const wSlice& msg, const wSlice& msg2 = wSlice()) {
-        return wStatus(kIOError, msg, msg2);
+    static wStatus IOError(const wSlice& msg, const wSlice& msg2 = wSlice(), bool log = true) {
+        return wStatus(kIOError, msg, msg2, log);
     }
     
-    static wStatus AccessIllegal(const wSlice& msg, const wSlice& msg2 = wSlice()) {
-        return wStatus(kAccessIllegal, msg, msg2);
+    static wStatus AccessIllegal(const wSlice& msg, const wSlice& msg2 = wSlice(), bool log = true) {
+        return wStatus(kAccessIllegal, msg, msg2, log);
     }
 
     bool Ok() const {
@@ -84,13 +84,9 @@ private:
         return (mState == NULL) ? kOk : static_cast<Code>(mState[4]);
     }
 
-    wStatus(Code code, const wSlice& msg, const wSlice& msg2);
-
+    wStatus(Code code, const wSlice& msg, const wSlice& msg2, bool log = true);
     static const char* CopyState(const char* s);
-
 private:
-    // OK status has a NULL mState.  Otherwise, mState is a new[] array
-    // of the following form:
     // mState[0..3] == length of message
     // mState[4]    == code
     // mState[5..]  == message

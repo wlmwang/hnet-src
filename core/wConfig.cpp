@@ -11,7 +11,7 @@
 
 namespace hnet {
 
-wConfig::wConfig() : mEnv(wEnv::Default()), mPool(NULL), mLogger(NULL), mProcTitle(NULL) {
+wConfig::wConfig() : mEnv(wEnv::Default()), mPool(NULL), mProcTitle(NULL) {
 	SAFE_NEW(wMemPool, mPool);
 	SAFE_NEW(wProcTitle, mProcTitle);
 }
@@ -19,7 +19,6 @@ wConfig::wConfig() : mEnv(wEnv::Default()), mPool(NULL), mLogger(NULL), mProcTit
 wConfig::~wConfig() {
 	SAFE_DELETE(mEnv);
     SAFE_DELETE(mPool);
-    SAFE_DELETE(mLogger);
     SAFE_DELETE(mProcTitle);
 }
 

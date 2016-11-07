@@ -4,14 +4,15 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include "wStatus.h"
 #include "wLogger.h"
+#include "wEnv.h"
 #include "wMisc.h"
 #include "wMutex.h"
 
 namespace hnet {
 
 void wPosixLogger::Logv(const char* format, va_list ap) {
-	mMutex.Lock();
 	const uint64_t thread_id = (*mGettid)();
 
 	// 尝试两种缓冲方式 字符串整理
@@ -68,17 +69,36 @@ void wPosixLogger::Logv(const char* format, va_list ap) {
 		}
 		break;
 	}
-	mMutex.Unlock();
+}
+
+// 日志对象
+static std::map<std::string, wLogger*> g_logger;
+static wLogger* Logger(const std::string& logpath) {
+	std::map<std::string, wLogger*>::iterator it = g_logger.find(logpath);
+	if (it == g_logger.end()) {
+		wLogger* l;
+		if (wEnv::Default()->NewLogger(logpath, &l).Ok()) {
+			g_logger.insert(std::pair<std::string, wLogger*>(logpath, l));
+			return l;
+		}
+	} else {
+		return it->second;
+	}
+	return NULL;
 }
 
 // 写日志函数接口
-void Log(wLogger* log, const char* format, ...) {
-	if (log != NULL) {
+void Log(const std::string& logpath, const char* format, ...) {
+	wMutex m;
+	m.Lock();
+	wLogger* l = Logger(logpath);
+	if (l != NULL) {
 		va_list ap;
 		va_start(ap, format);
-		log->Logv(format, ap);
+		l->Logv(format, ap);
 		va_end(ap);
 	}
+	m.Unlock();
 }
 
 }	// namespace hnet

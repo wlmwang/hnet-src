@@ -74,7 +74,7 @@ wStatus wTask::TaskRecv(ssize_t *size) {
                 mStatus = wStatus::IOError("wTask::TaskRecv, message length error", "out range");
                 break;
             } else if (reallen > static_cast<uint32_t>(len - sizeof(uint32_t))) {
-                // recv a part of message: real len = %d, now len = %d
+            	wStatus::IOError("wTask::TaskRecv, recv a part of message", "");
                 mStatus = wStatus::Nothing();
                 break;
             }
@@ -104,7 +104,7 @@ wStatus wTask::TaskRecv(ssize_t *size) {
                 mStatus = wStatus::IOError("wTask::TaskRecv, message length error", "message too large");
                 break;
             } else if (reallen > static_cast<uint32_t>(kPackageSize - abs(len) - sizeof(uint32_t))) {
-                // recv a part of message: real len = %d, now len = %d
+            	wStatus::IOError("wTask::TaskRecv, recv a part of message", "");
                 mStatus = wStatus::Nothing();
                 break;
             }

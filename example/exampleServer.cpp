@@ -60,12 +60,6 @@ int main(int argc, const char *argv[]) {
 	wStatus s;
 	s = config->GetOption(argc, argv);
 	if (!s.Ok()) {
-		std::cout << "get configure error:" << s.ToString() << std::endl;
-		return -1;
-	}
-	s = config->InitLogger();
-	if (!s.Ok()) {
-		std::cout << "init logger error:" << s.ToString() << std::endl;
 		return -1;
 	}
 
@@ -78,7 +72,6 @@ int main(int argc, const char *argv[]) {
 		config->GetConf("lock_path", &lock_path);
 		s = misc::InitDaemon(lock_path);
 		if (!s.Ok()) {
-			Log(config->Logger(), "create daemon error: %s", s.ToString().c_str());
 			return -1;
 		}
 	}
@@ -96,7 +89,6 @@ int main(int argc, const char *argv[]) {
 		if (s.Ok()) {
 			wStatus s = master->MasterStart();
 		} else {
-			Log(config->Logger(), "master prepare error: %s", s.ToString().c_str());
 			return -1;
 		}
 	}

@@ -7,17 +7,22 @@
 #ifndef _W_LOGGER_H_
 #define _W_LOGGER_H_
 
-#include <stdarg.h>
+#include <map>
+#include <cstdarg>
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
-#include "wMutex.h"
 
-#ifdef _DEBUG_
-#define  LOG_DEBUG(wLogger* logger, fmt, ...)
+#ifdef _USE_LOGGER_
+#	define  LOG_ERROR(logpath, fmt, ...)	hnet::Log(logpath, fmt, ##__VA_ARGS__)
+#	ifdef _DEBUG_
+#		define  LOG_DEBUG(logpath, fmt, ...)
+#	else
+#		define  LOG_DEBUG(logpath, fmt, ...)	hnet::Log(logpath, fmt, ##__VA_ARGS__)
+#	endif
 #else
-#define  LOG_DEBUG(wLogger* logger, fmt, ...)	Log(logger, fmt, ##__VA_ARGS__)
-#define  LOG_ERROR(wLogger* logger, fmt, ...)	Log(logger, fmt, ##__VA_ARGS__)
+#	define  LOG_ERROR(logpath, fmt, ...)
+#	define  LOG_DEBUG(logpath, fmt, ...)
 #endif
 
 namespace hnet {
@@ -33,7 +38,7 @@ public:
 };
 
 // 写日志函数接口
-extern void Log(wLogger* log, const char* format, ...);
+extern void Log(const std::string& logpath, const char* format, ...);
 
 // 实现类
 // 日志实现类
@@ -49,7 +54,6 @@ public:
 	virtual void Logv(const char* format, va_list ap);
 
 private:
-	wMutex mMutex;
 	FILE* mFile;
 	// 获取当前线程id函数指针
 	uint64_t (*mGettid)();

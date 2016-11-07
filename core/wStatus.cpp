@@ -6,6 +6,7 @@
 
 #include "wCore.h"
 #include "wStatus.h"
+#include "wLogger.h"
 
 namespace hnet {
 
@@ -20,7 +21,7 @@ const char* wStatus::CopyState(const char* state) {
     return result;
 }
 
-wStatus::wStatus(Code code, const wSlice& msg, const wSlice& msg2) {
+wStatus::wStatus(Code code, const wSlice& msg, const wSlice& msg2, bool log) {
     assert(code != kOk);
     const uint32_t len1 = msg.size();
     const uint32_t len2 = msg2.size();
@@ -31,13 +32,16 @@ wStatus::wStatus(Code code, const wSlice& msg, const wSlice& msg2) {
     memcpy(result, &size, sizeof(size));
     result[4] = static_cast<char>(code);
     memcpy(result + 5, msg.data(), len1);
-
     if (len2) {
         result[5 + len1] = ':';
         result[6 + len1] = ' ';
         memcpy(result + 7 + len1, msg2.data(), len2);
     }
     mState = result;
+    // 日志
+    if (log) {
+    	LOG_ERROR(kLogPath, "%s", ToString().c_str());
+    }
 }
 
 std::string wStatus::ToString() const {

@@ -14,7 +14,6 @@
 #include "wEnv.h"
 #include "wProcTitle.h"
 #include "wMemPool.h"
-#include "wLogger.h"
 
 namespace hnet {
 
@@ -36,23 +35,6 @@ public:
         return mProcTitle->InitSetproctitle();
     }
 
-    inline wStatus InitLogger() {
-    	// 日志初始化
-        std::string log_path;
-    	if (!GetConf("log_path", &log_path) || log_path.size() == 0) {
-    		log_path = kLogPath;
-    	}
-    	mStatus = Env()->NewLogger(log_path, &mLogger);
-    	if (!mStatus.Ok()) {
-    		return wStatus::IOError("wConfig::InitLogger", "new failed");
-    	}
-    	return mStatus;
-    }
-
-    inline wLogger* Logger() {
-    	return mLogger;
-    }
-
     template<typename T>
     bool GetConf(const std::string& key, T* val) {
     	std::map<std::string, void*>::iterator it = mConf.find(key);
@@ -72,7 +54,6 @@ protected:
 
     wEnv* mEnv;
     wMemPool *mPool;
-    wLogger *mLogger;
     wProcTitle *mProcTitle;
 };
 

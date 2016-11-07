@@ -11,7 +11,7 @@
 #
 
 CXX=g++ -std=c++11
-CXXFLAGS=-O3 -Wall -Wno-invalid-offsetof -D_DEBUG_ #-D_MEM_CHECK
+CXXFLAGS=-O3 -Wall -Wno-invalid-offsetof -D_USE_LOGGER_ -D_DEBUG_ #-D_MEM_CHECK
 LDFLAGS=-L/usr/local/lib -ltinyxml -lpthread -lprotobuf
 
 COREPATH=../core
