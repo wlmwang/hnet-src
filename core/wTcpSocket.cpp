@@ -140,7 +140,7 @@ wStatus wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *
 			mStatus = wStatus::Nothing();
 			break;
 		} else if (errno == EAGAIN) {
-			mStatus = wStatus::Nothing();
+			mStatus = wStatus::IOError("wTcpSocket::Accept accept() failed", strerror(errno), false);
 			break;
 		} else if (errno == EINTR) {
 		    // 操作被信号中断，中断后唤醒继续处理

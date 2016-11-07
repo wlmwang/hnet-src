@@ -59,7 +59,6 @@ wStatus wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
 
 wStatus wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     mSendTm = misc::GetTimeofday();
-    
     ssize_t sendedlen = 0, leftlen = len;
     while (true) {
         *size = send(mFD, reinterpret_cast<void*>(buf + sendedlen), leftlen, 0);

@@ -40,13 +40,8 @@ wStatus wChannelSocket::Open() {
 
 wStatus wChannelSocket::Close() {
 	mFD = kFDUnknown;
-	if (close(mChannel[0]) == -1) {
-    	// 该文件描述符一般在wWorker::Prepare手动关闭了，故在此出错也不记录日志
-        mStatus = wStatus::IOError("wChannelSocket::Close [0] failed", strerror(errno), false);
-    }
-    if (close(mChannel[1]) == -1) {
-        mStatus = wStatus::IOError("wChannelSocket::Close [1] failed", strerror(errno));
-    }
+	close(mChannel[0]);
+	close(mChannel[1]);
     return mStatus;
 }
 
