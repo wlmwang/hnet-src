@@ -40,11 +40,7 @@ wStatus wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
             mStatus = wStatus::Nothing();
             break;
         } else if (*size == 0) {
-#ifndef _DEBUG_
-            mStatus = wStatus::IOError("wSocket::RecvBytes, client was closed", "", false);
-#else
-            mStatus = wStatus::IOError("wSocket::RecvBytes, client was closed", "", true);
-#endif
+        	mStatus = wStatus::IOError("wSocket::RecvBytes, client was closed", "", false);
             break;
         } else if (errno == EAGAIN) {
             mStatus = wStatus::Nothing();

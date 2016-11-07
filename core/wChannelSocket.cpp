@@ -27,25 +27,27 @@ wStatus wChannelSocket::Open() {
         return mStatus = wStatus::IOError("wChannelSocket::Open [1] fcntl() O_NONBLOCK failed", strerror(errno));
     }
     
-    // 不返回错误 todo
     if (fcntl(mChannel[0], F_SETFD, FD_CLOEXEC) == -1) {
-        // mStatus = wStatus::IOError("wChannelSocket::Open [0] fcntl() FD_CLOEXEC failed", strerror(errno));
+    	wStatus::IOError("wChannelSocket::Open [0] fcntl() FD_CLOEXEC failed", strerror(errno));
     } else if (fcntl(mChannel[1], F_SETFD, FD_CLOEXEC) == -1) {
-        // mStatus = wStatus::IOError("wChannelSocket::Open [1] fcntl() FD_CLOEXEC failed", strerror(errno));
+    	wStatus::IOError("wChannelSocket::Open [1] fcntl() FD_CLOEXEC failed", strerror(errno));
     }
+
     // mChannel[1]被监听（可读事件）
     mFD = mChannel[1];
     return mStatus = wStatus::Nothing();
 }
 
 wStatus wChannelSocket::Close() {
-    if (close(mChannel[0]) == -1) {
-        return mStatus = wStatus::IOError("wChannelSocket::Close [0] failed", strerror(errno));
-    } else if (close(mChannel[1]) == -1) {
-        return mStatus = wStatus::IOError("wChannelSocket::Close [1] failed", strerror(errno));
+	mFD = kFDUnknown;
+	if (close(mChannel[0]) == -1) {
+    	// 该文件描述符一般在wWorker::Prepare手动关闭了，故在此出错也不记录日志
+        mStatus = wStatus::IOError("wChannelSocket::Close [0] failed", strerror(errno), false);
     }
-    mFD = kFDUnknown;
-    return mStatus = wStatus::Nothing();
+    if (close(mChannel[1]) == -1) {
+        mStatus = wStatus::IOError("wChannelSocket::Close [1] failed", strerror(errno));
+    }
+    return mStatus;
 }
 
 wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {

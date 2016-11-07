@@ -580,17 +580,15 @@ void wMaster::WorkerExitStat() {
 			}
 		}
 
-		/*
         if (WTERMSIG(status)) {
-			LOG_ERROR(ELOG_KEY, "[system] %s %d exited on signal %d%s", process, pid, WTERMSIG(status), WCOREDUMP(status) ? " (core dumped)" : "");
+			wStatus::IOError("wMaster::WorkerExitStat, exited on signal", logging::NumberToString(WTERMSIG(status)));
         } else {
-			LOG_ERROR(ELOG_KEY, "[system] %s %d exited with code %d", process, pid, WTERMSIG(status));
+			wStatus::IOError("wMaster::WorkerExitStat, exited with code", logging::NumberToString(WTERMSIG(status)));
         }
-		*/
 	
 		// 退出码为2时，退出后不重启
         if (WEXITSTATUS(status) == 2 && mWorkerPool[i]->mRespawn) {
-			//LOG_ERROR(ELOG_KEY, "[system] %s %d exited with fatal code %d and cannot be respawned", process, pid, WTERMSIG(status));
+        	wStatus::IOError("wMaster::WorkerExitStat, exited with fatal code, and cannot be respawned", logging::NumberToString(WTERMSIG(status)));
             mWorkerPool[i]->mRespawn = 0;
         }
     }
