@@ -10,6 +10,8 @@
 #include <cstdarg>
 #include "wCore.h"
 
+// 已弃用（wLogger代替）
+
 // 基于log4cpp的日志
 namespace hnet {
 

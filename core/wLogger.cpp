@@ -12,9 +12,33 @@
 
 namespace hnet {
 
-void wPosixLogger::Logv(const char* format, va_list ap) {
-	const uint64_t thread_id = (*mGettid)();
+void wPosixLogger::ArchiveLog() {
+	/*
+	wEnv* env = wEnv::Default();
+	uint64_t filesize = 0;
+	if (env->GetFileSize(mFname, &filesize).Ok() && filesize >= static_cast<uint64_t>(mMaxsize)) {
+		CloseLog(mFile);
+		std::string subfix = ".1", dir;
+		if (env->GetDirByFname(mFname, &dir).Ok()) {
+			std::vector<std::string> child;
+			if (env->GetChildren(dir, &child).Ok() && child.size() > 0) {
+				for (std::vector<std::string> it = child.begin(); it != child.end(); it++) {
+					//
+				}
+			}
+		}
+		std::string target = mFname + subfix;
+		env->RenameFile(mFname, target);
+		mFile = OpenCreatLog(mFname, "a+");
+	}
+	*/
+}
 
+void wPosixLogger::Logv(const char* format, va_list ap) {
+	// 检测文件大小，归档日志
+	ArchiveLog();
+
+	const uint64_t thread_id = (*mGettid)();
 	// 尝试两种缓冲方式 字符串整理
 	char buffer[500];
 	for (int iter = 0; iter < 2; iter++) {
@@ -76,7 +100,7 @@ static std::map<std::string, wLogger*> g_logger;
 static wLogger* Logger(const std::string& logpath) {
 	std::map<std::string, wLogger*>::iterator it = g_logger.find(logpath);
 	if (it == g_logger.end()) {
-		wLogger* l;
+		wLogger* l = NULL;
 		if (wEnv::Default()->NewLogger(logpath, &l).Ok()) {
 			g_logger.insert(std::pair<std::string, wLogger*>(logpath, l));
 			return l;

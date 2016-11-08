@@ -203,6 +203,8 @@ private:
     std::set<std::string> mLockedFiles;
 };
 
+extern int LockOrUnlock(int fd, bool lock);
+
 }	// namespace hnet
 
 #endif

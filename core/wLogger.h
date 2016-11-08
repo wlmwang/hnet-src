@@ -27,6 +27,8 @@
 
 namespace hnet {
 
+const uint8_t kLogNum = 64;
+
 // 日志接口
 class wLogger : private wNoncopyable {
 public:
@@ -37,27 +39,40 @@ public:
     virtual void Logv(const char* format, va_list ap) = 0;
 };
 
-// 写日志函数接口
-extern void Log(const std::string& logpath, const char* format, ...);
-
 // 实现类
 // 日志实现类
 class wPosixLogger : public wLogger {
 public:
-	wPosixLogger(FILE* f, uint64_t (*gettid)()) : mFile(f), mGettid(gettid) { }
+	wPosixLogger(const std::string& fname, uint64_t (*gettid)(), off_t maxsize = 32*1024*1024) : mFname(fname), mGettid(gettid), mMaxsize(maxsize) {
+		mFile = OpenCreatLog(mFname, "a+");
+	}
 
 	virtual ~wPosixLogger() {
-		fclose(mFile);
+		CloseLog(mFile);
 	}
 
 	// 写日志。最大3000字节，多的截断
 	virtual void Logv(const char* format, va_list ap);
 
 private:
+	void ArchiveLog();
+
+	inline FILE* OpenCreatLog(const std::string& fname, const std::string& mode) {
+		return fopen(fname.c_str(), mode.c_str());
+	}
+
+	inline void CloseLog(FILE* f) {
+		fclose(f);
+	}
+
+	std::string mFname;
+	uint64_t (*mGettid)();	// 获取当前线程id函数指针
+	off_t mMaxsize;
 	FILE* mFile;
-	// 获取当前线程id函数指针
-	uint64_t (*mGettid)();
 };
+
+// 写日志函数接口
+extern void Log(const std::string& logpath, const char* format, ...);
 
 }	// namespace hnet
 

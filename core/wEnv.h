@@ -41,7 +41,7 @@ public:
     virtual wStatus NewWritableFile(const std::string& fname, wWritableFile** result) = 0;
 
     // 返回日志对象
-    virtual wStatus NewLogger(const std::string& fname, wLogger** result) = 0;
+    virtual wStatus NewLogger(const std::string& fname, wLogger** result, off_t maxsize = 32*1024*1024) = 0;
 
     // 返回信号量对象，进程间同步
     virtual wStatus NewSem(const std::string *devshm, wSem** result) = 0;
@@ -58,6 +58,8 @@ public:
 
     // 返回目录下所有文件、目录名
     virtual wStatus GetChildren(const std::string& dir, std::vector<std::string>* result) = 0;
+
+    virtual wStatus GetRealPath(const std::string& fname, std::string* result) = 0;
 
     virtual wStatus DeleteFile(const std::string& fname) = 0;
 
@@ -88,8 +90,6 @@ public:
 
 extern wStatus WriteStringToFile(wEnv* env, const wSlice& data, const std::string& fname);
 extern wStatus ReadFileToString(wEnv* env, const std::string& fname, std::string* data);
-
-extern int LockOrUnlock(int fd, bool lock);
 
 }	// namespace hnet
 

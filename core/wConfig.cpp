@@ -17,7 +17,6 @@ wConfig::wConfig() : mEnv(wEnv::Default()), mPool(NULL), mProcTitle(NULL) {
 }
 
 wConfig::~wConfig() {
-	SAFE_DELETE(mEnv);
     SAFE_DELETE(mPool);
     SAFE_DELETE(mProcTitle);
 }

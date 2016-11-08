@@ -128,13 +128,10 @@ public:
     }
 
     // 日志对象
-    virtual wStatus NewLogger(const std::string& fname, wLogger** result) {
-		FILE* f = fopen(fname.c_str(), "a+");
-		if (f == NULL) {
-			*result = NULL;
+    virtual wStatus NewLogger(const std::string& fname, wLogger** result, off_t maxsize = 32*1024*1024) {
+    	SAFE_NEW(wPosixLogger(fname, &wPosixEnv::gettid, maxsize), *result);
+		if (*result == NULL) {
 			return wStatus::IOError(fname, strerror(errno));
-		} else {
-			SAFE_NEW(wPosixLogger(f, &wPosixEnv::gettid), *result);
 		}
 		return wStatus();
     }
@@ -155,6 +152,15 @@ public:
             result->push_back(entry->d_name);
         }
         closedir(d);
+        return wStatus();
+    }
+
+    virtual wStatus GetRealPath(const std::string& fname, std::string* result) {
+    	char dirPath[256];
+        if (realpath(fname.c_str(), dirPath) == NULL) {
+        	return wStatus::IOError(fname, strerror(errno));
+        }
+        *result = dirPath;
         return wStatus();
     }
 
