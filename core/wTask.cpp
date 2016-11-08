@@ -45,11 +45,11 @@ wStatus wTask::TaskRecv(ssize_t *size) {
     *size = 0;
     if (leftlen != 0 && mRecvLen < kPackageSize) {
         mStatus = mSocket->RecvBytes(mRecvWrite, leftlen, size);
-        if (!mStatus.Ok()) {
+        if (!mStatus.Ok() || *size < 0) {
             return mStatus;
         }
-        mRecvLen += (*size);
-        mRecvWrite += (*size);
+        mRecvLen += *size;
+        mRecvWrite += *size;
     }
 
     // 消息解析
@@ -71,10 +71,10 @@ wStatus wTask::TaskRecv(ssize_t *size) {
             // 消息字符在正向缓冲中
             reallen = coding::DecodeFixed32(mRecvRead);
             if (reallen < kMinPackageSize || reallen > kMaxPackageSize) {
-                mStatus = wStatus::IOError("wTask::TaskRecv, message length error", "out range");
+                mStatus = wStatus::IOError("wTask::TaskRecv, message length error, out range", ">0");
                 break;
             } else if (reallen > static_cast<uint32_t>(len - sizeof(uint32_t))) {
-            	wStatus::IOError("wTask::TaskRecv, recv a part of message", "");
+            	wStatus::IOError("wTask::TaskRecv, recv a part of message", ">0");
                 mStatus = wStatus::Nothing();
                 break;
             }
@@ -101,10 +101,10 @@ wStatus wTask::TaskRecv(ssize_t *size) {
             }
 
             if (reallen < kMinPackageSize || reallen > kMaxPackageSize) {
-                mStatus = wStatus::IOError("wTask::TaskRecv, message length error", "message too large");
+                mStatus = wStatus::IOError("wTask::TaskRecv, message length error, out range", "<=0");
                 break;
             } else if (reallen > static_cast<uint32_t>(kPackageSize - abs(len) - sizeof(uint32_t))) {
-            	wStatus::IOError("wTask::TaskRecv, recv a part of message", "");
+            	wStatus::IOError("wTask::TaskRecv, recv a part of message", "<=0");
                 mStatus = wStatus::Nothing();
                 break;
             }
@@ -134,30 +134,30 @@ wStatus wTask::TaskSend(ssize_t *size) {
     const char *buffend = mSendBuff + kPackageSize;
     while (true) {
         len = mSendWrite - mSendRead;
-        if (mSendLen == 0) {
+        if (len == 0 && mSendLen == 0) {
             mStatus = wStatus::Nothing();
             break;
         } else if (len > 0) {
             mStatus = mSocket->SendBytes(mSendRead, mSendLen, size); //len == mSendLen
-            if (!mStatus.Ok()) {
+            if (!mStatus.Ok() || *size < 0) {
                 break;
             }
-            mSendLen -= (*size);
-            mSendRead += (*size);
+            mSendLen -= *size;
+            mSendRead += *size;
         } else if (len <= 0) {
             ssize_t leftlen = buffend - mSendRead;
             memcpy(mTempBuff, mSendRead, leftlen);
             memcpy(mTempBuff + leftlen, mSendBuff, mSendLen - leftlen);
             mStatus = mSocket->SendBytes(mTempBuff, mSendLen, size);
-            if (!mStatus.Ok()) {
+            if (!mStatus.Ok() || *size < 0) {
                 break;
             }
-            mSendLen -= (*size);
             if (*size <= leftlen) {
-            	mSendRead += (*size);
+            	mSendRead += *size;
             } else {
             	mSendRead = mSendBuff + mSendLen - leftlen;
             }
+            mSendLen -= *size;
         }
     }
     return mStatus;
@@ -211,7 +211,6 @@ wStatus wTask::Send2Buf(char cmd[], size_t len) {
     } else if (writelen >= 0 && leftlen < static_cast<ssize_t>(len + sizeof(uint32_t))) {
     	// 分段剩余足够（两边剩余）
     	Assertbuf(mTempBuff, cmd, len - sizeof(uint8_t));
-    	// 复制到发送缓冲区
     	memcpy(mSendWrite, mTempBuff, leftlen);
     	mSendWrite = mSendBuff;
     	memcpy(mSendWrite, mTempBuff + leftlen, sizeof(uint32_t) + len - leftlen);
@@ -242,10 +241,8 @@ wStatus wTask::Send2Buf(const google::protobuf::Message* msg) {
     } else if (writelen >= 0 && leftlen < static_cast<ssize_t>(len + sizeof(uint32_t))) {
     	// 分段剩余足够（两边剩余）
     	Assertbuf(mTempBuff, msg);
-        // 复制到发送缓冲区
     	memcpy(mSendWrite, mTempBuff, leftlen);
-    	mSendWrite = mSendBuff;
-    	memcpy(mSendWrite, mTempBuff + leftlen, sizeof(uint32_t) + len - leftlen);
+    	memcpy(mSendWrite = mSendBuff, mTempBuff + leftlen, sizeof(uint32_t) + len - leftlen);
     	mSendWrite += sizeof(uint32_t)+ len - leftlen;
     } else {
     	return mStatus = wStatus::IOError("wTask::Send2Buf, message length error", "left buffer not enough");
