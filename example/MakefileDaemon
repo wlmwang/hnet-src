@@ -20,7 +20,7 @@ MSGPATH=../message
 VENDOR=../vendor
 INCPATH=-I./$(COREPATH) -I./$(COMMPATH) -I./$(MSGPATH) -I./$(VENDOR)/tinyxml
 
-SRCPATH=./
+SRCPATH=.
 OBJECTS=./$(COREPATH)/wCrc32c.o \
 		./$(COREPATH)/wEnv.o \
 		./$(COREPATH)/wFile.o \

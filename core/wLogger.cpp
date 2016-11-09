@@ -13,31 +13,65 @@
 namespace hnet {
 
 void wPosixLogger::ArchiveLog() {
-	/*
 	wEnv* env = wEnv::Default();
 	uint64_t filesize = 0;
 	if (env->GetFileSize(mFname, &filesize).Ok() && filesize >= static_cast<uint64_t>(mMaxsize)) {
+		// 日志大小操作限制
 		CloseLog(mFile);
-		std::string subfix = ".1", dir;
-		if (env->GetDirByFname(mFname, &dir).Ok()) {
-			std::vector<std::string> child;
-			if (env->GetChildren(dir, &child).Ok() && child.size() > 0) {
-				for (std::vector<std::string> it = child.begin(); it != child.end(); it++) {
-					//
+		std::string realpath, dir;
+		if (env->GetRealPath(mFname, &realpath).Ok()) {
+			// 获取目录名
+			const std::string::size_type pos = realpath.find_last_of("/");
+			if (pos != std::string::npos) {
+				dir = realpath.substr(0, pos);
+			} else {
+				dir = realpath;
+			}
+			// 文件列表
+			std::vector<std::string> children;
+			if (env->GetChildren(dir, &children).Ok() && children.size() > 0) {
+				// 获取日志最大id
+				uint64_t maxid = 0;
+				for (std::vector<std::string>::iterator it = children.begin(); it != children.end(); it++) {
+					const std::string::size_type namepos = (*it).find(mFname);
+					if (namepos != std::string::npos && namepos == 0) {
+						// 所有日志文件后缀
+						uint64_t num;
+						std::string subfix = (*it).substr((*it).find_last_of(".") + 1);
+						if (subfix.size() > 0 && logging::DecimalStringToNumber(subfix, &num)) {
+							maxid = maxid >= num? maxid : num;
+						}
+					}
+				}
+				// 更名日志文件
+				std::string src = mFname + ".", target = mFname + ".";
+				if (maxid >= kLoggerNum) {
+					logging::AppendNumberTo(&src, maxid);
+					env->FileExists(src) && env->DeleteFile(src),Ok();
+					maxid = kLoggerNum - 1;
+				}
+				for (uint64_t id = maxid; id <= 1; id--) {
+					src = mFname + ".", target = mFname + ".";
+					logging::AppendNumberTo(&src, id);
+					logging::AppendNumberTo(&target, id + 1);
+					if (env->FileExists(src)) {
+						env->FileExists(target) && env->DeleteFile(target).Ok();
+						env->FileExists(src) && env->RenameFile(src, target).Ok();
+					}
 				}
 			}
 		}
-		std::string target = mFname + subfix;
-		env->RenameFile(mFname, target);
+		std::string target = mFname + ".1";
+		env->FileExists(target) && env->DeleteFile(target).Ok();
+		env->FileExists(mFname) && env->RenameFile(mFname, target).Ok();
 		mFile = OpenCreatLog(mFname, "a+");
 	}
-	*/
 }
 
 void wPosixLogger::Logv(const char* format, va_list ap) {
 	// 检测文件大小，归档日志
 	ArchiveLog();
-
+	// 线程id
 	const uint64_t thread_id = (*mGettid)();
 	// 尝试两种缓冲方式 字符串整理
 	char buffer[500];

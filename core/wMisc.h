@@ -87,11 +87,11 @@ void AppendEscapedStringTo(std::string* str, const wSlice& value);
 // 返回整型字符串
 std::string NumberToString(uint64_t num);
 
+// 消费转化in字符串前缀的十进制数字符串，返回是否转化正确
+bool DecimalStringToNumber(const std::string& in, uint64_t* val, uint8_t *width = NULL);
+
 // 返回不可见字符被转化为16进制表示的字符的value字符串
 std::string EscapeString(const wSlice& value);
-
-// 消费转化in字符串前缀的十进制数字符串，返回是否转化正确
-bool ConsumeDecimalNumber(std::string* in, uint64_t* val);
 
 }   // namespace logging
 

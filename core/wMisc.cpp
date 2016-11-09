@@ -104,25 +104,26 @@ std::string EscapeString(const wSlice& value) {
     return r;
 }
 
-bool ConsumeDecimalNumber(std::string* in, uint64_t* val) {
+bool DecimalStringToNumber(const std::string& in, uint64_t* val, uint8_t *width) {
     uint64_t v = 0;
-    int digits = 0;
-    while (!in->empty()) {
-        char c = (*in)[0];
+    uint8_t digits = 0;
+    while (!in.empty()) {
+        char c = in[digits];
         if (c >= '0' && c <= '9') {
             ++digits;
             const int delta = (c - '0');
             static const uint64_t kMaxUint64 = ~static_cast<uint64_t>(0);
             if (v > kMaxUint64/10 || (v == kMaxUint64/10 && static_cast<uint64_t>(delta) > kMaxUint64%10)) {
-                return false;	// 转化uint64溢出
+            	// 转化uint64溢出
+                return false;
             }
             v = (v * 10) + delta;
-            in->assign(*in, 1, in->size()-1);
         } else {
             break;
         }
     }
     *val = v;
+    (width != NULL) && (*width = digits);
     return (digits > 0);
 }
 

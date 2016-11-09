@@ -27,9 +27,11 @@
 
 namespace hnet {
 
-const uint8_t kLogNum = 64;
+const uint8_t kLoggerNum = 64;
 
-// 日志接口
+// 文件名：error.log(\.[0-9]+)?
+
+// 日志接口类，非线程安全，对外接口需加锁
 class wLogger : private wNoncopyable {
 public:
 	wLogger() { }
@@ -43,7 +45,7 @@ public:
 // 日志实现类
 class wPosixLogger : public wLogger {
 public:
-	wPosixLogger(const std::string& fname, uint64_t (*gettid)(), off_t maxsize = 32*1024*1024) : mFname(fname), mGettid(gettid), mMaxsize(maxsize) {
+	wPosixLogger(const std::string& fname, uint64_t (*gettid)(), off_t maxsize = 32*1024*1024) : mFname(fname), mMaxsize(maxsize), mGettid(gettid) {
 		mFile = OpenCreatLog(mFname, "a+");
 	}
 
@@ -65,10 +67,10 @@ private:
 		fclose(f);
 	}
 
-	std::string mFname;
-	uint64_t (*mGettid)();	// 获取当前线程id函数指针
-	off_t mMaxsize;
 	FILE* mFile;
+	std::string mFname;
+	off_t mMaxsize;
+	uint64_t (*mGettid)();	// 获取当前线程id函数指针
 };
 
 // 写日志函数接口

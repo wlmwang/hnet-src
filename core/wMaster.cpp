@@ -528,7 +528,7 @@ wStatus wMaster::SignalProcess(const char* sig) {
 	}
 
 	uint64_t pid = 0;
-	if (logging::ConsumeDecimalNumber(&str, &pid) && pid > 0) {
+	if (logging::DecimalStringToNumber(str, &pid) && pid > 0) {
 		for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
 			if (strcmp(sig, s->mName)) {
 				if (kill(pid, s->mSigno) == -1) {
