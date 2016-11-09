@@ -10,6 +10,7 @@
 #include <netinet/tcp.h>
 #include <poll.h> 
 #include "wServer.h"
+#include "wEnv.h"
 #include "wConfig.h"
 #include "wSem.h"
 #include "wTcpSocket.h"
@@ -24,7 +25,7 @@ mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mUseAcceptTurn(true), mAcceptHe
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
     if (mUseAcceptTurn == true) {
-    	mStatus = mConfig->Env()->NewSem(NULL, &mAcceptSem);
+    	mStatus = wEnv::Default()->NewSem(NULL, &mAcceptSem);
     	assert(mStatus.Ok());
     }
 }
@@ -428,7 +429,7 @@ void wServer::CheckTick() {
 		    // 添加任务到线程池中
 		    if (mScheduleOk == true) {
 		    	mScheduleOk = false;
-				mConfig->Env()->Schedule(wServer::ScheduleRun, this);
+		    	wEnv::Default()->Schedule(wServer::ScheduleRun, this);
 		    }
 		}
 	}

@@ -18,8 +18,6 @@
 
 namespace hnet {
 
-class wEnv;
-
 // 顺序访问文件接口
 class wSequentialFile : private wNoncopyable {
 public:

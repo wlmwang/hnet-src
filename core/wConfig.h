@@ -11,7 +11,6 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
-#include "wEnv.h"
 #include "wProcTitle.h"
 #include "wMemPool.h"
 
@@ -45,14 +44,9 @@ public:
     	return false;
     }
 
-    inline wEnv* Env() {
-    	return mEnv;
-    }
 protected:
     wStatus mStatus;
     std::map<std::string, void*> mConf;
-
-    wEnv* mEnv;
     wMemPool *mPool;
     wProcTitle *mProcTitle;
 };

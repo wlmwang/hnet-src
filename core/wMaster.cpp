@@ -5,6 +5,7 @@
  */
 
 #include "wMaster.h"
+#include "wEnv.h"
 #include "wSlice.h"
 #include "wMisc.h"
 #include "wSigSet.h"
@@ -513,16 +514,16 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 
 wStatus wMaster::CreatePidFile() {
 	string pidstr = logging::NumberToString(mPid);
-	return mStatus = WriteStringToFile(mServer->Config()->Env(), pidstr, mPidPath);
+	return mStatus = WriteStringToFile(wEnv::Default(), pidstr, mPidPath);
 }
 
 wStatus wMaster::DeletePidFile() {
-	return mStatus = mServer->Config()->Env()->DeleteFile(mPidPath);
+	return mStatus = wEnv::Default()->DeleteFile(mPidPath);
 }
 
 wStatus wMaster::SignalProcess(const char* sig) {
 	std::string str;
-	mStatus = ReadFileToString(mServer->Config()->Env(), mPidPath, &str);
+	mStatus = ReadFileToString(wEnv::Default(), mPidPath, &str);
 	if (!mStatus.Ok()) {
 		return mStatus;
 	}

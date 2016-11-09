@@ -5,6 +5,7 @@
  */
 
 #include "wMultiClient.h"
+#include "wEnv.h"
 #include "wTcpSocket.h"
 #include "wUnixSocket.h"
 #include "wTcpTask.h"
@@ -303,7 +304,7 @@ void wMultiClient::CheckTick() {
 		    // 添加任务到线程池中
 		    if (mScheduleOk == true) {
 		    	mScheduleOk = false;
-				mConfig->Env()->Schedule(wMultiClient::ScheduleRun, this);
+				wEnv::Default()->Schedule(wMultiClient::ScheduleRun, this);
 		    }
 		}
 	}

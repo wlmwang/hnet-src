@@ -9,7 +9,6 @@
 #include "wSigSet.h"
 #include "wMaster.h"
 #include "wWorkerIpc.h"
-#include "wEnv.h"
 #include "wConfig.h"
 #include "wServer.h"
 
