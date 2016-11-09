@@ -57,7 +57,7 @@ public:
     virtual bool FileExists(const std::string& fname) = 0;
 
     // 返回目录下所有文件、目录名
-    virtual wStatus GetChildren(const std::string& dir, std::vector<std::string>* result) = 0;
+    virtual wStatus GetChildren(const std::string& dir, std::vector<std::string>* result, bool fullname = true) = 0;
 
     virtual wStatus GetRealPath(const std::string& fname, std::string* result) = 0;
 

@@ -47,10 +47,10 @@ void wPosixLogger::ArchiveLog() {
 				std::string src = mFname + ".", target = mFname + ".";
 				if (maxid >= kLoggerNum) {
 					logging::AppendNumberTo(&src, maxid);
-					env->FileExists(src) && env->DeleteFile(src),Ok();
+					env->FileExists(src) && env->DeleteFile(src).Ok();
 					maxid = kLoggerNum - 1;
 				}
-				for (uint64_t id = maxid; id <= 1; id--) {
+				for (uint64_t id = maxid; id >= 1; id--) {
 					src = mFname + ".", target = mFname + ".";
 					logging::AppendNumberTo(&src, id);
 					logging::AppendNumberTo(&target, id + 1);

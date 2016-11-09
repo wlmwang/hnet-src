@@ -141,15 +141,20 @@ public:
     }
 
     // 获取某目录下所有文件、目录名
-    virtual wStatus GetChildren(const std::string& dir, std::vector<std::string>* result) {
+    virtual wStatus GetChildren(const std::string& dir, std::vector<std::string>* result, bool fullname = true) {
         result->clear();
         DIR* d = opendir(dir.c_str());
         if (d == NULL) {
             return wStatus::IOError(dir, strerror(errno));
         }
         struct dirent* entry;
+        std::string dname;
         while ((entry = readdir(d)) != NULL) {
-            result->push_back(entry->d_name);
+        	if (fullname) {
+        		result->push_back(dir + "/" + entry->d_name);
+        	} else {
+        		result->push_back(entry->d_name);
+        	}
         }
         closedir(d);
         return wStatus();
