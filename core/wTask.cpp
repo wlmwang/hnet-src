@@ -13,9 +13,15 @@
 
 namespace hnet {
 
-wTask::wTask(wSocket* socket, int32_t type) : mState(0), mType(type), mSocket(socket), mHeartbeat(0),
-mRecvRead(mRecvBuff), mRecvWrite(mRecvBuff), mRecvLen(0), mSendRead(mSendBuff), mSendWrite(mSendBuff),
-mSendLen(0), mServer(NULL), mClient(NULL), mSCType(0) { }
+wTask::wTask(wSocket* socket, int32_t type) : mType(type), mSocket(socket), mHeartbeat(0), mServer(NULL), mClient(NULL), mSCType(0) {
+	ResetBuffer();
+}
+
+void wTask::ResetBuffer() {
+	mRecvLen = mSendLen = 0;
+	mRecvRead = mRecvWrite = mRecvBuff;
+	mSendRead = mSendWrite = mSendBuff;
+}
 
 wTask::~wTask() {
     SAFE_DELETE(mSocket);

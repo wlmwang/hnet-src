@@ -37,6 +37,9 @@ public:
 
     // 添加连接
     wStatus AddConnect(int type, const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
+
+    // 重连
+    wStatus ReConnect(wTask* task);
     
     // 断开连接
     wStatus DisConnect(wTask *task);
@@ -73,8 +76,8 @@ protected:
     wStatus Recv();
     wStatus InitEpoll();
 
-    wStatus AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool newconn = true);
-    wStatus RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL);
+    wStatus AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
+    wStatus RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
     wStatus CleanTask();
     
     wStatus AddToTaskPool(wTask *task);

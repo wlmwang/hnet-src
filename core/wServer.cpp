@@ -349,7 +349,7 @@ wStatus wServer::Listener2Epoll() {
     return mStatus;
 }
 
-wStatus wServer::AddTask(wTask* task, int ev, int op, bool newconn) {
+wStatus wServer::AddTask(wTask* task, int ev, int op, bool addpool) {
     struct epoll_event evt;
     evt.events = ev | EPOLLERR | EPOLLHUP | EPOLLET;
     evt.data.fd = task->Socket()->FD();
@@ -358,21 +358,23 @@ wStatus wServer::AddTask(wTask* task, int ev, int op, bool newconn) {
 		return mStatus = wStatus::IOError("wServer::AddTask, epoll_ctl() failed", strerror(errno));
     }
     task->SetServer(this);
-    if (newconn) {
+    if (addpool) {
     	AddToTaskPool(task);
     }
     return mStatus;
 }
 
-wStatus wServer::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter) {
+wStatus wServer::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter, bool delpool) {
     struct epoll_event evt;
     evt.data.fd = task->Socket()->FD();
     if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, task->Socket()->FD(), &evt) < 0) {
 		return mStatus = wStatus::IOError("wServer::RemoveTask, epoll_ctl() failed", strerror(errno));
     }
-    std::vector<wTask*>::iterator it = RemoveTaskPool(task);
-    if (iter != NULL) {
-    	*iter = it;
+    if (delpool) {
+        std::vector<wTask*>::iterator it = RemoveTaskPool(task);
+        if (iter != NULL) {
+        	*iter = it;
+        }
     }
     return mStatus;
 }
@@ -453,21 +455,25 @@ void wServer::CheckHeartBeat() {
     	mTaskPoolMutex[i].Lock();
 	    if (mTaskPool[i].size() > 0) {
 			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end();) {
-			    if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected) {
-					// 上一次发送时间间隔
-					uint64_t interval = tm - (*it)->Socket()->SendTm();
-					if (interval >= kKeepAliveTm*1000) {
-						// 发送心跳
-						(*it)->HeartbeatSend();
-						// 心跳超限
-					    if ((*it)->HeartbeatOut()) {
-					    	RemoveTask(*it, &it);
-					    } else {
-					    	it++;
-					    }
-					} else {
-						it++;
-					}
+			    if ((*it)->Socket()->ST() == kStConnect) {
+			    	if ((*it)->Socket()->SS() == kSsUnconnect) {
+			    		RemoveTask(*it, &it);
+			    	} else {
+						// 上一次发送时间间隔
+						uint64_t interval = tm - (*it)->Socket()->SendTm();
+						if (interval >= kKeepAliveTm*1000) {
+							// 发送心跳
+							(*it)->HeartbeatSend();
+							// 心跳超限
+						    if ((*it)->HeartbeatOut()) {
+						    	RemoveTask(*it, &it);
+						    } else {
+						    	it++;
+						    }
+						} else {
+							it++;
+						}
+			    	}
 			    } else {
 			    	it++;
 			    }

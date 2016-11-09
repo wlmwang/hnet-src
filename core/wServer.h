@@ -100,8 +100,8 @@ protected:
     wStatus Listener2Epoll();
     wStatus CleanListener();
 
-    wStatus AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool newconn = true);
-    wStatus RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL);
+    wStatus AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
+    wStatus RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
     wStatus CleanTask();
 
     wStatus AddToTaskPool(wTask *task);

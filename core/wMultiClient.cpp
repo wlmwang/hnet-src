@@ -74,6 +74,27 @@ wStatus wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t p
     return mStatus;
 }
 
+wStatus wMultiClient::ReConnect(wTask* task) {
+    wSocket *socket = task->Socket();
+    if (socket->SS() == kSsConnected) {
+    	socket->Close();
+    }
+
+    mStatus = socket->Open();
+    if (!mStatus.Ok()) {
+        return mStatus;
+    }
+
+    int64_t ret;
+    mStatus = socket->Connect(&ret, socket->Host(), socket->Port());
+    if (!mStatus.Ok()) {
+        return mStatus;
+    }
+    socket->SS() = kSsConnected;
+    task->ResetBuffer();
+    return mStatus = AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, false);
+}
+
 wStatus wMultiClient::DisConnect(wTask* task) {
     return RemoveTask(task);
 }
@@ -137,15 +158,13 @@ wStatus wMultiClient::Recv() {
         int type = task->Type();
         mTaskPoolMutex[type].Lock();
         if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
-            // 给重连做准备
-        	task->State() = -1;
+        	task->Socket()->SS() = kSsUnconnect;
         } else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
             if (evt[i].events & EPOLLIN) {
                 // 套接口准备好了读取操作
                 mStatus = task->TaskRecv(&size);
                 if (!mStatus.Ok()) {
-                    // 给重连做准备
-                	task->State() = -1;
+                	task->Socket()->SS() = kSsUnconnect;
                 }
             } else if (evt[i].events & EPOLLOUT) {
                 // 清除写事件
@@ -156,8 +175,7 @@ wStatus wMultiClient::Recv() {
                     // 写入失败，半连接，对端读关闭
                     mStatus = task->TaskSend(&size);
                     if (!mStatus.Ok()) {
-                        // 给重连做准备
-                    	task->State() = -1;
+                    	task->Socket()->SS() = kSsUnconnect;
                     }
                 }
             }
@@ -232,15 +250,17 @@ wStatus wMultiClient::Send(wTask *task, const google::protobuf::Message* msg) {
     return mStatus;
 }
 
-wStatus wMultiClient::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter) {
+wStatus wMultiClient::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter, bool delpool) {
     struct epoll_event evt;
     evt.data.fd = task->Socket()->FD();
     if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, task->Socket()->FD(), &evt) < 0) {
         mStatus = wStatus::IOError("wMultiClient::RemoveTask, epoll_ctl() failed", strerror(errno));
     }
-    std::vector<wTask*>::iterator it = RemoveTaskPool(task);
-    if (iter != NULL) {
-        *iter = it;
+    if (delpool) {
+        std::vector<wTask*>::iterator it = RemoveTaskPool(task);
+        if (iter != NULL) {
+            *iter = it;
+        }
     }
     return mStatus;
 }
@@ -255,7 +275,7 @@ std::vector<wTask*>::iterator wMultiClient::RemoveTaskPool(wTask* task) {
     return it;
 }
 
-wStatus wMultiClient::AddTask(wTask* task, int ev, int op, bool newconn) {
+wStatus wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) {
     struct epoll_event evt;
     evt.events = ev | EPOLLERR | EPOLLHUP | EPOLLET;
     evt.data.fd = task->Socket()->FD();
@@ -264,7 +284,7 @@ wStatus wMultiClient::AddTask(wTask* task, int ev, int op, bool newconn) {
         return mStatus = wStatus::IOError("wMultiClient::AddTask, epoll_ctl() failed", strerror(errno));
     }
     mTask->SetClient(this);
-    if (newconn) {
+    if (addpool) {
         AddToTaskPool(task);
     }
     return mStatus;
@@ -327,17 +347,11 @@ void wMultiClient::CheckHeartBeat() {
     for (int i = 0; i < kClientNumShard; i++) {
         mTaskPoolMutex[i].Lock();
         if (mTaskPool[i].size() > 0) {
-            for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end();) {
-                if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected) {
-                    if ((*it)->State() == -1) {
-                        int type = (*it)->Type();
-						std::string ipaddr = (*it)->Socket()->Host();
-						uint16_t port = (*it)->Socket()->Port();
-						std::string protocol = (*it)->Socket()->SP() == kSpUnix ? "UNIX": "TCP";
-                    	RemoveTask(*it, &it);
-
+            for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
+                if ((*it)->Socket()->ST() == kStConnect) {
+                    if ((*it)->Socket()->SS() == kSsUnconnect) {
                     	// 重连
-                        AddConnect(type, ipaddr, port, protocol);
+                    	ReConnect(*it);
                     } else {
                         // 上一次发送时间间隔
                         uint64_t interval = nowTm - (*it)->Socket()->SendTm();
@@ -345,13 +359,11 @@ void wMultiClient::CheckHeartBeat() {
                             // 发送心跳
                             (*it)->HeartbeatSend();
                             if ((*it)->HeartbeatOut()) {
-                            	(*it)->State() = -1;
+                            	(*it)->Socket()->SS() = kSsUnconnect;
+                            	RemoveTask(*it, NULL, false);
                             }
                         }
-                        it++;
                     }
-                } else {
-                	it++;
                 }
             }
         }

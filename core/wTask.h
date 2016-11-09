@@ -29,6 +29,7 @@ class wMultiClient;
 class wTask : private wNoncopyable {
 public:
     wTask(wSocket *socket, int32_t type = 0);
+    void ResetBuffer();
     virtual ~wTask();
 
     // 登录验证
@@ -114,13 +115,7 @@ public:
     inline int32_t Type() {
         return mType;
     }
-
-    inline int8_t& State() {
-    	return mState;
-    }
-
 protected:
-    int8_t mState;
     wStatus mStatus;
 
     int32_t mType;

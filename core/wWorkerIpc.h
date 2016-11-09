@@ -32,8 +32,8 @@ protected:
     wStatus Recv();
 
 	wStatus InitEpoll();
-    wStatus AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool newconn = true);
-    wStatus RemoveTask(wTask* task);
+    wStatus AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
+    wStatus RemoveTask(wTask* task, bool delpool = true);
     wStatus CleanTask();
 
     wStatus AddToTaskPool(wTask *task);
