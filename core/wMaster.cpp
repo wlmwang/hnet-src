@@ -107,13 +107,6 @@ wStatus wMaster::MasterStart() {
         return mStatus;
     }
 
-    // 初始化进程表
-	for (uint32_t i = 0; i < kMaxProcess; i++) {
-		if (!NewWorker(i, &mWorkerPool[i]).Ok()) {
-			return mStatus;
-		}
-	}
-
     // 启动worker工作进程
     if (!WorkerStart(mWorkerNum, kProcessRespawn).Ok()) {
     	return mStatus;
@@ -140,12 +133,15 @@ wStatus wMaster::WorkerStart(uint32_t n, int32_t type) {
 		if (!SpawnWorker(type).Ok()) {
 			return mStatus;
 		}
+
 		// 向所有已启动worker传递刚启动worker的channel描述符
 		struct ChannelReqOpen_t opench;
 		opench.mFD = mWorkerPool[mSlot]->ChannelFD(0);
         opench.mPid = mWorkerPool[mSlot]->mPid;
         opench.mSlot = mSlot;
-        mServer->NotifyWorker(reinterpret_cast<char*>(&opench), sizeof(opench), false);
+
+        std::vector<uint32_t> blacksolt(1, mSlot);
+        mServer->NotifyWorker(reinterpret_cast<char*>(&opench), sizeof(opench), kMaxProcess, &blacksolt);
 	}
 	return mStatus;
 }
@@ -370,7 +366,7 @@ wStatus wMaster::ReapChildren() {
 				closech.mFD = -1;
 				closech.mSlot = i;
 				closech.mPid = mWorkerPool[i]->mPid;
-				mServer->NotifyWorker(reinterpret_cast<char*>(&closech), sizeof(closech), true);
+				mServer->NotifyWorker(reinterpret_cast<char*>(&closech), sizeof(closech));
 
 				// 关闭channel
 				SAFE_DELETE(mWorkerPool[i]);
@@ -386,7 +382,9 @@ wStatus wMaster::ReapChildren() {
 				opench.mFD = mWorkerPool[mSlot]->ChannelFD(0);
 				opench.mPid = mWorkerPool[mSlot]->mPid;
 				opench.mSlot = i;
-				mServer->NotifyWorker(reinterpret_cast<char*>(&opench), sizeof(opench), false);
+
+				std::vector<uint32_t> blacksolt(1, mSlot);
+				mServer->NotifyWorker(reinterpret_cast<char*>(&opench), sizeof(opench), kMaxProcess, &blacksolt);
 
 				mLive = 1;
 				continue;
@@ -443,7 +441,7 @@ void wMaster::SignalWorker(int signo) {
         if (!other) {
 
 	        /* TODO: EAGAIN */
-        	if (mServer->NotifyWorker(ptr, size, false, i).Ok()) {
+        	if (mServer->NotifyWorker(ptr, size, i).Ok()) {
 				if (signo == SIGQUIT || signo == SIGTERM) {
 					mWorkerPool[i]->mExiting = 1;
 				}

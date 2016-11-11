@@ -281,7 +281,7 @@ wStatus wServer::Broadcast(const google::protobuf::Message* msg) {
     return mStatus;
 }
 
-wStatus wServer::NotifyWorker(char *cmd, int len, bool sendme, uint32_t solt) {
+wStatus wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const std::vector<uint32_t>* blacksolt) {
 	ssize_t ret;
 	char buf[kPackageSize];
 	if (solt == kMaxProcess) {
@@ -289,8 +289,7 @@ wStatus wServer::NotifyWorker(char *cmd, int len, bool sendme, uint32_t solt) {
 		for (uint32_t i = 0; i < kMaxProcess; i++) {
 			if (mMaster->Worker(i) == NULL || mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
 				continue;
-			} else if (sendme == false && i == mMaster->mSlot) {
-				// 无需发送给自己
+			} else if (blacksolt != NULL && std::find(blacksolt->begin(), blacksolt->end(), i) != blacksolt->end()) {
 				continue;
 			}
 
@@ -312,7 +311,7 @@ wStatus wServer::NotifyWorker(char *cmd, int len, bool sendme, uint32_t solt) {
     return mStatus;
 }
 
-wStatus wServer::NotifyWorker(const google::protobuf::Message* msg, bool sendme, uint32_t solt) {
+wStatus wServer::NotifyWorker(const google::protobuf::Message* msg, uint32_t solt, const std::vector<uint32_t>* blacksolt) {
 	ssize_t ret;
 	char buf[kPackageSize];
 	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
@@ -320,8 +319,7 @@ wStatus wServer::NotifyWorker(const google::protobuf::Message* msg, bool sendme,
 		for (uint32_t i = 0; i < kMaxProcess; i++) {
 			if (mMaster->Worker(i) == NULL || mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
 				continue;
-			} else if (sendme == false && i == mMaster->mSlot) {
-				// 无需发送给自己
+			} else if (blacksolt != NULL && std::find(blacksolt->begin(), blacksolt->end(), i) != blacksolt->end()) {
 				continue;
 			}
 

@@ -55,9 +55,9 @@ public:
     wStatus Broadcast(char *cmd, int len);
     wStatus Broadcast(const google::protobuf::Message* msg);
 
-    // 发送消息至worker进程
-    wStatus NotifyWorker(char *cmd, int len, bool sendme = false, uint32_t solt = kMaxProcess);
-    wStatus NotifyWorker(const google::protobuf::Message* msg, bool sendme = false, uint32_t solt = kMaxProcess);
+    // 发送消息至worker进程   blacksolt为黑名单
+    wStatus NotifyWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blacksolt = NULL);
+    wStatus NotifyWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blacksolt = NULL);
 
     // 异步发送消息
     wStatus Send(wTask *task, char *cmd, size_t len);
