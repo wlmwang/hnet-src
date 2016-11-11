@@ -107,6 +107,13 @@ wStatus wMaster::MasterStart() {
         return mStatus;
     }
 
+    // 初始化进程表
+	for (uint32_t i = 0; i < kMaxProcess; i++) {
+		if (!NewWorker(i, &mWorkerPool[i]).Ok()) {
+			return mStatus;
+		}
+	}
+
     // 启动worker工作进程
     if (!WorkerStart(mWorkerNum, kProcessRespawn).Ok()) {
     	return mStatus;
@@ -160,17 +167,8 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 		}
 		mSlot = idx;
 	}
-
 	if (mSlot >= kMaxProcess) {
 		return mStatus = wStatus::IOError("wMaster::SpawnWorker failed", "slot overflow");
-	}
-
-	// 新建进程表项
-	if (mWorkerPool[mSlot] != NULL) {
-		SAFE_DELETE(mWorkerPool[mSlot]);
-	}
-	if (!NewWorker(mSlot, &mWorkerPool[mSlot]).Ok()) {
-		return mStatus;
 	}
 	wWorker *worker = mWorkerPool[mSlot];
 
@@ -184,20 +182,22 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 	// 设置第一个描述符的异步IO通知机制
 	u_long on = 1;
     if (ioctl(worker->ChannelFD(0), FIOASYNC, &on) == -1) {
-		// 关闭channel
-    	SAFE_DELETE(mWorkerPool[mSlot]);
+		// 关闭channel && 释放进程表项
+    	worker->Channel()->Close();
     	return mStatus = wStatus::IOError("wMaster::SpawnWorker, ioctl(FIOASYNC) failed", strerror(errno));
     }
     // 设置将要在文件描述符channel[0]上接收SIGIO、SIGURG事件信号的进程标识
     if (fcntl(worker->ChannelFD(0), F_SETOWN, mPid) == -1) {
-    	SAFE_DELETE(mWorkerPool[mSlot]);
+		// 关闭channel && 释放进程表项
+    	worker->Channel()->Close();
     	return mStatus = wStatus::IOError("wMaster::SpawnWorker, fcntl(F_SETOWN) failed", strerror(errno));
     }
 
     pid_t pid = fork();
     switch (pid) {
     case -1:
-    	SAFE_DELETE(mWorkerPool[mSlot]);
+		// 关闭channel && 释放进程表项
+    	worker->Channel()->Close();
         return mStatus = wStatus::IOError("wMaster::SpawnWorker, fork() failed", strerror(errno));
 
     case 0:
@@ -368,8 +368,8 @@ wStatus wMaster::ReapChildren() {
 				closech.mPid = mWorkerPool[i]->mPid;
 				mServer->NotifyWorker(reinterpret_cast<char*>(&closech), sizeof(closech));
 
-				// 关闭channel
-				SAFE_DELETE(mWorkerPool[i]);
+				// 关闭channel && 释放进程表项
+				mWorkerPool[i]->Channel()->Close();
 			}
 			
 			// 重启worker
@@ -453,9 +453,7 @@ void wMaster::SignalWorker(int signo) {
             if (errno == ESRCH) {
                 mWorkerPool[i]->mExited = 1;
                 mWorkerPool[i]->mExiting = 0;
-				
-                SAFE_DELETE(mWorkerPool[i]);
-                g_reap = 1;
+				g_reap = 1;
             }
             continue;
         }
