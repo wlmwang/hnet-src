@@ -14,18 +14,19 @@
 namespace hnet {
 
 class wSocket;
-class wWorker;
+class wMaster;
 
 class wChannelTask : public wTask {
 public:
-    wChannelTask(wSocket *socket, wWorker *worker = NULL);
+    wChannelTask(wSocket *socket, wMaster *master, int32_t type = 0);
 
     int ChannelOpen(struct Request_t *request);
     int ChannelClose(struct Request_t *request);
     int ChannelQuit(struct Request_t *request);
     int ChannelTerminate(struct Request_t *request);
+
 protected:
-    wWorker *mWorker;
+    wMaster *mMaster;
 };
 
 }	// namespace hnet

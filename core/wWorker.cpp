@@ -8,16 +8,16 @@
 #include "wMisc.h"
 #include "wSigSet.h"
 #include "wMaster.h"
-#include "wWorkerIpc.h"
 #include "wConfig.h"
 #include "wServer.h"
+#include "wChannelSocket.h"
 
 namespace hnet {
 
 wWorker::wWorker(std::string title, uint32_t slot, wMaster* master) : mMaster(master), mTitle(title), mPid(-1),
 mPriority(0), mRlimitCore(kRlimitCore), mSlot(slot) {
-	SAFE_NEW(wChannelSocket(), mChannel);
-	SAFE_NEW(wWorkerIpc(this), mIpc);
+	// 进程间通信socket
+	SAFE_NEW(wChannelSocket(kStConnect), mChannel);
 }
 
 wWorker::~wWorker() {
@@ -43,6 +43,8 @@ wStatus wWorker::Prepare() {
         }
     }
 	
+    // 只保留自身worker进程的channel[1]与其他所有worker进程的channel[0]描述符
+    // 1 0 0...
 	// 将其他进程的channel[1]关闭，自己的除外
     for (uint32_t n = 0; n < kMaxProcess; n++) {
     	if (n == mSlot || mMaster->Worker(n) == NULL || mMaster->Worker(n)->mPid == -1) {
@@ -51,7 +53,6 @@ wStatus wWorker::Prepare() {
     		return mStatus = wStatus::IOError("wWorker::Prepare, channel close() failed", strerror(errno));
     	}
     }
-
     // 关闭该进程worker进程的ch[0]描述符
     if (close(mMaster->Worker(mSlot)->ChannelFD(0)) == -1) {
     	return mStatus = wStatus::IOError("wWorker::Prepare, channel close() failed", strerror(errno));
@@ -68,15 +69,6 @@ wStatus wWorker::Prepare() {
 		return mStatus;
 	}
 
-    // 开启worker ipc进程通信线程
-	if (mIpc != NULL) {
-		mStatus = mIpc->PrepareStart();
-		if (mStatus.Ok()) {
-			mIpc->StartThread();
-		}
-	} else {
-		mStatus = wStatus::IOError("wWorker::Prepare, start thread failed", "new ipc failed");
-	}
 	return mStatus;
 }
 

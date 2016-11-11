@@ -9,18 +9,22 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <poll.h> 
-#include "wServer.h"
 #include "wEnv.h"
+#include "wServer.h"
 #include "wConfig.h"
 #include "wSem.h"
+#include "wMaster.h"
+#include "wWorker.h"
 #include "wTcpSocket.h"
 #include "wUnixSocket.h"
+#include "wChannelSocket.h"
 #include "wTcpTask.h"
 #include "wUnixTask.h"
+#include "wChannelTask.h"
 
 namespace hnet {
 
-wServer::wServer(wConfig* config) : mConfig(config), mExiting(false), mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
+wServer::wServer(wConfig* config) : mMaster(NULL), mConfig(config), mExiting(false), mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
 mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mUseAcceptTurn(true), mAcceptHeld(false), mAcceptSem(NULL) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
@@ -72,6 +76,8 @@ wStatus wServer::WorkerStart(bool daemon) {
 		return mStatus;
     } else if (!Listener2Epoll().Ok()) {
 		return mStatus;
+    } else if (!Channel2Epoll().Ok()) {
+    	return mStatus;
     }
 
     // 进入服务主循环
@@ -117,6 +123,14 @@ wStatus wServer::NewUnixTask(wSocket* sock, wTask** ptr) {
     SAFE_NEW(wUnixTask(sock, Shard(sock)), *ptr);
     if (*ptr == NULL) {
 		return wStatus::IOError("wServer::NewUnixTask", "new failed");
+    }
+    return mStatus;
+}
+
+wStatus wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
+	SAFE_NEW(wChannelTask(sock, mMaster, Shard(sock)), *ptr);
+    if (*ptr == NULL) {
+		return wStatus::IOError("wServer::NewChannelTask", "new failed");
     }
     return mStatus;
 }
@@ -243,7 +257,10 @@ wStatus wServer::Broadcast(char *cmd, int len) {
     for (int i = 0; i < kServerNumShard; i++) {
 	    if (mTaskPool[i].size() > 0) {
 			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
-				Send(*it, cmd, len);
+				if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected && (*it)->Socket()->SP() != kSpChannel
+				&& ((*it)->Socket()->SF() == kSfSend || (*it)->Socket()->SF() == kSfRvsd)) {
+					Send(*it, cmd, len);
+				}
 			}
 	    }
     }
@@ -254,36 +271,90 @@ wStatus wServer::Broadcast(const google::protobuf::Message* msg) {
     for (int i = 0; i < kServerNumShard; i++) {
 	    if (mTaskPool[i].size() > 0) {
 			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
-				Send(*it, msg);
+				if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected && (*it)->Socket()->SP() != kSpChannel
+				&& ((*it)->Socket()->SF() == kSfSend || (*it)->Socket()->SF() == kSfRvsd)) {
+					Send(*it, msg);
+				}
 			}
 	    }
     }
     return mStatus;
 }
 
-wStatus wServer::Send(wTask *task, char *cmd, size_t len) {
-    if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected
-    	&& (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
-		mStatus = task->Send2Buf(cmd, len);
-		if (mStatus.Ok()) {
-		    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+wStatus wServer::NotifyWorker(char *cmd, int len, bool sendme, uint32_t solt) {
+	ssize_t ret;
+	char buf[kPackageSize];
+	if (solt == kMaxProcess) {
+		// 广播消息
+		for (uint32_t i = 0; i < kMaxProcess; i++) {
+			if (mMaster->Worker(i) == NULL || mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
+				continue;
+			} else if (sendme == false && i == mMaster->mSlot) {
+				// 无需发送给自己
+				continue;
+			}
+
+			/* TODO: EAGAIN */
+			wTask::Assertbuf(buf, cmd, len);
+			mStatus = mMaster->Worker(i)->Channel()->SendBytes(buf, sizeof(uint32_t) + sizeof(uint8_t) + len, &ret);
+	    }
+	} else {
+		if (mMaster->Worker(solt) != NULL && mMaster->Worker(solt)->mPid != -1 && mMaster->Worker(solt)->ChannelFD(0) != kFDUnknown) {
+
+			/* TODO: EAGAIN */
+			wTask::Assertbuf(buf, cmd, len);
+			mStatus = mMaster->Worker(solt)->Channel()->SendBytes(buf, sizeof(uint32_t) + sizeof(uint8_t) + len, &ret);
+		} else {
+			mStatus = wStatus::IOError("wServer::NotifyWorker failed 1", "worker channel is null");
 		}
-    } else {
-		mStatus = wStatus::IOError("wServer::Send, send error", "socket cannot send message");
-    }
+	}
+
+    return mStatus;
+}
+
+wStatus wServer::NotifyWorker(const google::protobuf::Message* msg, bool sendme, uint32_t solt) {
+	ssize_t ret;
+	char buf[kPackageSize];
+	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
+	if (solt == kMaxProcess) {
+		for (uint32_t i = 0; i < kMaxProcess; i++) {
+			if (mMaster->Worker(i) == NULL || mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
+				continue;
+			} else if (sendme == false && i == mMaster->mSlot) {
+				// 无需发送给自己
+				continue;
+			}
+
+			/* TODO: EAGAIN */
+			wTask::Assertbuf(buf, msg);
+			mStatus = mMaster->Worker(i)->Channel()->SendBytes(buf, sizeof(uint32_t) + len, &ret);
+	    }
+	} else {
+		if (mMaster->Worker(solt) != NULL && mMaster->Worker(solt)->mPid != -1 && mMaster->Worker(solt)->ChannelFD(0) != kFDUnknown) {
+
+			/* TODO: EAGAIN */
+			wTask::Assertbuf(buf, msg);
+			mStatus = mMaster->Worker(solt)->Channel()->SendBytes(buf, sizeof(uint32_t) + len, &ret);
+		} else {
+			mStatus = wStatus::IOError("wServer::NotifyWorker failed 2", "worker channel is null");
+		}
+	}
+    return mStatus;
+}
+
+wStatus wServer::Send(wTask *task, char *cmd, size_t len) {
+	mStatus = task->Send2Buf(cmd, len);
+	if (mStatus.Ok()) {
+	    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+	}
     return mStatus;
 }
 
 wStatus wServer::Send(wTask *task, const google::protobuf::Message* msg) {
-    if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected
-    	&& (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
-		mStatus = task->Send2Buf(msg);
-		if (mStatus.Ok()) {
-		    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
-		}
-    } else {
-		mStatus = wStatus::IOError("wServer::Send, send error", "socket cannot send message");
-    }
+	mStatus = task->Send2Buf(msg);
+	if (mStatus.Ok()) {
+	    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+	}
     return mStatus;
 }
 
@@ -327,11 +398,11 @@ wStatus wServer::Listener2Epoll() {
     wTask *task;
     for (std::vector<wSocket *>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
 		switch ((*it)->SP()) {
-		case kSpUnix:
-		    mStatus = NewUnixTask(*it, &task);
-		    break;
 		case kSpTcp:
 		    mStatus = NewTcpTask(*it, &task);
+		    break;
+		case kSpUnix:
+		    mStatus = NewUnixTask(*it, &task);
 		    break;
 		default:
 			task = NULL;
@@ -340,12 +411,35 @@ wStatus wServer::Listener2Epoll() {
 		if (mStatus.Ok()) {
 		    if (!AddTask(task).Ok()) {
 				SAFE_DELETE(task);
-				break;
 		    }
-		} else {
-			break;
 		}
     }
+    return mStatus;
+}
+
+wStatus wServer::CleanListener() {
+    for (std::vector<wSocket *>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
+		SAFE_DELETE(*it);
+    }
+    mListenSock.clear();
+    return mStatus;
+}
+
+wStatus wServer::Channel2Epoll() {
+	if (mMaster != NULL && mMaster->Worker(mMaster->mSlot) != NULL) {
+		wChannelSocket *socket = mMaster->Worker(mMaster->mSlot)->Channel();
+		if (socket != NULL) {
+			wTask *task;
+			mStatus = NewChannelTask(socket, &task);
+			if (mStatus.Ok()) {
+				mStatus = AddTask(task);
+			}
+		} else {
+			mStatus = wStatus::IOError("wServer::Channel2Epoll failed", "channel is null");
+		}
+	} else {
+		mStatus = wStatus::IOError("wServer::Channel2Epoll failed", "worker is null");
+	}
     return mStatus;
 }
 
@@ -415,14 +509,6 @@ wStatus wServer::CleanTaskPool(std::vector<wTask*> pool) {
     return mStatus;
 }
 
-wStatus wServer::CleanListener() {
-    for (std::vector<wSocket *>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
-		SAFE_DELETE(*it);
-    }
-    mListenSock.clear();
-    return mStatus;
-}
-
 void wServer::CheckTick() {
 	if (mScheduleMutex.TryLock() == 0) {
 		mTick = misc::GetTimeofday() - mLatestTm;
@@ -455,7 +541,7 @@ void wServer::CheckHeartBeat() {
     	mTaskPoolMutex[i].Lock();
 	    if (mTaskPool[i].size() > 0) {
 			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end();) {
-			    if ((*it)->Socket()->ST() == kStConnect) {
+			    if ((*it)->Socket()->ST() == kStConnect && ((*it)->Socket()->SP() == kSpTcp || (*it)->Socket()->SP() == kSpUnix)) {
 			    	if ((*it)->Socket()->SS() == kSsUnconnect) {
 			    		RemoveTask(*it, &it);
 			    	} else {

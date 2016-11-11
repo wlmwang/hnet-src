@@ -44,7 +44,6 @@ OBJECTS=./$(COREPATH)/wCrc32c.o \
 		./$(COREPATH)/wMultiClient.o \
 		./$(COREPATH)/wMaster.o \
 		./$(COREPATH)/wWorker.o \
-		./$(COREPATH)/wWorkerIpc.o \
 		./$(COREPATH)/wConfig.o \
 		./$(COREPATH)/wServer.o \
 		\

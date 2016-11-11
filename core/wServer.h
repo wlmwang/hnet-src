@@ -29,6 +29,7 @@ class wConfig;
 class wTask;
 class wSem;
 class wMaster;
+class wWorker;
 
 // 服务基础类
 class wServer : private wNoncopyable {
@@ -53,6 +54,11 @@ public:
     // 异步广播消息
     wStatus Broadcast(char *cmd, int len);
     wStatus Broadcast(const google::protobuf::Message* msg);
+
+    // 发送消息至worker进程
+    wStatus NotifyWorker(char *cmd, int len, bool sendme = false, uint32_t solt = kMaxProcess);
+    wStatus NotifyWorker(const google::protobuf::Message* msg, bool sendme = false, uint32_t solt = kMaxProcess);
+
     // 异步发送消息
     wStatus Send(wTask *task, char *cmd, size_t len);
     wStatus Send(wTask *task, const google::protobuf::Message* msg);
@@ -63,6 +69,7 @@ public:
     // 新建客户端
     virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr);
     virtual wStatus NewUnixTask(wSocket* sock, wTask** ptr);
+    virtual wStatus NewChannelTask(wSocket* sock, wTask** ptr);
     
     virtual wStatus PrepareRun() {
         return mStatus;
@@ -82,6 +89,7 @@ public:
 
 protected:
     friend class wMaster;
+    friend class wWorker;
   
     // 散列到mTaskPool的某个分组中
     static uint32_t Shard(wSocket* sock) {
@@ -96,9 +104,12 @@ protected:
 
     wStatus InitEpoll();
     wStatus AddListener(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
-    // 添加到epoll侦听事件队列
+
+    // 添加listen socket到epoll侦听事件队列
     wStatus Listener2Epoll();
     wStatus CleanListener();
+
+    wStatus Channel2Epoll();
 
     wStatus AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
     wStatus RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
@@ -111,6 +122,7 @@ protected:
     static void ScheduleRun(void* argv);
 
     wStatus mStatus;
+    wMaster* mMaster;	// 引用进程表
     wConfig* mConfig;
     bool mExiting;
 
@@ -126,7 +138,7 @@ protected:
     bool mScheduleOk;
     wMutex mScheduleMutex;
 
-    // 多监听服务
+    // 多listen socket监听服务描述符
     std::vector<wSocket *> mListenSock;
 
     int32_t mEpollFD;

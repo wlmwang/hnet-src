@@ -20,7 +20,7 @@ const uint32_t	kRlimitCore = 65535;
 const char     	kWorkerTitle[] = " - worker process";
 
 class wMaster;
-class wWorkerIpc;
+class wServer;
 
 class wWorker : public wNoncopyable {
 public:
@@ -38,18 +38,17 @@ public:
 	wStatus Prepare();
 	wStatus Start();
 
+	inline pid_t& Pid() { return mPid;}
 	inline wMaster* Master() { return mMaster;}
-    inline pid_t& Pid() { return mPid;}
     inline wChannelSocket* Channel() { return mChannel;}
     inline int& ChannelFD(uint8_t i) { return (*mChannel)[i];}
 
 protected:
 	friend class wMaster;
-	friend class wWorkerIpc;
+	friend class wServer;
 
 	wStatus mStatus;
-	wMaster *mMaster;
-	wWorkerIpc *mIpc;
+	wMaster *mMaster;	// 引用进程表
 	string mTitle;	// 进程名
 	pid_t mPid;
 	int mPriority;	// 进程优先级

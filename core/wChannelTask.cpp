@@ -13,7 +13,7 @@
 
 namespace hnet {
 
-wChannelTask::wChannelTask(wSocket *socket, wWorker *worker) : wTask(socket), mWorker(worker) {
+wChannelTask::wChannelTask(wSocket *socket, wMaster *master, int32_t type) : wTask(socket, type), mMaster(master) {
 	On(CMD_CHANNEL_REQ, CHANNEL_REQ_OPEN, &wChannelTask::ChannelOpen, this);
 	On(CMD_CHANNEL_REQ, CHANNEL_REQ_CLOSE, &wChannelTask::ChannelClose, this);
 	On(CMD_CHANNEL_REQ, CHANNEL_REQ_QUIT, &wChannelTask::ChannelQuit, this);
@@ -22,20 +22,20 @@ wChannelTask::wChannelTask(wSocket *socket, wWorker *worker) : wTask(socket), mW
 
 int wChannelTask::ChannelOpen(struct Request_t *request) {
 	struct ChannelReqOpen_t* ch = reinterpret_cast<struct ChannelReqOpen_t*>(request->mBuf);
-	if (mWorker->Master()->Worker(ch->mSlot) != NULL) {
-		mWorker->Master()->Worker(ch->mSlot)->Pid() = ch->mPid;
-		mWorker->Master()->Worker(ch->mSlot)->ChannelFD(0) = ch->mPid;
+	if (mMaster->Worker(ch->mSlot) != NULL) {
+		mMaster->Worker(ch->mSlot)->Pid() = ch->mPid;
+		mMaster->Worker(ch->mSlot)->ChannelFD(0) = ch->mPid;
 	}
 	return 0;
 }
 
 int wChannelTask::ChannelClose(struct Request_t *request) {
 	struct ChannelReqClose_t* ch = reinterpret_cast<struct ChannelReqClose_t*>(request->mBuf);
-	if (mWorker->Master()->Worker(ch->mSlot) != NULL) {
-		if (close(mWorker->Master()->Worker(ch->mSlot)->ChannelFD(0)) == -1) {
-			//wStatus::IOError("wChannelTask::ChannelClose, close() failed", strerror(errno));
+	if (mMaster->Worker(ch->mSlot) != NULL && mMaster->Worker(ch->mSlot)->ChannelFD(0) != kFDUnknown) {
+		if (close(mMaster->Worker(ch->mSlot)->ChannelFD(0)) == -1) {
+			wStatus::IOError("wChannelTask::ChannelClose, close() failed", strerror(errno));
 		}
-		mWorker->Master()->Worker(ch->mSlot)->ChannelFD(0) = kFDUnknown;
+		mMaster->Worker(ch->mSlot)->ChannelFD(0) = kFDUnknown;
 	}
 	return 0;
 }

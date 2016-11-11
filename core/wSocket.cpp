@@ -17,7 +17,7 @@ wSocket::~wSocket() {
 }
 
 wStatus wSocket::Close() {
-    if (close(mFD) == -1) {
+    if (mFD != kFDUnknown && close(mFD) == -1) {
         return mStatus = wStatus::IOError("wSocket::Close failed", strerror(errno));
     }
     mFD = kFDUnknown;

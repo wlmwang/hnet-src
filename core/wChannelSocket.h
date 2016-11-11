@@ -18,7 +18,7 @@ namespace hnet {
 // master-worker间的IPC通信
 class wChannelSocket : public wSocket {
 public:
-    wChannelSocket(SockType type = kStListen, SockProto proto = kSpChannel, SockFlag flag = kSfRvsd) : wSocket(type, proto, flag) {
+    wChannelSocket(SockType type = kStConnect, SockProto proto = kSpChannel, SockFlag flag = kSfRvsd) : wSocket(type, proto, flag) {
         mChannel[0] = mChannel[1] = kFDUnknown;
     }
     

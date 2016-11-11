@@ -11,16 +11,15 @@
 #include "wSigSet.h"
 #include "wSignal.h"
 #include "wWorker.h"
-#include "wChannelCmd.h" // *channel*_t
-#include "wChannelSocket.h"
 #include "wTask.h"
 #include "wServer.h"
+#include "wChannelCmd.h"
 
 namespace hnet {
 
 wMaster::wMaster(const std::string& title, wServer* server) : mServer(server), mPid(getpid()),
 mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0), mLive(1) {
-    // pid文件路径
+	// 进程pid文件
     std::string pid_path;
 	if (mServer->Config()->GetConf("pid_path", &pid_path) && pid_path.size() > 0) {
 		mPidPath = pid_path;
@@ -29,6 +28,7 @@ mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0), mLive(1) {
 	}
 	mWorkerNum = mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
 	memset(mWorkerPool, 0, sizeof(mWorkerPool));
+	mServer->mMaster = this;
 }
 
 wMaster::~wMaster() {
@@ -126,6 +126,143 @@ wStatus wMaster::MasterStart() {
     }
 }
 
+wStatus wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
+    SAFE_NEW(wWorker(mTitle, slot, this), *ptr);
+    if (*ptr == NULL) {
+		return mStatus = wStatus::IOError("wMaster::NewWorker", "new failed");
+    }
+    return mStatus;
+}
+
+wStatus wMaster::WorkerStart(uint32_t n, int32_t type) {
+	for (uint32_t i = 0; i < n; ++i) {
+		// 启动worker
+		if (!SpawnWorker(type).Ok()) {
+			return mStatus;
+		}
+		// 向所有已启动worker传递刚启动worker的channel描述符
+		struct ChannelReqOpen_t opench;
+		opench.mFD = mWorkerPool[mSlot]->ChannelFD(0);
+        opench.mPid = mWorkerPool[mSlot]->mPid;
+        opench.mSlot = mSlot;
+        mServer->NotifyWorker(reinterpret_cast<char*>(&opench), sizeof(opench), false);
+	}
+	return mStatus;
+}
+
+wStatus wMaster::SpawnWorker(int64_t type) {
+	if (type >= 0) {
+		// 启动指定索引worker进程
+		mSlot = static_cast<uint32_t>(type);
+	} else {
+		// 启动指定类型worker进程
+		uint32_t idx;
+		for (idx = 0; idx < kMaxProcess; ++idx) {
+			if (mWorkerPool[idx] == NULL || mWorkerPool[idx]->mPid == -1) {
+				break;
+			}
+		}
+		mSlot = idx;
+	}
+
+	if (mSlot >= kMaxProcess) {
+		return mStatus = wStatus::IOError("wMaster::SpawnWorker failed", "slot overflow");
+	}
+
+	// 新建进程表项
+	if (mWorkerPool[mSlot] != NULL) {
+		SAFE_DELETE(mWorkerPool[mSlot]);
+	}
+	if (!NewWorker(mSlot, &mWorkerPool[mSlot]).Ok()) {
+		return mStatus;
+	}
+	wWorker *worker = mWorkerPool[mSlot];
+
+	// 打开进程间IPC通信channel
+	mStatus = worker->Channel()->Open();
+	if (!mStatus.Ok()) {
+		return mStatus;
+	}
+	worker->Channel()->SS() = kSsConnected;
+
+	// 设置第一个描述符的异步IO通知机制
+	u_long on = 1;
+    if (ioctl(worker->ChannelFD(0), FIOASYNC, &on) == -1) {
+		// 关闭channel
+    	SAFE_DELETE(mWorkerPool[mSlot]);
+    	return mStatus = wStatus::IOError("wMaster::SpawnWorker, ioctl(FIOASYNC) failed", strerror(errno));
+    }
+    // 设置将要在文件描述符channel[0]上接收SIGIO、SIGURG事件信号的进程标识
+    if (fcntl(worker->ChannelFD(0), F_SETOWN, mPid) == -1) {
+    	SAFE_DELETE(mWorkerPool[mSlot]);
+    	return mStatus = wStatus::IOError("wMaster::SpawnWorker, fcntl(F_SETOWN) failed", strerror(errno));
+    }
+
+    pid_t pid = fork();
+    switch (pid) {
+    case -1:
+    	SAFE_DELETE(mWorkerPool[mSlot]);
+        return mStatus = wStatus::IOError("wMaster::SpawnWorker, fork() failed", strerror(errno));
+
+    case 0:
+    	// worker进程
+        worker->mPid = getpid();
+        mStatus = worker->Prepare();
+        if (!mStatus.Ok()) {
+        	// 启动失败
+        	exit(2);
+        }
+        // 进入worker主循环
+        mStatus = worker->Start();
+        exit(0);
+    }
+
+    // 主进程master更新进程表
+    worker->mSlot = mSlot;
+    worker->mPid = pid;
+	worker->mExited = 0;
+	worker->mExiting = 0;
+
+	if (type >= 0) {
+		return mStatus;
+	}
+
+    switch (type) {
+	case kProcessNoRespawn:
+		worker->mRespawn = 0;
+		worker->mJustSpawn = 0;
+		worker->mDetached = 0;
+		break;
+
+	case kProcessRespawn:
+		worker->mRespawn = 1;
+		worker->mJustSpawn = 0;
+		worker->mDetached = 0;
+		break;
+
+	case kProcessJustSpawn:
+		worker->mRespawn = 0;
+		worker->mJustSpawn = 1;
+		worker->mDetached = 0;
+
+	case kProcessJustRespawn:
+		worker->mRespawn = 1;
+		worker->mJustSpawn = 1;
+		worker->mDetached = 0;
+
+	case kProcessDetached:
+		worker->mRespawn = 0;
+		worker->mJustSpawn = 0;
+		worker->mDetached = 1;
+    }
+
+    return mStatus;
+}
+
+wStatus wMaster::Reload() {
+	return mStatus;
+}
+
 wStatus wMaster::HandleSignal() {
 	if (mDelay) {
 		if (g_sigalrm) {
@@ -146,21 +283,19 @@ wStatus wMaster::HandleSignal() {
 		}
 	}
 
-	// 阻塞方式等待信号量。会被上面设置的定时器打断
+	// 阻塞方式等待信号量，定时器控制超时
 	wSigSet ss;
 	ss.Suspend();
 	
 	// SIGCHLD
 	if (g_reap) {
 		g_reap = 0;
-		
-		// waitpid
 		WorkerExitStat();
-		// 有worker退出，重启
+		// 重启退出的worker
 		mStatus = ReapChildren();
 	}
 	
-	// worker都退出，且收到了退出信号，则master退出
+	// 所有worker退出，且收到了退出信号，则master退出
 	if (!mLive && (g_terminate || g_quit)) {
 		ProcessExit();
 	    DeletePidFile();
@@ -217,11 +352,6 @@ wStatus wMaster::HandleSignal() {
 	return mStatus;
 }
 
-wStatus wMaster::Reload() {
-	// todo
-	return mStatus;
-}
-
 wStatus wMaster::ReapChildren() {
 	mLive = 0;
 	for (uint32_t i = 0; i < kMaxProcess; i++) {
@@ -231,118 +361,102 @@ wStatus wMaster::ReapChildren() {
 
         // 进程已退出
 		if (mWorkerPool[i]->mExited) {
-			if (!mWorkerPool[i]->mDetached) {
-				// 非分离进程同步文件描述符
-				struct ChannelReqClose_t ch;
-				ch.mFD = -1;
-				ch.mSlot = i;
-				ch.mPid = mWorkerPool[i]->mPid;
-				PassCloseChannel(&ch);
+			int detached = mWorkerPool[i]->mDetached;
+			int respawn = mWorkerPool[i]->mRespawn;
+			int exiting = mWorkerPool[i]->mExiting;
+			if (!detached) {
+				// 向所有已启动worker传递关闭worker的channel消息
+				struct ChannelReqClose_t closech;
+				closech.mFD = -1;
+				closech.mSlot = i;
+				closech.mPid = mWorkerPool[i]->mPid;
+				mServer->NotifyWorker(reinterpret_cast<char*>(&closech), sizeof(closech), true);
 
 				// 关闭channel
-				mWorkerPool[i]->Channel()->Close();
+				SAFE_DELETE(mWorkerPool[i]);
 			}
 			
 			// 重启worker
-			if (mWorkerPool[i]->mRespawn && !mWorkerPool[i]->mExiting && !g_terminate && !g_quit) {
+			if (respawn && !exiting && !g_terminate && !g_quit) {
 				if (!SpawnWorker(i).Ok()) {
 					continue;
 				}
-				
-				// 同步文件描述符
-				struct ChannelReqOpen_t ch;
-				ch.mFD = mWorkerPool[mSlot]->ChannelFD(0);
-				ch.mPid = mWorkerPool[mSlot]->mPid;
-				ch.mSlot = i;
-				PassOpenChannel(&ch);
+				// 向所有已启动worker传递刚启动worker的channel描述符
+				struct ChannelReqOpen_t opench;
+				opench.mFD = mWorkerPool[mSlot]->ChannelFD(0);
+				opench.mPid = mWorkerPool[mSlot]->mPid;
+				opench.mSlot = i;
+				mServer->NotifyWorker(reinterpret_cast<char*>(&opench), sizeof(opench), false);
 
 				mLive = 1;
 				continue;
 			}
 		} else if (mWorkerPool[i]->mExiting || !mWorkerPool[i]->mDetached) {
+			// 进程正在退出，且不为分离进程，则总认为有存活进程
 			mLive = 1;
 		}
     }
-
     return mStatus;
 }
 
-wStatus wMaster::WorkerStart(uint32_t n, int32_t type) {
-	for (uint32_t i = 0; i < n; ++i) {
-		if (!SpawnWorker(type).Ok()) {
-			return mStatus;
-		}
-		struct ChannelReqOpen_t opench;
-		opench.mFD = mWorkerPool[mSlot]->ChannelFD(0);
-        opench.mPid = mWorkerPool[mSlot]->mPid;
-        opench.mSlot = mSlot;
-        PassOpenChannel(&opench);
-	}
-	return mStatus;
-}
-
 void wMaster::SignalWorker(int signo) {
-	struct ChannelReqQuit_t chopen;
-	struct ChannelReqTerminate_t chclose;
-	struct ChannelReqCmd_s* ch = NULL;
-
 	int other = 0;
+	char *ptr = NULL;
 	size_t size = 0;
+
 	switch (signo) {
 	case SIGQUIT:
-		ch = reinterpret_cast<ChannelReqCmd_s*>(&chopen);
-		ch->mFD = -1;
-		size = sizeof(chopen);
+		{
+			struct ChannelReqQuit_t ch;
+			ch.mFD = -1;
+			ptr = reinterpret_cast<char*>(&ch);
+			size = sizeof(ch);
+		}
 		break;
 			
 	case SIGTERM:
-		ch = reinterpret_cast<ChannelReqCmd_s*>(&chclose);
-		ch->mFD = -1;
-		size = sizeof(chclose);
+		{
+			struct ChannelReqTerminate_t ch;
+			ch.mFD = -1;
+			ptr = reinterpret_cast<char*>(&ch);
+			size = sizeof(ch);
+		}
 		break;
 
 	default:
 		other = 1;
 	}
-
-	char *ptr = NULL;
-	if (!other) {
-		// wcommand消息长度
-		SAFE_NEW_VEC(size + sizeof(uint8_t) + sizeof(uint32_t), char, ptr);
-	}
 	
 	for (uint32_t i = 0; i < kMaxProcess; i++) {
-		// 分离进程
         if (mWorkerPool[i] == NULL || mWorkerPool[i]->mDetached || mWorkerPool[i]->mPid == -1) {
+        	// 分离进程
         	continue;
-        }
-        // 进程正在重启
-        if (mWorkerPool[i]->mJustSpawn) {
+        } else if (mWorkerPool[i]->mJustSpawn) {
+        	// 进程正在重启(重启命令)
         	mWorkerPool[i]->mJustSpawn = 0;
         	continue;
-        }
-        // 正在强制退出
-		if (mWorkerPool[i]->mExiting && signo == SIGQUIT) {
+        } else if (mWorkerPool[i]->mExiting && signo == SIGQUIT) {
+			// 正在退出
 			continue;
 		}
 		
         if (!other) {
+
 	        /* TODO: EAGAIN */
-        	ssize_t ret;
-        	wTask::Assertbuf(ptr, reinterpret_cast<char*>(ch), size);
-			if (mWorkerPool[i]->Channel()->SendBytes(ptr, size + sizeof(uint8_t) + sizeof(uint32_t), &ret).Ok()) {
+        	if (mServer->NotifyWorker(ptr, size, false, i).Ok()) {
 				if (signo == SIGQUIT || signo == SIGTERM) {
 					mWorkerPool[i]->mExiting = 1;
 				}
 				continue;
-			}
+        	}
 		}
 
-        if (kill(mWorkerPool[i]->mPid, signo) == -1) {            
+        if (kill(mWorkerPool[i]->mPid, signo) == -1) {
             if (errno == ESRCH) {
                 mWorkerPool[i]->mExited = 1;
                 mWorkerPool[i]->mExiting = 0;
 				
+                SAFE_DELETE(mWorkerPool[i]);
                 g_reap = 1;
             }
             continue;
@@ -353,163 +467,6 @@ void wMaster::SignalWorker(int signo) {
         	mWorkerPool[i]->mExiting = 1;
         }
     }
-    
-    if (!other) {
-    	SAFE_DELETE_VEC(ptr);
-    }
-}
-
-void wMaster::PassOpenChannel(const struct ChannelReqOpen_t *ch) {
-	char *ptr;
-	size_t size = sizeof(struct ChannelReqOpen_t);
-	SAFE_NEW_VEC(size + sizeof(uint32_t) + sizeof(uint8_t), char, ptr);
-
-	ssize_t ret;
-	for (uint32_t i = 0; i < kMaxProcess; i++) {
-		// 无需发送给自己
-        if (i == mSlot || mWorkerPool[i] == NULL || mWorkerPool[i]->mPid == -1) {
-        	continue;
-        }
-
-        /* TODO: EAGAIN */
-		wTask::Assertbuf(ptr, reinterpret_cast<const char*>(ch), size);
-		mWorkerPool[i]->Channel()->SendBytes(ptr, sizeof(uint32_t) + sizeof(uint8_t) + size, &ret);
-    }
-    SAFE_DELETE_VEC(ptr);
-}
-
-void wMaster::PassCloseChannel(const struct ChannelReqClose_t *ch) {
-	char *ptr;
-	size_t size = sizeof(struct ChannelReqClose_t);
-	SAFE_NEW_VEC(size + sizeof(uint32_t) + sizeof(uint8_t), char, ptr);
-
-    ssize_t ret;
-	for (uint32_t i = 0; i < kMaxProcess; i++) {
-		// 不发送已退出worker
-		if (mWorkerPool[i] == NULL || mWorkerPool[i]->mExited || mWorkerPool[i]->mPid == -1) {
-			continue;
-		}
-        
-        /* TODO: EAGAIN */
-		wTask::Assertbuf(ptr, reinterpret_cast<const char*>(ch), size);
-		mWorkerPool[i]->Channel()->SendBytes(ptr, sizeof(uint32_t) + sizeof(uint8_t) + size, &ret);
-    }
-    SAFE_DELETE_VEC(ptr);
-}
-
-wStatus wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
-    SAFE_NEW(wWorker(mTitle, slot, this), *ptr);
-    if (*ptr == NULL) {
-		return mStatus = wStatus::IOError("wMaster::NewWorker", "new failed");
-    }
-    return mStatus;
-}
-
-wStatus wMaster::SpawnWorker(int64_t type) {
-	if (type >= 0) {
-		// 启动指定索引worker进程
-		mSlot = static_cast<uint32_t>(type);
-	} else {
-		uint32_t idx;
-		for (idx = 0; idx < kMaxProcess; ++idx) {
-			if (mWorkerPool[idx] == NULL || mWorkerPool[idx]->mPid == -1) {
-				break;
-			}
-		}
-		mSlot = idx;
-	}
-
-	if (mSlot >= kMaxProcess) {
-		return mStatus = wStatus::IOError("wMaster::SpawnWorker failed", "mSlot overflow");
-	}
-
-	// 新建|覆盖 进程表项
-	if (mWorkerPool[mSlot] == NULL) {
-		if (!NewWorker(mSlot, &mWorkerPool[mSlot]).Ok()) {
-			return mStatus;
-		}
-	}
-	wWorker *worker = mWorkerPool[mSlot];
-	
-	// 打开进程间IPC通信channel
-	mStatus = worker->Channel()->Open();
-	if (!mStatus.Ok()) {
-		return mStatus;
-	}
-
-	// 设置第一个描述符的异步IO通知机制
-	// FIOASYNC现已被O_ASYNC标志位取代
-	// todo
-	u_long on = 1;
-    if (ioctl(worker->ChannelFD(0), FIOASYNC, &on) == -1) {
-		// 关闭channel
-    	worker->Channel()->Close();
-    	return mStatus = wStatus::IOError("wMaster::SpawnWorker, ioctl(FIOASYNC) failed", strerror(errno));
-    }
-    // 设置将要在文件描述符channel[0]上接收SIGIO 或 SIGURG事件信号的进程标识
-    if (fcntl(worker->ChannelFD(0), F_SETOWN, mPid) == -1) {
-    	worker->Channel()->Close();
-    	return mStatus = wStatus::IOError("wMaster::SpawnWorker, fcntl(F_SETOWN) failed", strerror(errno));
-    }
-
-    pid_t pid = fork();
-    switch (pid) {
-    case -1:
-    	worker->Channel()->Close();
-        return mStatus = wStatus::IOError("wMaster::SpawnWorker, fork() failed", strerror(errno));
-
-    case 0:
-    	// worker进程
-        worker->mPid = getpid();
-        mStatus = worker->Prepare();
-        if (!mStatus.Ok()) {
-        	exit(2);
-        }
-        // 进入worker主循环
-        mStatus = worker->Start();
-        exit(0);
-    }
-
-    // 主进程master更新进程表
-    worker->mSlot = mSlot;
-    worker->mPid = pid;
-	worker->mExited = 0;
-	worker->mExiting = 0;
-	
-	if (type >= 0) {
-		return mStatus;
-	}
-
-    switch (type) {
-	case kProcessNoRespawn:
-		worker->mRespawn = 0;
-		worker->mJustSpawn = 0;
-		worker->mDetached = 0;
-		break;
-
-	case kProcessRespawn:
-		worker->mRespawn = 1;
-		worker->mJustSpawn = 0;
-		worker->mDetached = 0;
-		break;
-		
-	case kProcessJustSpawn:
-		worker->mRespawn = 0;
-		worker->mJustSpawn = 1;
-		worker->mDetached = 0;
-
-	case kProcessJustRespawn:
-		worker->mRespawn = 1;
-		worker->mJustSpawn = 1;
-		worker->mDetached = 0;
-
-	case kProcessDetached:
-		worker->mRespawn = 0;
-		worker->mJustSpawn = 0;
-		worker->mDetached = 1;
-    }
-	
-    return mStatus;
 }
 
 wStatus wMaster::CreatePidFile() {
@@ -575,12 +532,14 @@ void wMaster::WorkerExitStat() {
 		uint32_t i;
 		for (i = 0; i < kMaxProcess; ++i) {
 			if (mWorkerPool[i] != NULL && mWorkerPool[i]->mPid == pid) {
+				// 设置退出状态
                 mWorkerPool[i]->mStat = status;
                 mWorkerPool[i]->mExited = 1;
                 break;
 			}
 		}
 
+		// 日志记录
         if (WTERMSIG(status)) {
 			wStatus::IOError("wMaster::WorkerExitStat, exited on signal", logging::NumberToString(WTERMSIG(status)));
         } else {
@@ -589,8 +548,8 @@ void wMaster::WorkerExitStat() {
 	
 		// 退出码为2时，退出后不重启
         if (WEXITSTATUS(status) == 2 && mWorkerPool[i]->mRespawn) {
+        	mWorkerPool[i]->mRespawn = 0;
         	wStatus::IOError("wMaster::WorkerExitStat, exited with fatal code, and cannot be respawned", logging::NumberToString(WTERMSIG(status)));
-            mWorkerPool[i]->mRespawn = 0;
         }
     }
 }

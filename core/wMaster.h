@@ -19,7 +19,6 @@ const char  kMasterTitle[] = " - master process";
 
 class wServer;
 class wWorker;
-class wWorkerIpc;
 
 class wMaster : private wNoncopyable {
 public:
@@ -65,7 +64,7 @@ public:
 
 protected:
     friend class wWorker;
-    friend class wWorkerIpc;
+    friend class wServer;
 
     // 启动n个worker进程
     wStatus WorkerStart(uint32_t n, int32_t type = kProcessRespawn);
@@ -86,11 +85,6 @@ protected:
     // 给所有worker进程发送信号
     void SignalWorker(int signo);
 
-    // 向所有已启动worker传递刚启动worker的channel描述符
-    void PassOpenChannel(const struct ChannelReqOpen_t *ch);
-    // 向所有已启动worker传递关闭worker的channel消息
-    void PassCloseChannel(const struct ChannelReqClose_t *ch);
-
     // 回收退出进程状态（waitpid以防僵尸进程）
     void WorkerExitStat();
 
@@ -104,7 +98,7 @@ protected:
     std::string mPidPath;
 
     // 进程表
-    uint32_t mSlot;
+    uint32_t mSlot;	//	子进程中该值等于wWorker::mSlot
     uint32_t mWorkerNum;
     wWorker *mWorkerPool[kMaxProcess];
 
