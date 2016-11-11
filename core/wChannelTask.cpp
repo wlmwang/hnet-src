@@ -22,16 +22,14 @@ wChannelTask::wChannelTask(wSocket *socket, wMaster *master, int32_t type) : wTa
 
 int wChannelTask::ChannelOpen(struct Request_t *request) {
 	struct ChannelReqOpen_t* ch = reinterpret_cast<struct ChannelReqOpen_t*>(request->mBuf);
-	if (mMaster->Worker(ch->mSlot) != NULL) {
-		mMaster->Worker(ch->mSlot)->Pid() = ch->mPid;
-		mMaster->Worker(ch->mSlot)->ChannelFD(0) = ch->mPid;
-	}
+	mMaster->Worker(ch->mSlot)->Pid() = ch->mPid;
+	mMaster->Worker(ch->mSlot)->ChannelFD(0) = ch->mPid;
 	return 0;
 }
 
 int wChannelTask::ChannelClose(struct Request_t *request) {
 	struct ChannelReqClose_t* ch = reinterpret_cast<struct ChannelReqClose_t*>(request->mBuf);
-	if (mMaster->Worker(ch->mSlot) != NULL && mMaster->Worker(ch->mSlot)->ChannelFD(0) != kFDUnknown) {
+	if (mMaster->Worker(ch->mSlot)->ChannelFD(0) != kFDUnknown) {
 		if (close(mMaster->Worker(ch->mSlot)->ChannelFD(0)) == -1) {
 			wStatus::IOError("wChannelTask::ChannelClose, close() failed", strerror(errno));
 		}
