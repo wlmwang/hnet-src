@@ -214,14 +214,15 @@ wStatus wMaster::SpawnWorker(int64_t type) {
     }
 
     // 主进程master更新进程表
-    worker->mSlot = mSlot;
     worker->mPid = pid;
 	worker->mExited = 0;
-	worker->mExiting = 0;
+
 
 	if (type >= 0) {
 		return mStatus;
 	}
+
+	worker->mExiting = 0;
 
     switch (type) {
 	case kProcessNoRespawn:
@@ -240,16 +241,19 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 		worker->mRespawn = 0;
 		worker->mJustSpawn = 1;
 		worker->mDetached = 0;
+		break;
 
 	case kProcessJustRespawn:
 		worker->mRespawn = 1;
 		worker->mJustSpawn = 1;
 		worker->mDetached = 0;
+		break;
 
 	case kProcessDetached:
 		worker->mRespawn = 0;
 		worker->mJustSpawn = 0;
 		worker->mDetached = 1;
+		break;
     }
 
     return mStatus;
@@ -389,6 +393,9 @@ wStatus wMaster::ReapChildren() {
 				mLive = 1;
 				continue;
 			}
+
+			mWorkerPool[i]->mPid = -1;
+
 		} else if (mWorkerPool[i]->mExiting || !mWorkerPool[i]->mDetached) {
 			// 进程正在退出，且不为分离进程，则总认为有存活进程
 			mLive = 1;

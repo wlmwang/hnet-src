@@ -44,7 +44,7 @@ wStatus wWorker::Prepare() {
     }
 	
     // 只保留自身worker进程的channel[1]与其他所有worker进程的channel[0]描述符
-    // 1 0 0...
+    // 1 0...
 	// 将其他进程的channel[1]关闭，自己的除外
     for (uint32_t n = 0; n < kMaxProcess; n++) {
     	if (n == mSlot || mMaster->Worker(n) == NULL || mMaster->Worker(n)->mPid == -1) {
