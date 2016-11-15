@@ -39,14 +39,14 @@ wMaster::~wMaster() {
 
 wStatus wMaster::PrepareStart() {
     // 检测配置、服务实例
-    if (mServer == NULL) {
-    	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mServer is null");
+    if (mServer == NULL || mServer->Config() == NULL) {
+    	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mServer or mConfig is null");
     }
 
     std::string host;
     int16_t port = 0;
-    if (mServer->Config() == NULL || !mServer->Config()->GetConf("host", &host) || !mServer->Config()->GetConf("port", &port)) {
-    	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mConfig is null or host|port is illegal");
+    if (!mServer->Config()->GetConf("host", &host) || !mServer->Config()->GetConf("port", &port)) {
+    	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "host or port is illegal");
     }
 
     mStatus = PrepareRun();
@@ -481,7 +481,7 @@ wStatus wMaster::DeletePidFile() {
 	return mStatus = wEnv::Default()->DeleteFile(mPidPath);
 }
 
-wStatus wMaster::SignalProcess(const char* sig) {
+wStatus wMaster::SignalProcess(const std::string& signal) {
 	std::string str;
 	mStatus = ReadFileToString(wEnv::Default(), mPidPath, &str);
 	if (!mStatus.Ok()) {
@@ -491,7 +491,7 @@ wStatus wMaster::SignalProcess(const char* sig) {
 	uint64_t pid = 0;
 	if (logging::DecimalStringToNumber(str, &pid) && pid > 0) {
 		for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
-			if (strcmp(sig, s->mName)) {
+			if (memcmp(signal.c_str(), s->mName, signal.size()) == 0) {
 				if (kill(pid, s->mSigno) == -1) {
 					return wStatus::IOError("wMaster::SignalProcess, kill() failed", strerror(errno));
 				} else {

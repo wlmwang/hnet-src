@@ -23,7 +23,7 @@ wChannelTask::wChannelTask(wSocket *socket, wMaster *master, int32_t type) : wTa
 int wChannelTask::ChannelOpen(struct Request_t *request) {
 	struct ChannelReqOpen_t* ch = reinterpret_cast<struct ChannelReqOpen_t*>(request->mBuf);
 	mMaster->Worker(ch->mSlot)->Pid() = ch->mPid;
-	mMaster->Worker(ch->mSlot)->ChannelFD(0) = ch->mPid;
+	mMaster->Worker(ch->mSlot)->ChannelFD(0) = ch->mFD;
 	return 0;
 }
 

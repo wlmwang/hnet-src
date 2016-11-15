@@ -18,7 +18,7 @@ int g_reopen = 0;
 
 // 信号集
 wSignal::Signal_t g_signals[] = {
-    {SIGHUP,    "SIGHUP",   "reload",   &wSignal::SignalHandler},   // 重启
+    {SIGHUP,    "SIGHUP",   "restart",  &wSignal::SignalHandler},   // 重启
     {SIGUSR1,   "SIGUSR1",  "reopen",   &wSignal::SignalHandler},   // 清除日志
     {SIGQUIT,   "SIGQUIT",  "quit",     &wSignal::SignalHandler},   // 优雅退出
     {SIGTERM,   "SIGTERM",  "stop",     &wSignal::SignalHandler},   // 立即退出

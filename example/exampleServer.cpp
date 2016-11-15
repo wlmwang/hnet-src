@@ -85,12 +85,21 @@ int main(int argc, const char *argv[]) {
 	wMaster* master;
 	SAFE_NEW(wMaster("EXAMPLE", server), master);
 	if (master != NULL) {
-		s = master->PrepareStart();
-		if (s.Ok()) {
-			wStatus s = master->MasterStart();
-		} else {
-			return -1;
-		}
+	    std::string signal;
+	    if (config->GetConf("signal", &signal) && signal.size() > 0) {
+	    	if (master->SignalProcess(signal).Ok()) {
+	    		return 0;
+	    	} else {
+	    		return -1;
+	    	}
+	    } else {
+			s = master->PrepareStart();
+			if (s.Ok()) {
+				wStatus s = master->MasterStart();
+			} else {
+				return -1;
+			}
+	    }
 	}
 
 	return 0;

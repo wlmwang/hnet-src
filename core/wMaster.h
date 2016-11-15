@@ -24,9 +24,6 @@ class wMaster : private wNoncopyable {
 public:
     wMaster(const std::string& title, wServer* server);
     virtual ~wMaster();
-    
-    // 发送命令行信号
-    wStatus SignalProcess(const char* sig);
 
     // 准备启动
     wStatus PrepareStart();
@@ -36,6 +33,9 @@ public:
 
     // M-W模式启动(master-worker)
     wStatus MasterStart();
+
+    // 发送命令行信号
+    wStatus SignalProcess(const std::string& signal);
 
     // 修改pid文件名（默认hnet.pid）
     // 修改启动worker个数（默认cpu个数）
@@ -81,7 +81,7 @@ protected:
 
     wStatus CreatePidFile();
     wStatus DeletePidFile();
-    
+
     // 给所有worker进程发送信号
     void SignalWorker(int signo);
 
