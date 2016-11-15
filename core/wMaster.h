@@ -62,6 +62,10 @@ public:
         return mWorkerPool[slot];
     }
 
+    inline uint32_t Slot() {
+    	return mSlot;
+    }
+
 protected:
     friend class wWorker;
     friend class wServer;

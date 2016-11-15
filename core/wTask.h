@@ -65,7 +65,7 @@ public:
     // size >= 0 发送字符
     wStatus SyncSend(char cmd[], size_t len, ssize_t *size);
     wStatus SyncSend(const google::protobuf::Message* msg, ssize_t *size);
-    
+
     // SyncSend的异步发送版本
     wStatus AsyncSend(char cmd[], size_t len);
     wStatus AsyncSend(const google::protobuf::Message* msg);
@@ -78,6 +78,10 @@ public:
     // size > 0  接受字符
     wStatus SyncRecv(char cmd[], ssize_t *size, uint32_t timeout = 30);
     wStatus SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t timeout = 30);
+
+    // 广播其他worker进程
+    wStatus SyncWorker(char cmd[], size_t len);
+    wStatus SyncWorker(const google::protobuf::Message* msg);
 
     static void Assertbuf(char buf[], const char cmd[], size_t len);
     static void Assertbuf(char buf[], const google::protobuf::Message* msg);

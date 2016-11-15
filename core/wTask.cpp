@@ -8,6 +8,7 @@
 #include "wCommand.h"
 #include "wMisc.h"
 #include "wSocket.h"
+#include "wMaster.h"
 #include "wServer.h"
 #include "wMultiClient.h"
 
@@ -406,6 +407,16 @@ wStatus wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t 
     uint16_t n = coding::DecodeFixed16(mTempBuff + sizeof(uint32_t) + sizeof(uint8_t));
     msg->ParseFromArray(mTempBuff + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + n, msglen - sizeof(uint8_t) - sizeof(uint16_t) - n);
     return mStatus = wStatus::Nothing();
+}
+
+wStatus wTask::SyncWorker(char cmd[], size_t len) {
+	std::vector<uint32_t> blacksolt(1, mServer->Master()->Slot());
+	return mServer->NotifyWorker(cmd, len, kMaxProcess, &blacksolt);
+}
+
+wStatus wTask::SyncWorker(const google::protobuf::Message* msg) {
+	std::vector<uint32_t> blacksolt(1, mServer->Master()->Slot());
+	return mServer->NotifyWorker(msg, kMaxProcess, &blacksolt);
 }
 
 wStatus wTask::Handlemsg(char cmd[], uint32_t len) {

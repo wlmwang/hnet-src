@@ -39,9 +39,9 @@ wStatus wChannelSocket::Open() {
 }
 
 wStatus wChannelSocket::Close() {
-	mFD = kFDUnknown;
 	close(mChannel[0]);
 	close(mChannel[1]);
+	mFD = kFDUnknown;
     return mStatus;
 }
 

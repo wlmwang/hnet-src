@@ -46,7 +46,7 @@ int ExampleTcpTask::ExampleEchoReq(struct Request_t *request) {
 	example::ExampleEchoReq req;
 	req.ParseFromArray(request->mBuf, request->mLen);
 
-	std::cout << "tcp receive:" << req.cmd() << std::endl;
+	std::cout << "tcp receive 1:" << req.cmd() << std::endl;
 
 	// 响应
 	example::ExampleEchoRes res;
@@ -60,7 +60,9 @@ int ExampleTcpTask::ExampleEchoChannel(struct Request_t *request) {
 	example::ExampleEchoReq req;
 	req.ParseFromArray(request->mBuf, request->mLen);
 
-	mServer->NotifyWorker(&req);
+	std::cout << "tcp receive 2:" << req.cmd() << std::endl;
+
+	SyncWorker(&req);
 	return 0;
 }
 

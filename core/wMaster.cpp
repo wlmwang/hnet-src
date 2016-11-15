@@ -143,9 +143,9 @@ wStatus wMaster::WorkerStart(uint32_t n, int32_t type) {
 
 		// 向所有已启动worker传递刚启动worker的channel描述符
 		struct ChannelReqOpen_t opench;
+		opench.mSlot = mSlot;
 		opench.mFD = mWorkerPool[mSlot]->ChannelFD(0);
         opench.mPid = mWorkerPool[mSlot]->mPid;
-        opench.mSlot = mSlot;
 
         std::vector<uint32_t> blacksolt(1, mSlot);
         mServer->NotifyWorker(reinterpret_cast<char*>(&opench), sizeof(opench), kMaxProcess, &blacksolt);
@@ -179,20 +179,6 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 	}
 	worker->Channel()->SS() = kSsConnected;
 
-	// 设置第一个描述符的异步IO通知机制
-	u_long on = 1;
-    if (ioctl(worker->ChannelFD(0), FIOASYNC, &on) == -1) {
-		// 关闭channel && 释放进程表项
-    	worker->Channel()->Close();
-    	return mStatus = wStatus::IOError("wMaster::SpawnWorker, ioctl(FIOASYNC) failed", strerror(errno));
-    }
-    // 设置将要在文件描述符channel[0]上接收SIGIO、SIGURG事件信号的进程标识
-    if (fcntl(worker->ChannelFD(0), F_SETOWN, mPid) == -1) {
-		// 关闭channel && 释放进程表项
-    	worker->Channel()->Close();
-    	return mStatus = wStatus::IOError("wMaster::SpawnWorker, fcntl(F_SETOWN) failed", strerror(errno));
-    }
-
     pid_t pid = fork();
     switch (pid) {
     case -1:
@@ -216,7 +202,6 @@ wStatus wMaster::SpawnWorker(int64_t type) {
     // 主进程master更新进程表
     worker->mPid = pid;
 	worker->mExited = 0;
-
 
 	if (type >= 0) {
 		return mStatus;

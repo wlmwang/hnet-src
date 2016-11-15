@@ -41,6 +41,10 @@ public:
     	return mConfig;
     }
 
+    inline wMaster* Master() {
+    	return mMaster;
+    }
+
     wStatus PrepareStart(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
 
     // single模式启动服务
@@ -55,7 +59,7 @@ public:
     wStatus Broadcast(char *cmd, int len);
     wStatus Broadcast(const google::protobuf::Message* msg);
 
-    // 发送消息至worker进程   blacksolt为黑名单
+    // 广播消息至worker进程   blacksolt为黑名单
     wStatus NotifyWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blacksolt = NULL);
     wStatus NotifyWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blacksolt = NULL);
 
