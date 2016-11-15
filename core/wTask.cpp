@@ -421,11 +421,11 @@ wStatus wTask::SyncWorker(const google::protobuf::Message* msg) {
 
 wStatus wTask::Handlemsg(char cmd[], uint32_t len) {
 	// 数据协议
-	uint8_t p = static_cast<uint8_t>(coding::DecodeFixed8(cmd));
+	uint8_t sp = static_cast<uint8_t>(coding::DecodeFixed8(cmd));
 	cmd += sizeof(uint8_t);
 	len -= sizeof(uint8_t);
 
-	if (p == kMpCommand) {
+	if (sp == kMpCommand) {
 		struct wCommand *basecmd = reinterpret_cast<struct wCommand*>(cmd);
 		if (basecmd->GetId() == CmdId(kCmdNull, kParaNull)) {
 			mHeartbeat = 0;
@@ -436,7 +436,7 @@ wStatus wTask::Handlemsg(char cmd[], uint32_t len) {
 				mStatus = wStatus::IOError("wTask::Handlemsg, command invalid request", "no method find");
 			}
 		}
-	} else if (p == kMpProtobuf) {
+	} else if (sp == kMpProtobuf) {
 		uint16_t l = coding::DecodeFixed16(cmd);
 		std::string name(cmd + sizeof(uint16_t), l);
 		struct Request_t request(cmd + sizeof(uint16_t) + l, len - sizeof(uint16_t) - l);
@@ -444,7 +444,7 @@ wStatus wTask::Handlemsg(char cmd[], uint32_t len) {
 			mStatus = wStatus::IOError("wTask::Handlemsg, protobuf invalid request", "no method find");
 		}
 	} else {
-		mStatus = wStatus::IOError("wTask::Handlemsg, invalid message protocol", logging::NumberToString(p));
+		mStatus = wStatus::IOError("wTask::Handlemsg, invalid message protocol", logging::NumberToString(sp));
 	}
 	return mStatus;
 }

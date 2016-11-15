@@ -49,30 +49,34 @@ wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     mFD = mChannel[0];
     mSendTm = misc::GetTimeofday();
     
-    // 去除消息头
-    struct ChannelReqCmd_s *channel = reinterpret_cast<struct ChannelReqCmd_s*>(buf + sizeof(uint32_t) + sizeof(uint8_t));
     // msghdr.msg_control 缓冲区必须与 cmsghdr 结构对齐
     union {
         struct cmsghdr  cm;
         char space[CMSG_SPACE(sizeof(int))];
     } cmsg;
     
+    // 数据协议
+    uint8_t sp = static_cast<uint8_t>(coding::DecodeFixed8(buf + sizeof(uint32_t)));
+
     // 附属信息，一般为同步进程间文件描述符
     struct msghdr msg;
-    if (channel->mFD == kFDUnknown) {
+    if (sp == kMpProtobuf) {
         msg.msg_control = NULL;
         msg.msg_controllen = 0;
-    } else {
-        msg.msg_control = reinterpret_cast<caddr_t>(&cmsg);  //typedef void* caddr_t;
-        msg.msg_controllen = sizeof(cmsg);
-        memset(&cmsg, 0, sizeof(cmsg));
-        cmsg.cm.cmsg_len = CMSG_LEN(sizeof(int));
-        cmsg.cm.cmsg_level = SOL_SOCKET;
+    } else if (sp == kMpCommand) {
+        // 去除消息头
+        struct ChannelReqCmd_s *channel = reinterpret_cast<struct ChannelReqCmd_s*>(buf + sizeof(uint32_t) + sizeof(uint8_t));
+        if (channel->mFD != kFDUnknown) {
+            msg.msg_control = reinterpret_cast<caddr_t>(&cmsg);  //typedef void* caddr_t;
+            msg.msg_controllen = sizeof(cmsg);
+            memset(&cmsg, 0, sizeof(cmsg));
+            cmsg.cm.cmsg_len = CMSG_LEN(sizeof(int));
+            cmsg.cm.cmsg_level = SOL_SOCKET;
 
-        // 附属数据对象是文件描述符
-        cmsg.cm.cmsg_type = SCM_RIGHTS;
-
-        memcpy(CMSG_DATA(&cmsg.cm), &channel->mFD, sizeof(int));
+            // 附属数据对象是文件描述符
+            cmsg.cm.cmsg_type = SCM_RIGHTS;
+            memcpy(CMSG_DATA(&cmsg.cm), &channel->mFD, sizeof(int));
+        }
     }
     
     // 套接口地址，msg_name指向要发送或是接收信息的套接口地址，仅当是数据包UDP是才需要
@@ -131,10 +135,14 @@ wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
         mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", strerror(errno));
     } else {
         if (msg.msg_flags & (MSG_TRUNC|MSG_CTRUNC)) {
-            // [system] recvmsg() truncated data
+        	wStatus::IOError("wChannelSocket::RecvBytes, recvmsg() truncated data", "");
         }
+
+        // 数据协议
+        uint8_t sp = static_cast<uint8_t>(coding::DecodeFixed8(buf + sizeof(uint32_t)));
+
         // 是否是同步 打开fd文件描述符 的channel
-        if (*size == sizeof(struct ChannelReqOpen_t) + sizeof(uint32_t)) {
+        if (sp == kMpCommand && *size == sizeof(struct ChannelReqOpen_t) + sizeof(uint32_t)) {
             struct ChannelReqOpen_t *channel = reinterpret_cast<struct ChannelReqOpen_t*> (buf + sizeof(uint32_t) + sizeof(uint8_t));
             if (channel->GetCmd() == CMD_CHANNEL_REQ && channel->GetPara() == CHANNEL_REQ_OPEN) {
                 if (cmsg.cm.cmsg_len < static_cast<socklen_t>(CMSG_LEN(sizeof(int)))) {
