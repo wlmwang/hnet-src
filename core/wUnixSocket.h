@@ -20,12 +20,12 @@ public:
 	wUnixSocket(SockType type = kStListen, SockProto proto = kSpUnix, SockFlag flag = kSfRvsd) : wSocket(type, proto, flag) { }
 	
 	virtual wStatus Open();
-	virtual wStatus Listen(string host, uint16_t port = 0);	  // host为sock路径
-	virtual wStatus Connect(int64_t *fd, string host, uint16_t port = 0, float timeout = 30);
+	virtual wStatus Listen(const std::string& host, uint16_t port = 0);	  // host为sock路径
+	virtual wStatus Connect(int64_t *fd, const std::string& host, uint16_t port = 0, float timeout = 30);
 	virtual wStatus Accept(int64_t *ret, struct sockaddr* clientaddr, socklen_t *addrsize);
 	
 protected:
-	virtual wStatus Bind(string host, uint16_t port = 0);	// host为sock路径
+	virtual wStatus Bind(const std::string& host, uint16_t port = 0);	// host为sock路径
 };
 
 }	// namespace hnet

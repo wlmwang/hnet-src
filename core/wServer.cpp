@@ -287,7 +287,7 @@ wStatus wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const std::vect
 	if (solt == kMaxProcess) {
 		// 广播消息
 		for (uint32_t i = 0; i < kMaxProcess; i++) {
-			if (mMaster->Worker(i) == NULL || mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
+			if (mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
 				continue;
 			} else if (blacksolt != NULL && std::find(blacksolt->begin(), blacksolt->end(), i) != blacksolt->end()) {
 				continue;
@@ -298,7 +298,7 @@ wStatus wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const std::vect
 			mStatus = mMaster->Worker(i)->Channel()->SendBytes(buf, sizeof(uint32_t) + sizeof(uint8_t) + len, &ret);
 	    }
 	} else {
-		if (mMaster->Worker(solt) != NULL && mMaster->Worker(solt)->mPid != -1 && mMaster->Worker(solt)->ChannelFD(0) != kFDUnknown) {
+		if (mMaster->Worker(solt)->mPid != -1 && mMaster->Worker(solt)->ChannelFD(0) != kFDUnknown) {
 
 			/* TODO: EAGAIN */
 			wTask::Assertbuf(buf, cmd, len);
@@ -317,7 +317,7 @@ wStatus wServer::NotifyWorker(const google::protobuf::Message* msg, uint32_t sol
 	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
 	if (solt == kMaxProcess) {
 		for (uint32_t i = 0; i < kMaxProcess; i++) {
-			if (mMaster->Worker(i) == NULL || mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
+			if (mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
 				continue;
 			} else if (blacksolt != NULL && std::find(blacksolt->begin(), blacksolt->end(), i) != blacksolt->end()) {
 				continue;
@@ -328,7 +328,7 @@ wStatus wServer::NotifyWorker(const google::protobuf::Message* msg, uint32_t sol
 			mStatus = mMaster->Worker(i)->Channel()->SendBytes(buf, sizeof(uint32_t) + len, &ret);
 	    }
 	} else {
-		if (mMaster->Worker(solt) != NULL && mMaster->Worker(solt)->mPid != -1 && mMaster->Worker(solt)->ChannelFD(0) != kFDUnknown) {
+		if (mMaster->Worker(solt)->mPid != -1 && mMaster->Worker(solt)->ChannelFD(0) != kFDUnknown) {
 
 			/* TODO: EAGAIN */
 			wTask::Assertbuf(buf, msg);

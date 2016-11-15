@@ -94,7 +94,7 @@ wStatus wPing::Ping(const char *ip) {
         }
         memcpy((char *)&mDestAddr.sin_addr, host->h_addr, host->h_length);
         */
-        return wStatus::IOError("wPing::Ping, inet_addr failed, ip: " + string(ip), strerror(errno));
+        return wStatus::IOError("wPing::Ping, inet_addr failed, ip: " + std::string(ip), strerror(errno));
     } else {
         mDestAddr.sin_addr.s_addr = inaddr;
     }

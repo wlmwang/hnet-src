@@ -75,7 +75,7 @@ void wSignal::SignalHandler(int signo) {
         }
     }
 
-    string action = "";
+    std::string action = "";
     switch (signo) {
     case SIGQUIT:
         g_quit = 1;

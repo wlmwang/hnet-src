@@ -34,7 +34,7 @@ wStatus wTcpSocket::Open() {
 	return mStatus = wStatus::Nothing();
 }
 
-wStatus wTcpSocket::Bind(string host, uint16_t port) {
+wStatus wTcpSocket::Bind(const std::string& host, uint16_t port) {
 	mHost = host;
 	mPort = port;
 
@@ -49,7 +49,7 @@ wStatus wTcpSocket::Bind(string host, uint16_t port) {
 	return mStatus = wStatus::Nothing();
 }
 
-wStatus wTcpSocket::Listen(string host, uint16_t port) {
+wStatus wTcpSocket::Listen(const std::string& host, uint16_t port) {
 	if (!Bind(host, port).Ok()) {
 		return mStatus;
 	}
@@ -66,7 +66,7 @@ wStatus wTcpSocket::Listen(string host, uint16_t port) {
 	return SetFL();
 }
 
-wStatus wTcpSocket::Connect(int64_t *ret, string host, uint16_t port, float timeout) {
+wStatus wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16_t port, float timeout) {
 	mHost = host;
 	mPort = port;
 	

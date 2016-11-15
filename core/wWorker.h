@@ -49,7 +49,7 @@ protected:
 
 	wStatus mStatus;
 	wMaster *mMaster;	// 引用进程表
-	string mTitle;	// 进程名
+	std::string mTitle;	// 进程名
 	pid_t mPid;
 	int mPriority;	// 进程优先级
 	int mRlimitCore;// 连接限制

@@ -18,7 +18,7 @@ wStatus wUnixSocket::Open() {
 	return mStatus = wStatus::Nothing();
 }
 
-wStatus wUnixSocket::Bind(string host, uint16_t port) {
+wStatus wUnixSocket::Bind(const std::string& host, uint16_t port) {
 	struct sockaddr_un socketAddr;
 	memset(&socketAddr, 0, sizeof(socketAddr));
 	socketAddr.sun_family = AF_UNIX;
@@ -30,7 +30,7 @@ wStatus wUnixSocket::Bind(string host, uint16_t port) {
 	return mStatus = wStatus::Nothing();
 }
 
-wStatus wUnixSocket::Listen(string host, uint16_t port) {
+wStatus wUnixSocket::Listen(const std::string& host, uint16_t port) {
 	mHost = host;
 	
 	if (!Bind(mHost).Ok()) {
@@ -44,10 +44,10 @@ wStatus wUnixSocket::Listen(string host, uint16_t port) {
 	return SetFL();
 }
 
-wStatus wUnixSocket::Connect(int64_t *ret, string host, uint16_t port, float timeout) {
+wStatus wUnixSocket::Connect(int64_t *ret, const std::string& host, uint16_t port, float timeout) {
 	mHost = host;
 
-	string tmpsock = "unix_";
+	std::string tmpsock = "unix_";
 	logging::AppendNumberTo(&tmpsock, static_cast<uint64_t>(getpid()));
 	tmpsock += ".sock";
 	if (!Bind(mHost).Ok()) {

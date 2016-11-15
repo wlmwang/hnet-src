@@ -38,7 +38,7 @@ public:
     }
 
 protected:
-    virtual wStatus Bind(string host, uint16_t port = 0) {
+    virtual wStatus Bind(const std::string& host, uint16_t port = 0) {
         return mStatus = wStatus::Nothing();
     }
 

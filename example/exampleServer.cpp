@@ -7,6 +7,7 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wMisc.h"
+#include "wChannelTask.h"
 #include "wTcpTask.h"
 #include "wConfig.h"
 #include "wServer.h"
@@ -15,19 +16,37 @@
 
 using namespace hnet;
 
-class ExampleTask : public wTcpTask {
+class ExampleChannelTask : public wChannelTask {
 public:
-	ExampleTask(wSocket *socket, int32_t type) : wTcpTask(socket, type) {
-		On("example.ExampleEchoReq", &ExampleTask::ExampleEchoReq, this);
+	ExampleChannelTask(wSocket *socket, wMaster *master, int32_t type = 0) : wChannelTask(socket, master, type) {
+		On("example.ExampleEchoReq", &ExampleChannelTask::ExampleEchoReq, this);
 	}
 	int ExampleEchoReq(struct Request_t *request);
 };
 
-int ExampleTask::ExampleEchoReq(struct Request_t *request) {
+int ExampleChannelTask::ExampleEchoReq(struct Request_t *request) {
 	example::ExampleEchoReq req;
 	req.ParseFromArray(request->mBuf, request->mLen);
 
-	std::cout << "receive:" << req.cmd() << std::endl;
+	std::cout << "channel receive:" << req.cmd() << "|" << getpid() << std::endl;
+	return 0;
+}
+
+class ExampleTcpTask : public wTcpTask {
+public:
+	ExampleTcpTask(wSocket *socket, int32_t type) : wTcpTask(socket, type) {
+		On("example.ExampleEchoReq", &ExampleTcpTask::ExampleEchoReq, this);
+		On("example.ExampleEchoReq", &ExampleTcpTask::ExampleEchoChannel, this);
+	}
+	int ExampleEchoReq(struct Request_t *request);
+	int ExampleEchoChannel(struct Request_t *request);
+};
+
+int ExampleTcpTask::ExampleEchoReq(struct Request_t *request) {
+	example::ExampleEchoReq req;
+	req.ParseFromArray(request->mBuf, request->mLen);
+
+	std::cout << "tcp receive:" << req.cmd() << std::endl;
 
 	// 响应
 	example::ExampleEchoRes res;
@@ -37,14 +56,30 @@ int ExampleTask::ExampleEchoReq(struct Request_t *request) {
 	return 0;
 }
 
+int ExampleTcpTask::ExampleEchoChannel(struct Request_t *request) {
+	example::ExampleEchoReq req;
+	req.ParseFromArray(request->mBuf, request->mLen);
+
+	mServer->NotifyWorker(&req);
+	return 0;
+}
+
 class ExampleServer : public wServer {
 public:
 	ExampleServer(wConfig* config) : wServer(config) { }
 
 	virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr) {
-	    SAFE_NEW(ExampleTask(sock, Shard(sock)), *ptr);
+	    SAFE_NEW(ExampleTcpTask(sock, Shard(sock)), *ptr);
 	    if (*ptr == NULL) {
 			return wStatus::IOError("ExampleServer::NewTcpTask", "ExampleTask new failed");
+	    }
+	    return mStatus;
+	}
+
+	virtual wStatus NewChannelTask(wSocket* sock, wTask** ptr) {
+		SAFE_NEW(ExampleChannelTask(sock, mMaster, Shard(sock)), *ptr);
+	    if (*ptr == NULL) {
+			return wStatus::IOError("ExampleServer::NewChannelTask", "new failed");
 	    }
 	    return mStatus;
 	}

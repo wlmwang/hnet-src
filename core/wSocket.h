@@ -15,7 +15,7 @@
 namespace hnet {
 
 enum SockErr {
-    kSeNobuff = -1, // socket buf写满 
+    kSeNobuff = -1, // socket buf写满
     kSeTimeout = -2,// connect连接超时
     kSeMsgLen = -3, // 接受消息长度不合法
     kSeClosed = -4  // socket对端close
@@ -65,11 +65,11 @@ public:
     // 连接服务器
     // ret = -1 发生错误
     // ret = 0 连接成功
-    virtual wStatus Connect(int64_t *ret, string host, uint16_t port = 0, float timeout = 30) {
+    virtual wStatus Connect(int64_t *ret, const std::string& host, uint16_t port = 0, float timeout = 30) {
         return mStatus = wStatus::IOError("wSocket::Connect failed", "method should be inherit");
     }
     
-    virtual wStatus Listen(string host, uint16_t port = 0) {
+    virtual wStatus Listen(const std::string& host, uint16_t port = 0) {
         return mStatus = wStatus::IOError("wSocket::Listen failed", "method should be inherit");
     }
     
@@ -106,7 +106,7 @@ public:
     inline SockFlag& SF() { return mSockFlag;}
     
 protected:
-    virtual wStatus Bind(string host, uint16_t port = 0) = 0;
+    virtual wStatus Bind(const std::string& host, uint16_t port = 0) = 0;
     
     wStatus mStatus;
     

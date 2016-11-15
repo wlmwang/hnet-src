@@ -46,7 +46,7 @@ protected:
     int mSeqNum;
     pid_t mPid;
 
-    string mStrIp;
+    std::string mStrIp;
     struct sockaddr_in mDestAddr;	//目的地址
     struct sockaddr_in mFromAddr;	//返回地址
 

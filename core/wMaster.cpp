@@ -473,7 +473,7 @@ void wMaster::SignalWorker(int signo) {
 }
 
 wStatus wMaster::CreatePidFile() {
-	string pidstr = logging::NumberToString(mPid);
+	std::string pidstr = logging::NumberToString(mPid);
 	return mStatus = WriteStringToFile(wEnv::Default(), pidstr, mPidPath);
 }
 

@@ -110,8 +110,6 @@ const char      kToken[] = "Anny Wang";
 const int8_t	kMpCommand = 1;
 const int8_t	kMpProtobuf = 2;
 
-using namespace std;
-
 }   // namespace hnet
 
 #endif
