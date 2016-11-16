@@ -46,6 +46,7 @@ OBJECTS=./$(COREPATH)/wCrc32c.o \
 		./$(COREPATH)/wWorker.o \
 		./$(COREPATH)/wConfig.o \
 		./$(COREPATH)/wServer.o \
+		./$(COREPATH)/wChannel.pb.o \
 		\
 		./$(MSGPATH)/example.pb.o \
 		./$(SRCPATH)/exampleClient.o

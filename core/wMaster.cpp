@@ -13,7 +13,7 @@
 #include "wWorker.h"
 #include "wTask.h"
 #include "wServer.h"
-#include "wChannelCmd.h"
+#include "wChannel.pb.h"
 
 namespace hnet {
 
@@ -142,13 +142,13 @@ wStatus wMaster::WorkerStart(uint32_t n, int32_t type) {
 		}
 
 		// 向所有已启动worker传递刚启动worker的channel描述符
-		struct ChannelReqOpen_t opench;
-		opench.mSlot = mSlot;
-		opench.mFD = mWorkerPool[mSlot]->ChannelFD(0);
-        opench.mPid = mWorkerPool[mSlot]->mPid;
+		wChannelOpen open;
+		open.set_slot(mSlot);
+		open.set_pid(mWorkerPool[mSlot]->mPid);
+		open.set_fd(mWorkerPool[mSlot]->ChannelFD(0));
 
         std::vector<uint32_t> blacksolt(1, mSlot);
-        mServer->NotifyWorker(reinterpret_cast<char*>(&opench), sizeof(opench), kMaxProcess, &blacksolt);
+        mServer->NotifyWorker(&open, kMaxProcess, &blacksolt);
 	}
 	return mStatus;
 }
@@ -351,11 +351,12 @@ wStatus wMaster::ReapChildren() {
 			int exiting = mWorkerPool[i]->mExiting;
 			if (!detached) {
 				// 向所有已启动worker传递关闭worker的channel消息
-				struct ChannelReqClose_t closech;
-				closech.mFD = -1;
-				closech.mSlot = i;
-				closech.mPid = mWorkerPool[i]->mPid;
-				mServer->NotifyWorker(reinterpret_cast<char*>(&closech), sizeof(closech));
+				wChannelClose close;
+				close.set_slot(i);
+				close.set_pid(mWorkerPool[i]->mPid);
+				close.set_fd(kFDUnknown);
+
+				mServer->NotifyWorker(&close);
 
 				// 关闭channel && 释放进程表项
 				mWorkerPool[i]->Channel()->Close();
@@ -367,13 +368,13 @@ wStatus wMaster::ReapChildren() {
 					continue;
 				}
 				// 向所有已启动worker传递刚启动worker的channel描述符
-				struct ChannelReqOpen_t opench;
-				opench.mFD = mWorkerPool[mSlot]->ChannelFD(0);
-				opench.mPid = mWorkerPool[mSlot]->mPid;
-				opench.mSlot = i;
+				wChannelOpen open;
+				open.set_slot(i);
+				open.set_pid(mWorkerPool[i]->mPid);
+				open.set_fd(mWorkerPool[i]->ChannelFD(0));
 
-				std::vector<uint32_t> blacksolt(1, mSlot);
-				mServer->NotifyWorker(reinterpret_cast<char*>(&opench), sizeof(opench), kMaxProcess, &blacksolt);
+				std::vector<uint32_t> blacksolt(1, i);
+				mServer->NotifyWorker(&open, kMaxProcess, &blacksolt);
 
 				mLive = 1;
 				continue;
@@ -391,26 +392,20 @@ wStatus wMaster::ReapChildren() {
 
 void wMaster::SignalWorker(int signo) {
 	int other = 0;
-	char *ptr = NULL;
-	size_t size = 0;
+
+	const google::protobuf::Message* channel;
+	wChannelQuit quit;
+	wChannelTerminate terminate;
 
 	switch (signo) {
 	case SIGQUIT:
-		{
-			struct ChannelReqQuit_t ch;
-			ch.mFD = -1;
-			ptr = reinterpret_cast<char*>(&ch);
-			size = sizeof(ch);
-		}
+		quit.set_pid(mPid);
+		channel = &quit;
 		break;
 			
 	case SIGTERM:
-		{
-			struct ChannelReqTerminate_t ch;
-			ch.mFD = -1;
-			ptr = reinterpret_cast<char*>(&ch);
-			size = sizeof(ch);
-		}
+		terminate.set_pid(mPid);
+		channel = &terminate;
 		break;
 
 	default:
@@ -433,7 +428,7 @@ void wMaster::SignalWorker(int signo) {
         if (!other) {
 
 	        /* TODO: EAGAIN */
-        	if (mServer->NotifyWorker(ptr, size, i).Ok()) {
+        	if (mServer->NotifyWorker(channel, i).Ok()) {
 				if (signo == SIGQUIT || signo == SIGTERM) {
 					mWorkerPool[i]->mExiting = 1;
 				}

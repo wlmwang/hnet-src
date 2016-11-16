@@ -1,0 +1,27 @@
+
+/**
+ * Copyright (C) Anny Wang.
+ * Copyright (C) Hupu, Inc.
+ */
+
+package hnet;
+
+message wChannelOpen {
+	required int32 pid	= 1;
+	required int32 slot	= 2;
+	required int32 fd	= 3;
+}
+
+message wChannelClose {
+	required int32 pid	= 1;
+	required int32 slot	= 2;
+	required int32 fd	= 3;
+}
+
+message wChannelQuit {
+	required int32 pid	= 1;
+}
+
+message wChannelTerminate {
+	required int32 pid	= 1;
+}

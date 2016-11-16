@@ -6,9 +6,9 @@
 
 #include <sys/un.h>
 #include <sys/uio.h>
-#include "wChannelSocket.h"
-#include "wChannelCmd.h"
 #include "wMisc.h"
+#include "wChannelSocket.h"
+#include "wChannel.pb.h"
 
 namespace hnet {
 
@@ -55,28 +55,35 @@ wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
         char space[CMSG_SPACE(sizeof(int))];
     } cmsg;
     
+    struct msghdr msg;
+
     // 数据协议
     uint8_t sp = static_cast<uint8_t>(coding::DecodeFixed8(buf + sizeof(uint32_t)));
-
-    // 附属信息，一般为同步进程间文件描述符
-    struct msghdr msg;
     if (sp == kMpProtobuf) {
-        msg.msg_control = NULL;
-        msg.msg_controllen = 0;
-    } else if (sp == kMpCommand) {
-        // 去除消息头
-        struct ChannelReqCmd_s *channel = reinterpret_cast<struct ChannelReqCmd_s*>(buf + sizeof(uint32_t) + sizeof(uint8_t));
-        if (channel->mFD != kFDUnknown) {
-            msg.msg_control = reinterpret_cast<caddr_t>(&cmsg);  //typedef void* caddr_t;
+		uint16_t l = coding::DecodeFixed16(buf + sizeof(uint32_t) + sizeof(uint8_t));
+		std::string name(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t), l);
+		if (name == "hnet.wChannelOpen") {
+			// 附属信息（附属数据对象是文件描述符）
+			wChannelOpen open;
+			open.ParseFromArray(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + l, len - sizeof(uint32_t) - sizeof(uint8_t) - sizeof(uint16_t) - l);
+
+            msg.msg_control = reinterpret_cast<caddr_t>(&cmsg);
             msg.msg_controllen = sizeof(cmsg);
             memset(&cmsg, 0, sizeof(cmsg));
-            cmsg.cm.cmsg_len = CMSG_LEN(sizeof(int));
+            cmsg.cm.cmsg_len = CMSG_LEN(sizeof(int32_t));
             cmsg.cm.cmsg_level = SOL_SOCKET;
 
-            // 附属数据对象是文件描述符
+            // 文件描述符
+            int32_t fd = open.fd();
             cmsg.cm.cmsg_type = SCM_RIGHTS;
-            memcpy(CMSG_DATA(&cmsg.cm), &channel->mFD, sizeof(int));
-        }
+            memcpy(CMSG_DATA(&cmsg.cm), &fd, sizeof(int32_t));
+		} else {
+	        msg.msg_control = NULL;
+	        msg.msg_controllen = 0;
+		}
+    } else if (sp == kMpCommand) {
+        msg.msg_control = NULL;
+        msg.msg_controllen = 0;
     }
     
     // 套接口地址，msg_name指向要发送或是接收信息的套接口地址，仅当是数据包UDP是才需要
@@ -140,20 +147,22 @@ wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
 
         // 数据协议
         uint8_t sp = static_cast<uint8_t>(coding::DecodeFixed8(buf + sizeof(uint32_t)));
-
-        // 是否是同步 打开fd文件描述符 的channel
-        if (sp == kMpCommand && *size == sizeof(struct ChannelReqOpen_t) + sizeof(uint32_t)) {
-            struct ChannelReqOpen_t *channel = reinterpret_cast<struct ChannelReqOpen_t*> (buf + sizeof(uint32_t) + sizeof(uint8_t));
-            if (channel->GetCmd() == CMD_CHANNEL_REQ && channel->GetPara() == CHANNEL_REQ_OPEN) {
-                if (cmsg.cm.cmsg_len < static_cast<socklen_t>(CMSG_LEN(sizeof(int)))) {
+        if (sp == kMpProtobuf) {
+            uint16_t l = coding::DecodeFixed16(buf + sizeof(uint32_t) + sizeof(uint8_t));
+    		std::string name(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t), l);
+    		if (name == "hnet.wChannelOpen") {
+    			// 是否是同步 打开fd文件描述符 的channel
+    			wChannelOpen open;
+    			open.ParseFromArray(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + l, len - sizeof(uint32_t) - sizeof(uint8_t) - sizeof(uint16_t) - l);
+                if (cmsg.cm.cmsg_len < static_cast<socklen_t>(CMSG_LEN(sizeof(int32_t)))) {
                     mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", "returned too small ancillary data");
                 } else if (cmsg.cm.cmsg_level != SOL_SOCKET || cmsg.cm.cmsg_type != SCM_RIGHTS) {
                     mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", "returned invalid ancillary data");
                 } else {
                     // 文件描述符
-                    memcpy(&channel->mFD, CMSG_DATA(&cmsg.cm), sizeof(int));
+                    //memcpy(&open.fd(), CMSG_DATA(&cmsg.cm), sizeof(int32_t));
                 }
-            }
+    		}
         }
     }
     return mStatus;

@@ -8,32 +8,34 @@
 #include "wCommand.h"
 #include "wMaster.h"
 #include "wWorker.h"
-#include "wChannelCmd.h"
 #include "wSignal.h"
+#include "wChannel.pb.h"
 
 namespace hnet {
 
 wChannelTask::wChannelTask(wSocket *socket, wMaster *master, int32_t type) : wTask(socket, type), mMaster(master) {
-	On(CMD_CHANNEL_REQ, CHANNEL_REQ_OPEN, &wChannelTask::ChannelOpen, this);
-	On(CMD_CHANNEL_REQ, CHANNEL_REQ_CLOSE, &wChannelTask::ChannelClose, this);
-	On(CMD_CHANNEL_REQ, CHANNEL_REQ_QUIT, &wChannelTask::ChannelQuit, this);
-	On(CMD_CHANNEL_REQ, CHANNEL_REQ_TERMINATE, &wChannelTask::ChannelTerminate, this);
+	On("hnet.wChannelOpen", &wChannelTask::ChannelOpen, this);
+	On("hnet.wChannelClose", &wChannelTask::ChannelClose, this);
+	On("hnet.wChannelQuit", &wChannelTask::ChannelQuit, this);
+	On("hnet.wChannelTerminate", &wChannelTask::ChannelTerminate, this);
 }
 
 int wChannelTask::ChannelOpen(struct Request_t *request) {
-	struct ChannelReqOpen_t* ch = reinterpret_cast<struct ChannelReqOpen_t*>(request->mBuf);
-	mMaster->Worker(ch->mSlot)->Pid() = ch->mPid;
-	mMaster->Worker(ch->mSlot)->ChannelFD(0) = ch->mFD;
+	wChannelOpen open;
+	open.ParseFromArray(request->mBuf, request->mLen);
+	mMaster->Worker(open.slot())->Pid() = open.pid();
+	mMaster->Worker(open.slot())->ChannelFD(0) = open.fd();
 	return 0;
 }
 
 int wChannelTask::ChannelClose(struct Request_t *request) {
-	struct ChannelReqClose_t* ch = reinterpret_cast<struct ChannelReqClose_t*>(request->mBuf);
-	if (mMaster->Worker(ch->mSlot)->ChannelFD(0) != kFDUnknown) {
-		if (close(mMaster->Worker(ch->mSlot)->ChannelFD(0)) == -1) {
+	wChannelClose cls;
+	cls.ParseFromArray(request->mBuf, request->mLen);
+	if (mMaster->Worker(cls.slot())->ChannelFD(0) != kFDUnknown) {
+		if (close(mMaster->Worker(cls.slot())->ChannelFD(0)) == -1) {
 			wStatus::IOError("wChannelTask::ChannelClose, close() failed", strerror(errno));
 		}
-		mMaster->Worker(ch->mSlot)->ChannelFD(0) = kFDUnknown;
+		mMaster->Worker(cls.slot())->ChannelFD(0) = kFDUnknown;
 	}
 	return 0;
 }
