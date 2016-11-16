@@ -7,6 +7,7 @@
 #include <sys/un.h>
 #include <sys/uio.h>
 #include "wMisc.h"
+#include "wTask.h"
 #include "wChannelSocket.h"
 #include "wChannel.pb.h"
 
@@ -52,7 +53,7 @@ wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     // msghdr.msg_control 缓冲区必须与 cmsghdr 结构对齐
     union {
         struct cmsghdr  cm;
-        char space[CMSG_SPACE(sizeof(int))];
+        char space[CMSG_SPACE(sizeof(int32_t))];
     } cmsg;
     
     struct msghdr msg;
@@ -63,20 +64,23 @@ wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
 		uint16_t l = coding::DecodeFixed16(buf + sizeof(uint32_t) + sizeof(uint8_t));
 		std::string name(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t), l);
 		if (name == "hnet.wChannelOpen") {
-			// 附属信息（附属数据对象是文件描述符）
+			// 附属信息
 			wChannelOpen open;
 			open.ParseFromArray(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + l, len - sizeof(uint32_t) - sizeof(uint8_t) - sizeof(uint16_t) - l);
 
             msg.msg_control = reinterpret_cast<caddr_t>(&cmsg);
             msg.msg_controllen = sizeof(cmsg);
             memset(&cmsg, 0, sizeof(cmsg));
-            cmsg.cm.cmsg_len = CMSG_LEN(sizeof(int32_t));
+
             cmsg.cm.cmsg_level = SOL_SOCKET;
+            cmsg.cm.cmsg_type = SCM_RIGHTS;	// 附属数据对象是文件描述符
+            cmsg.cm.cmsg_len = CMSG_LEN(sizeof(int32_t));
 
             // 文件描述符
-            int32_t fd = open.fd();
-            cmsg.cm.cmsg_type = SCM_RIGHTS;
-            memcpy(CMSG_DATA(&cmsg.cm), &fd, sizeof(int32_t));
+            // int32_t fd = open.fd();
+            //memcpy(CMSG_DATA(&cmsg.cm), &fd, sizeof(int32_t));
+            *(int32_t *) CMSG_DATA(&cmsg.cm) = open.fd();
+
 		} else {
 	        msg.msg_control = NULL;
 	        msg.msg_controllen = 0;
@@ -116,12 +120,12 @@ wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     // msghdr.msg_control 缓冲区必须与 cmsghdr 结构对齐
     union {
         struct cmsghdr  cm;
-        char space[CMSG_SPACE(sizeof(int))];
+        char space[CMSG_SPACE(sizeof(int32_t))];
     } cmsg;
 
     // 实际的数据缓冲区，I/O向量引用。当要同步文件描述符，iov_base 至少一字节
     struct iovec iov[1];
-    iov[0].iov_base = reinterpret_cast<char *>(buf);
+    iov[0].iov_base = reinterpret_cast<char*>(buf);
     iov[0].iov_len = len;
 
     // 附属信息，一般为同步进程间文件描述符
@@ -130,7 +134,7 @@ wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     msg.msg_namelen = 0;
     msg.msg_iov = iov;
     msg.msg_iovlen = 1;
-    msg.msg_control = reinterpret_cast<caddr_t>(&cmsg);  //typedef void* caddr_t;
+    msg.msg_control = reinterpret_cast<caddr_t>(&cmsg);
     msg.msg_controllen = sizeof(cmsg);
 
     *size = recvmsg(mFD, &msg, 0);
@@ -154,13 +158,16 @@ wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     			// 是否是同步 打开fd文件描述符 的channel
     			wChannelOpen open;
     			open.ParseFromArray(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + l, len - sizeof(uint32_t) - sizeof(uint8_t) - sizeof(uint16_t) - l);
-                if (cmsg.cm.cmsg_len < static_cast<socklen_t>(CMSG_LEN(sizeof(int32_t)))) {
+
+    			if (cmsg.cm.cmsg_len < static_cast<socklen_t>(CMSG_LEN(sizeof(int32_t)))) {
                     mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", "returned too small ancillary data");
                 } else if (cmsg.cm.cmsg_level != SOL_SOCKET || cmsg.cm.cmsg_type != SCM_RIGHTS) {
                     mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", "returned invalid ancillary data");
                 } else {
                     // 文件描述符
-                    //memcpy(&open.fd(), CMSG_DATA(&cmsg.cm), sizeof(int32_t));
+                	int32_t fd = *(int32_t *) CMSG_DATA(&cmsg.cm);
+                	open.set_fd(fd);
+                	wTask::Assertbuf(buf, &open);
                 }
     		}
         }
