@@ -47,7 +47,6 @@ wStatus wChannelSocket::Close() {
 }
 
 wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
-    mFD = mChannel[0];
     mSendTm = misc::GetTimeofday();
     
     // msghdr.msg_control 缓冲区必须与 cmsghdr 结构对齐
@@ -102,7 +101,7 @@ wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     msg.msg_iovlen = 1;
     msg.msg_flags = 0;
 
-    *size = sendmsg(mFD, &msg, 0);
+    *size = sendmsg(mChannel[0], &msg, 0);
     if (*size >= 0) {
         mStatus = wStatus::Nothing();
     } else if (*size == -1 && (errno == EINTR || errno == EAGAIN)) {
@@ -114,7 +113,6 @@ wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
 }
 
 wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
-    mFD = mChannel[1];
     mRecvTm = misc::GetTimeofday();
 
     // msghdr.msg_control 缓冲区必须与 cmsghdr 结构对齐
@@ -137,7 +135,7 @@ wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     msg.msg_control = reinterpret_cast<caddr_t>(&cmsg);
     msg.msg_controllen = sizeof(cmsg);
 
-    *size = recvmsg(mFD, &msg, 0);
+    *size = recvmsg(mChannel[1], &msg, 0);
     if (*size == 0) {
         mStatus = wStatus::IOError("wChannelSocket::RecvBytes, client was closed", "");
     } else if (*size == -1 && (errno == EINTR || errno == EAGAIN)) {

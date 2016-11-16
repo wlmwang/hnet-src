@@ -141,12 +141,13 @@ wStatus wMaster::WorkerStart(uint32_t n, int32_t type) {
 			return mStatus;
 		}
 
+		// 5ms延迟
+		usleep(5000);
 		// 向所有已启动worker传递刚启动worker的channel描述符
 		wChannelOpen open;
 		open.set_slot(mSlot);
 		open.set_pid(mWorkerPool[mSlot]->mPid);
 		open.set_fd(mWorkerPool[mSlot]->ChannelFD(0));
-
         std::vector<uint32_t> blacksolt(1, mSlot);
         mServer->NotifyWorker(&open, kMaxProcess, &blacksolt);
 	}
