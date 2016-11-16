@@ -7,7 +7,6 @@
 #include "wConfig.h"
 #include "wMisc.h"
 #include "wSlice.h"
-#include "tinyxml.h"    //lib tinyxml
 
 namespace hnet {
 

@@ -7,18 +7,18 @@
 #
 # Makefile
 # 动态链接所需库，需.so文件安装到ldconfig加载路径中(/usr/local/lib)
-# 需要预先编译lib目录下的log4cpp、tinyxml软件包
+# 需要预先编译vendor目录下的protobuf软件包
 #
 
 CXX=g++ -std=c++11
-CXXFLAGS=-O3 -Wall -Wno-invalid-offsetof -D_USE_LOGGER_ -D_DEBUG_ #-D_MEM_CHECK
-LDFLAGS=-L/usr/local/lib -ltinyxml -lpthread -lprotobuf
+CXXFLAGS=-O3 -Wall -D_USE_LOGGER_ -D_DEBUG_
+LDFLAGS=-L/usr/local/lib -lpthread -lprotobuf
 
 COREPATH=../core
 COMMPATH=../command
 MSGPATH=../message
 VENDOR=../vendor
-INCPATH=-I./$(COREPATH) -I./$(COMMPATH) -I./$(MSGPATH) -I./$(VENDOR)/tinyxml
+INCPATH=-I./$(COREPATH) -I./$(COMMPATH) -I./$(MSGPATH)
 
 SRCPATH=.
 OBJECTS=./$(COREPATH)/wCrc32c.o \
