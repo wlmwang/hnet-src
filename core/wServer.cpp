@@ -25,13 +25,9 @@
 namespace hnet {
 
 wServer::wServer(wConfig* config) : mMaster(NULL), mWorker(NULL), mConfig(config), mExiting(false), mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
-mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mUseAcceptTurn(false), mAcceptHeld(false), mAcceptSem(NULL) {
+mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mAcceptSem(NULL), mUseAcceptTurn(true), mAcceptHeld(false), mAcceptDisabled(0) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
-    if (mUseAcceptTurn == true) {
-    	mStatus = wEnv::Default()->NewSem(NULL, &mAcceptSem);
-    	assert(mStatus.Ok());
-    }
 }
 
 wServer::~wServer() {
@@ -49,7 +45,7 @@ wStatus wServer::PrepareStart(const std::string& ipaddr, uint16_t port, std::str
 wStatus wServer::SingleStart(bool daemon) {
     if (!InitEpoll().Ok()) {
 		return mStatus;
-    } else if (!Listener2Epoll().Ok()) {
+    } else if (!Listener2Epoll(true).Ok()) {
 		return mStatus;
     }
     
@@ -74,10 +70,23 @@ wStatus wServer::SingleStart(bool daemon) {
 wStatus wServer::WorkerStart(bool daemon) {
     if (!InitEpoll().Ok()) {
 		return mStatus;
-    } else if (!Listener2Epoll().Ok()) {
+    } else if (!Listener2Epoll(true).Ok()) {
 		return mStatus;
-    } else if (!Channel2Epoll().Ok()) {
+    } else if (!Channel2Epoll(true).Ok()) {
     	return mStatus;
+    }
+
+    // 惊群锁
+    if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
+    	mStatus = wEnv::Default()->NewSem(NULL, &mAcceptSem);
+    	if (!mStatus.Ok()) {
+    		return mStatus;
+    	}
+    	if (!RemoveListener(false).Ok()) {
+    		return mStatus;
+    	}
+    } else {
+    	mUseAcceptTurn = false;
     }
 
     // 进入服务主循环
@@ -105,7 +114,6 @@ wStatus wServer::HandleSignal() {
 		g_quit = 0;
 		if (!mExiting) {
 		    mExiting = true;
-		    CleanListener();
 		}
     }
     return mStatus;
@@ -136,59 +144,65 @@ wStatus wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
 }
 
 wStatus wServer::Recv() {
-	if (mUseAcceptTurn == false || (mUseAcceptTurn == true && mAcceptHeld == true) || (mUseAcceptTurn == true && mAcceptHeld == false && mAcceptSem->TryWait().Ok())) {
+	if (mUseAcceptTurn == true && mAcceptHeld == false && mAcceptSem->TryWait().Ok()) {
 		mAcceptHeld = true;
-		// 事件循环
-	    std::vector<struct epoll_event> evt(kListenBacklog);
-	    int iRet = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
-	    if (iRet == -1) {
-			mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", strerror(errno));
-	    }
-	    wTask* task;
-	    ssize_t size;
-	    for (int i = 0 ; i < iRet ; i++) {
-			task = reinterpret_cast<wTask *>(evt[i].data.ptr);
-			// 加锁
-			int type = task->Type();
-			mTaskPoolMutex[type].Lock();
-			if (task->Socket()->FD() == kFDUnknown) {
-				mStatus = RemoveTask(task);
-			} else if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
-			    mStatus = RemoveTask(task);
-			} else if (task->Socket()->ST() == kStListen && task->Socket()->SS() == kSsListened) {
-			    if (evt[i].events & EPOLLIN) {
-					mStatus = AcceptConn(task);
-			    } else {
-					mStatus = wStatus::IOError("wServer::Recv, accept error", "listen socket error event");
-			    }
-			} else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
-			    if (evt[i].events & EPOLLIN) {
-					// 套接口准备好了读取操作
-					mStatus = task->TaskRecv(&size);
+		if (!Listener2Epoll(false).Ok()) {
+			return mStatus;
+		}
+	}
+
+	// 事件循环
+	std::vector<struct epoll_event> evt(kListenBacklog);
+	int iRet = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
+	if (iRet == -1) {
+		mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", strerror(errno));
+	}
+	wTask* task;
+	ssize_t size;
+	for (int i = 0 ; i < iRet ; i++) {
+		task = reinterpret_cast<wTask *>(evt[i].data.ptr);
+		// 加锁
+		int type = task->Type();
+		mTaskPoolMutex[type].Lock();
+		if (task->Socket()->FD() == kFDUnknown) {
+			mStatus = RemoveTask(task);
+		} else if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
+			mStatus = RemoveTask(task);
+		} else if (task->Socket()->ST() == kStListen && task->Socket()->SS() == kSsListened) {
+			if (evt[i].events & EPOLLIN) {
+				mStatus = AcceptConn(task);
+			} else {
+				mStatus = wStatus::IOError("wServer::Recv, accept error", "listen socket error event");
+			}
+		} else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
+			if (evt[i].events & EPOLLIN) {
+				// 套接口准备好了读取操作
+				mStatus = task->TaskRecv(&size);
+				if (!mStatus.Ok()) {
+					mStatus = RemoveTask(task);
+				}
+			} else if (evt[i].events & EPOLLOUT) {
+				// 清除写事件
+				if (task->SendLen() == 0) {
+					AddTask(task, EPOLLIN, EPOLL_CTL_MOD, false);
+				} else {
+					// 套接口准备好了写入操作
+					// 写入失败，半连接，对端读关闭
+					mStatus = task->TaskSend(&size);
 					if (!mStatus.Ok()) {
 						mStatus = RemoveTask(task);
 					}
-			    } else if (evt[i].events & EPOLLOUT) {
-					// 清除写事件
-					if (task->SendLen() == 0) {
-					    AddTask(task, EPOLLIN, EPOLL_CTL_MOD, false);
-					} else {
-						// 套接口准备好了写入操作
-						// 写入失败，半连接，对端读关闭
-						mStatus = task->TaskSend(&size);
-						if (!mStatus.Ok()) {
-							mStatus = RemoveTask(task);
-						}
-					}
-			    }
+				}
 			}
-			// 解锁
-			mTaskPoolMutex[type].Unlock();
-	    }
+		}
+		// 解锁
+		mTaskPoolMutex[type].Unlock();
 	}
+
 	if (mUseAcceptTurn == true && mAcceptHeld == true) {
-		mAcceptSem->Post();
+		RemoveListener(false);
 		mAcceptHeld = false;
+		mAcceptSem->Post();
 	}
     return mStatus;
 }
@@ -392,10 +406,26 @@ wStatus wServer::InitEpoll() {
     return mStatus;
 }
 
-wStatus wServer::Listener2Epoll() {
-    wTask *task;
+wStatus wServer::Listener2Epoll(bool addpool) {
     for (std::vector<wSocket *>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
-		switch ((*it)->SP()) {
+    	if (!addpool) {
+    		bool oldtask = false;
+        	for (std::vector<wTask*>::iterator im = mTaskPool[Shard(*it)].begin(); im != mTaskPool[Shard(*it)].end(); im++) {
+        		if ((*im)->Socket() == *it) {
+        			oldtask = true;
+        			AddTask(*im, EPOLLIN, EPOLL_CTL_ADD, false);
+        			break;
+        		}
+        	}
+        	if (!oldtask) {
+        		return mStatus = wStatus::IOError("wServer::Listener2Epoll failed", "no task find");
+        	} else {
+        		continue;
+        	}
+    	}
+
+    	wTask *task;
+    	switch ((*it)->SP()) {
 		case kSpTcp:
 		    mStatus = NewTcpTask(*it, &task);
 		    break;
@@ -407,7 +437,7 @@ wStatus wServer::Listener2Epoll() {
 		    mStatus = wStatus::IOError("wServer::Listener2Epoll", "unknown task");
 		}
 		if (mStatus.Ok()) {
-		    if (!AddTask(task).Ok()) {
+		    if (!AddTask(task, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
 				SAFE_DELETE(task);
 		    }
 		}
@@ -415,22 +445,27 @@ wStatus wServer::Listener2Epoll() {
     return mStatus;
 }
 
-wStatus wServer::CleanListener() {
-    for (std::vector<wSocket *>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
-		SAFE_DELETE(*it);
+wStatus wServer::RemoveListener(bool delpool) {
+    for (std::vector<wSocket*>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
+    	uint32_t id = Shard(*it);
+    	for (std::vector<wTask*>::iterator im = mTaskPool[id].begin(); im != mTaskPool[id].end(); im++) {
+    		if ((*im)->Socket() == *it) {
+    			RemoveTask(*im, &im, delpool);
+    			break;
+    		}
+    	}
     }
-    mListenSock.clear();
     return mStatus;
 }
 
-wStatus wServer::Channel2Epoll() {
+wStatus wServer::Channel2Epoll(bool addpool) {
 	if (mMaster != NULL && mMaster->Worker(mMaster->mSlot) != NULL) {
 		wChannelSocket *socket = mMaster->Worker(mMaster->mSlot)->Channel();
 		if (socket != NULL) {
 			wTask *task;
 			mStatus = NewChannelTask(socket, &task);
 			if (mStatus.Ok()) {
-				mStatus = AddTask(task);
+				mStatus = AddTask(task, EPOLLIN, EPOLL_CTL_ADD, addpool);
 			}
 		} else {
 			mStatus = wStatus::IOError("wServer::Channel2Epoll failed", "channel is null");

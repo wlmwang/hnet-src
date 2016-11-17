@@ -105,11 +105,12 @@ protected:
     wStatus InitEpoll();
     wStatus AddListener(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
 
-    // 添加listen socket到epoll侦听事件队列
-    wStatus Listener2Epoll();
-    wStatus CleanListener();
+    // 添加channel socket到epoll侦听事件队列
+    wStatus Channel2Epoll(bool addpool = true);
 
-    wStatus Channel2Epoll();
+    // 添加listen socket到epoll侦听事件队列
+    wStatus Listener2Epoll(bool addpool = true);
+    wStatus RemoveListener(bool delpool = true);
 
     wStatus AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
     wStatus RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
@@ -140,7 +141,7 @@ protected:
     wMutex mScheduleMutex;
 
     // 多listen socket监听服务描述符
-    std::vector<wSocket *> mListenSock;
+    std::vector<wSocket*> mListenSock;
 
     int32_t mEpollFD;
     uint64_t mTimeout;
@@ -151,9 +152,10 @@ protected:
     wMutex mTaskPoolMutex[kServerNumShard];
 
     // 惊群锁
+    wSem *mAcceptSem;
     bool mUseAcceptTurn;
     bool mAcceptHeld;
-    wSem *mAcceptSem;
+    int64_t mAcceptDisabled;
 };
 
 }	// namespace hnet

@@ -58,9 +58,8 @@ public:
     // master主进程退出函数
     virtual void ProcessExit() { }
     
-    inline wWorker* Worker(uint32_t slot) {
-        return mWorkerPool[slot];
-    }
+    inline wWorker* Worker(uint32_t slot) { return mWorkerPool[slot]; }
+    inline uint32_t& WorkerNum() { return mWorkerNum;}
 
 protected:
     friend class wWorker;
