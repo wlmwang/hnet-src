@@ -42,33 +42,11 @@ int wChannelTask::ChannelClose(struct Request_t *request) {
 }
 
 int wChannelTask::ChannelQuit(struct Request_t *request) {
-	for (uint32_t n = 0; n < kMaxProcess; n++) {
-		if (mMaster->Worker(n)->Pid() != -1) {
-			mMaster->Worker(n)->Pid() = -1;
-		}
-		if (mMaster->Worker(n)->ChannelFD(0) != kFDUnknown) {
-			close(mMaster->Worker(n)->ChannelFD(0));
-		}
-		if (mMaster->Worker(n)->ChannelFD(1) != kFDUnknown) {
-			close(mMaster->Worker(n)->ChannelFD(1));
-		}
-	}
 	g_quit = 1;
 	return 0;
 }
 
 int wChannelTask::ChannelTerminate(struct Request_t *request) {
-	for (uint32_t n = 0; n < kMaxProcess; n++) {
-		if (mMaster->Worker(n)->Pid() != -1) {
-			mMaster->Worker(n)->Pid() = -1;
-		}
-		if (mMaster->Worker(n)->ChannelFD(0) != kFDUnknown) {
-			close(mMaster->Worker(n)->ChannelFD(0));
-		}
-		if (mMaster->Worker(n)->ChannelFD(1) != kFDUnknown) {
-			close(mMaster->Worker(n)->ChannelFD(1));
-		}
-	}
 	g_terminate = 1;
 	return 0;
 }
