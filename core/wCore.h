@@ -73,12 +73,12 @@ const uint8_t   kKeepAliveCnt = 5;
 
 const uint8_t   kHeartbeat = 5;
 
-// 16m shm消息队列大小
-const uint32_t  kMsgQueueLen = 16777216;
+// 1m消息队列大小
+const uint32_t  kMsgQueueLen = 1048576;
 
 // 512k 客户端task消息缓冲大小
-const uint32_t  kPackageSize = 524288;
-const uint32_t  kMaxPackageSize = 524284;
+const uint32_t  kPackageSize = 131072;
+const uint32_t  kMaxPackageSize = 131068;
 const uint32_t  kMinPackageSize = 3;
 
 //进程相关
