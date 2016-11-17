@@ -19,14 +19,14 @@ namespace hnet {
 
 wMaster::wMaster(const std::string& title, wServer* server) : mServer(server), mPid(getpid()),
 mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0), mLive(1) {
-	// 进程pid文件
     std::string pid_path;
 	if (mServer->Config()->GetConf("pid_path", &pid_path) && pid_path.size() > 0) {
 		mPidPath = pid_path;
 	} else {
 		mPidPath = kPidPath;
 	}
-	mWorkerNum = mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
+	mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
+	mWorkerNum = 2*mNcpu;
 	memset(mWorkerPool, 0, sizeof(mWorkerPool));
 	mServer->Master() = this;
 }

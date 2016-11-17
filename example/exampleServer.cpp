@@ -62,6 +62,7 @@ int ExampleTcpTask::ExampleEchoChannel(struct Request_t *request) {
 
 	std::cout << "tcp receive 2:" << req.cmd() << std::endl;
 
+	// 发送给其他worker进程
 	SyncWorker(&req);
 	return 0;
 }

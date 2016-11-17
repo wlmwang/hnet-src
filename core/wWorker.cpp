@@ -16,8 +16,8 @@ namespace hnet {
 
 wWorker::wWorker(std::string title, uint32_t slot, wMaster* master) : mMaster(master), mTitle(title), mPid(-1),
 mPriority(0), mRlimitCore(kRlimitCore), mSlot(slot) {
-	// 进程间通信socket
 	SAFE_NEW(wChannelSocket(kStConnect), mChannel);
+	mMaster->mServer->Worker() = this;
 }
 
 wWorker::~wWorker() {
