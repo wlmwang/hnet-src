@@ -144,11 +144,13 @@ wStatus wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
 }
 
 wStatus wServer::Recv() {
-	if (mUseAcceptTurn == true && mAcceptHeld == false && mAcceptSem->TryWait().Ok()) {
-		mAcceptHeld = true;
-		if (!Listener2Epoll(false).Ok()) {
+	if (mUseAcceptTurn == true && mAcceptHeld == false) {
+		if (!mAcceptSem->TryWait().Ok()) {
+			return mStatus;
+		} else if (!Listener2Epoll(false).Ok()) {
 			return mStatus;
 		}
+		mAcceptHeld = true;
 	}
 
 	// 事件循环
