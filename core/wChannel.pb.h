@@ -209,30 +209,20 @@ class wChannelClose : public ::google::protobuf::Message {
   inline ::google::protobuf::int32 slot() const;
   inline void set_slot(::google::protobuf::int32 value);
   
-  // required int32 fd = 3;
-  inline bool has_fd() const;
-  inline void clear_fd();
-  static const int kFdFieldNumber = 3;
-  inline ::google::protobuf::int32 fd() const;
-  inline void set_fd(::google::protobuf::int32 value);
-  
   // @@protoc_insertion_point(class_scope:hnet.wChannelClose)
  private:
   inline void set_has_pid();
   inline void clear_has_pid();
   inline void set_has_slot();
   inline void clear_has_slot();
-  inline void set_has_fd();
-  inline void clear_has_fd();
   
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
   
   ::google::protobuf::int32 pid_;
   ::google::protobuf::int32 slot_;
-  ::google::protobuf::int32 fd_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
   
   friend void  protobuf_AddDesc_wChannel_2eproto();
   friend void protobuf_AssignDesc_wChannel_2eproto();
@@ -524,28 +514,6 @@ inline ::google::protobuf::int32 wChannelClose::slot() const {
 inline void wChannelClose::set_slot(::google::protobuf::int32 value) {
   set_has_slot();
   slot_ = value;
-}
-
-// required int32 fd = 3;
-inline bool wChannelClose::has_fd() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
-}
-inline void wChannelClose::set_has_fd() {
-  _has_bits_[0] |= 0x00000004u;
-}
-inline void wChannelClose::clear_has_fd() {
-  _has_bits_[0] &= ~0x00000004u;
-}
-inline void wChannelClose::clear_fd() {
-  fd_ = 0;
-  clear_has_fd();
-}
-inline ::google::protobuf::int32 wChannelClose::fd() const {
-  return fd_;
-}
-inline void wChannelClose::set_fd(::google::protobuf::int32 value) {
-  set_has_fd();
-  fd_ = value;
 }
 
 // -------------------------------------------------------------------

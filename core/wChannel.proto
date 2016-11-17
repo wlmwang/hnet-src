@@ -4,6 +4,8 @@
  * Copyright (C) Hupu, Inc.
  */
 
+// protoc -I=$SRC_DIR --cpp_out=$DST_DIR $SRC_DIR/wChannel.proto
+
 package hnet;
 
 message wChannelOpen {
@@ -15,7 +17,6 @@ message wChannelOpen {
 message wChannelClose {
 	required int32 pid	= 1;
 	required int32 slot	= 2;
-	required int32 fd	= 3;
 }
 
 message wChannelQuit {

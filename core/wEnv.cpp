@@ -228,6 +228,14 @@ public:
         return thread_id;
     }
 
+    // 获取进程id函数，返回64位类型
+    static uint64_t getpid() {
+        pid_t pid = getpid();
+        uint64_t pid_id = 0;
+        memcpy(&pid_id, &pid, std::min(sizeof(pid_id), sizeof(pid)));
+        return pid_id;
+    }
+
     // 添加任务到后台任务消费线程中
     virtual void Schedule(void (*function)(void*), void* arg);
     virtual void StartThread(void (*function)(void* arg), void* arg);

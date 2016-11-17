@@ -57,10 +57,9 @@ void protobuf_AssignDesc_wChannel_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(wChannelOpen));
   wChannelClose_descriptor_ = file->message_type(1);
-  static const int wChannelClose_offsets_[3] = {
+  static const int wChannelClose_offsets_[2] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(wChannelClose, pid_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(wChannelClose, slot_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(wChannelClose, fd_),
   };
   wChannelClose_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -146,10 +145,10 @@ void protobuf_AddDesc_wChannel_2eproto() {
 
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\016wChannel.proto\022\004hnet\"5\n\014wChannelOpen\022\013"
-    "\n\003pid\030\001 \002(\005\022\014\n\004slot\030\002 \002(\005\022\n\n\002fd\030\003 \002(\005\"6\n"
+    "\n\003pid\030\001 \002(\005\022\014\n\004slot\030\002 \002(\005\022\n\n\002fd\030\003 \002(\005\"*\n"
     "\rwChannelClose\022\013\n\003pid\030\001 \002(\005\022\014\n\004slot\030\002 \002("
-    "\005\022\n\n\002fd\030\003 \002(\005\"\033\n\014wChannelQuit\022\013\n\003pid\030\001 \002"
-    "(\005\" \n\021wChannelTerminate\022\013\n\003pid\030\001 \002(\005", 196);
+    "\005\"\033\n\014wChannelQuit\022\013\n\003pid\030\001 \002(\005\" \n\021wChann"
+    "elTerminate\022\013\n\003pid\030\001 \002(\005", 184);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "wChannel.proto", &protobuf_RegisterTypes);
   wChannelOpen::default_instance_ = new wChannelOpen();
@@ -464,7 +463,6 @@ void wChannelOpen::Swap(wChannelOpen* other) {
 #ifndef _MSC_VER
 const int wChannelClose::kPidFieldNumber;
 const int wChannelClose::kSlotFieldNumber;
-const int wChannelClose::kFdFieldNumber;
 #endif  // !_MSC_VER
 
 wChannelClose::wChannelClose()
@@ -485,7 +483,6 @@ void wChannelClose::SharedCtor() {
   _cached_size_ = 0;
   pid_ = 0;
   slot_ = 0;
-  fd_ = 0;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -522,7 +519,6 @@ void wChannelClose::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     pid_ = 0;
     slot_ = 0;
-    fd_ = 0;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -561,22 +557,6 @@ bool wChannelClose::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(24)) goto parse_fd;
-        break;
-      }
-      
-      // required int32 fd = 3;
-      case 3: {
-        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-         parse_fd:
-          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
-                 input, &fd_)));
-          set_has_fd();
-        } else {
-          goto handle_uninterpreted;
-        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -609,11 +589,6 @@ void wChannelClose::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteInt32(2, this->slot(), output);
   }
   
-  // required int32 fd = 3;
-  if (has_fd()) {
-    ::google::protobuf::internal::WireFormatLite::WriteInt32(3, this->fd(), output);
-  }
-  
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -630,11 +605,6 @@ void wChannelClose::SerializeWithCachedSizes(
   // required int32 slot = 2;
   if (has_slot()) {
     target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(2, this->slot(), target);
-  }
-  
-  // required int32 fd = 3;
-  if (has_fd()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(3, this->fd(), target);
   }
   
   if (!unknown_fields().empty()) {
@@ -660,13 +630,6 @@ int wChannelClose::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::Int32Size(
           this->slot());
-    }
-    
-    // required int32 fd = 3;
-    if (has_fd()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::Int32Size(
-          this->fd());
     }
     
   }
@@ -702,9 +665,6 @@ void wChannelClose::MergeFrom(const wChannelClose& from) {
     if (from.has_slot()) {
       set_slot(from.slot());
     }
-    if (from.has_fd()) {
-      set_fd(from.fd());
-    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -722,7 +682,7 @@ void wChannelClose::CopyFrom(const wChannelClose& from) {
 }
 
 bool wChannelClose::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000007) != 0x00000007) return false;
+  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
   
   return true;
 }
@@ -731,7 +691,6 @@ void wChannelClose::Swap(wChannelClose* other) {
   if (other != this) {
     std::swap(pid_, other->pid_);
     std::swap(slot_, other->slot_);
-    std::swap(fd_, other->fd_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

@@ -141,8 +141,9 @@ wStatus wMaster::WorkerStart(uint32_t n, int32_t type) {
 			return mStatus;
 		}
 
-		// 5ms延迟
-		usleep(5000);
+		// 1ms延迟
+		usleep(1000);
+
 		// 向所有已启动worker传递刚启动worker的channel描述符
 		wChannelOpen open;
 		open.set_slot(mSlot);
@@ -162,7 +163,7 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 		// 启动指定类型worker进程
 		uint32_t idx;
 		for (idx = 0; idx < kMaxProcess; ++idx) {
-			if (mWorkerPool[idx] == NULL || mWorkerPool[idx]->mPid == -1) {
+			if (mWorkerPool[idx]->mPid == -1 || mWorkerPool[idx]->ChannelFD(0) == kFDUnknown || mWorkerPool[idx]->ChannelFD(1) == kFDUnknown) {
 				break;
 			}
 		}
@@ -173,7 +174,10 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 	}
 	wWorker *worker = mWorkerPool[mSlot];
 
-	// 打开进程间IPC通信channel
+	// 打开进程间channel通道
+	if (worker->ChannelFD(0) != kFDUnknown || worker->ChannelFD(1) != kFDUnknown) {
+		worker->Channel()->Close();
+	}
 	mStatus = worker->Channel()->Open();
 	if (!mStatus.Ok()) {
 		return mStatus;
@@ -276,7 +280,9 @@ wStatus wMaster::HandleSignal() {
 	// SIGCHLD
 	if (g_reap) {
 		g_reap = 0;
+
 		WorkerExitStat();
+
 		// 重启退出的worker
 		mStatus = ReapChildren();
 	}
@@ -332,8 +338,10 @@ wStatus wMaster::HandleSignal() {
 		usleep(100*1000);
 		
 		mLive = 1;
+
 		// 关闭原来worker进程
 		SignalWorker(SIGTERM);
+		//SignalWorker(SIGKILL);
 	}
 	return mStatus;
 }
@@ -341,30 +349,31 @@ wStatus wMaster::HandleSignal() {
 wStatus wMaster::ReapChildren() {
 	mLive = 0;
 	for (uint32_t i = 0; i < kMaxProcess; i++) {
-        if (mWorkerPool[i] == NULL || mWorkerPool[i]->mPid == -1) {
+        if (mWorkerPool[i]->mPid == -1) {
             continue;
         }
 
         // 进程已退出
 		if (mWorkerPool[i]->mExited) {
-			int detached = mWorkerPool[i]->mDetached;
-			int respawn = mWorkerPool[i]->mRespawn;
-			int exiting = mWorkerPool[i]->mExiting;
-			if (!detached) {
-				// 向所有已启动worker传递关闭worker的channel消息
-				wChannelClose close;
-				close.set_slot(i);
-				close.set_pid(mWorkerPool[i]->mPid);
-				close.set_fd(kFDUnknown);
-
-				mServer->NotifyWorker(&close);
+			if (!mWorkerPool[i]->mDetached) {
 
 				// 关闭channel && 释放进程表项
 				mWorkerPool[i]->Channel()->Close();
+
+				// 向新启动的进程传递刚被关闭的进程close消息
+				wChannelClose close;
+				close.set_slot(i);
+				close.set_pid(mWorkerPool[i]->mPid);
+				for (uint32_t n = 0; n < kMaxProcess; n++) {
+					if (mWorkerPool[n]->mExited || mWorkerPool[n]->mPid == -1 || mWorkerPool[n]->ChannelFD(0) == kFDUnknown) {
+						continue;
+					}
+					mServer->NotifyWorker(&close, n);
+				}
 			}
 			
 			// 重启worker
-			if (respawn && !exiting && !g_terminate && !g_quit) {
+			if (mWorkerPool[i]->mRespawn && !mWorkerPool[i]->mExiting && !g_terminate && !g_quit) {
 				if (!SpawnWorker(i).Ok()) {
 					continue;
 				}
@@ -392,29 +401,20 @@ wStatus wMaster::ReapChildren() {
 }
 
 void wMaster::SignalWorker(int signo) {
-	int other = 0;
-
-	const google::protobuf::Message* channel;
 	wChannelQuit quit;
 	wChannelTerminate terminate;
+	const google::protobuf::Message* channel = NULL;
 
-	switch (signo) {
-	case SIGQUIT:
+	if (signo == SIGQUIT) {
 		quit.set_pid(mPid);
 		channel = &quit;
-		break;
-			
-	case SIGTERM:
+	} else if (signo == SIGTERM) {
 		terminate.set_pid(mPid);
 		channel = &terminate;
-		break;
-
-	default:
-		other = 1;
 	}
 	
 	for (uint32_t i = 0; i < kMaxProcess; i++) {
-        if (mWorkerPool[i] == NULL || mWorkerPool[i]->mDetached || mWorkerPool[i]->mPid == -1) {
+        if (mWorkerPool[i]->mDetached || mWorkerPool[i]->mPid == -1) {
         	// 分离进程
         	continue;
         } else if (mWorkerPool[i]->mJustSpawn) {
@@ -426,13 +426,11 @@ void wMaster::SignalWorker(int signo) {
 			continue;
 		}
 		
-        if (!other) {
+        if (channel != NULL) {
 
 	        /* TODO: EAGAIN */
         	if (mServer->NotifyWorker(channel, i).Ok()) {
-				if (signo == SIGQUIT || signo == SIGTERM) {
-					mWorkerPool[i]->mExiting = 1;
-				}
+        		mWorkerPool[i]->mExiting = 1;
 				continue;
         	}
 		}
@@ -515,7 +513,7 @@ void wMaster::WorkerExitStat() {
         one = 1;
 		uint32_t i;
 		for (i = 0; i < kMaxProcess; ++i) {
-			if (mWorkerPool[i] != NULL && mWorkerPool[i]->mPid == pid) {
+			if (mWorkerPool[i]->mPid == pid) {
 				// 设置退出状态
                 mWorkerPool[i]->mStat = status;
                 mWorkerPool[i]->mExited = 1;

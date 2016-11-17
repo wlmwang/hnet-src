@@ -45,7 +45,7 @@ public:
 // 日志实现类
 class wPosixLogger : public wLogger {
 public:
-	wPosixLogger(const std::string& fname, uint64_t (*gettid)(), off_t maxsize = 32*1024*1024) : mFname(fname), mMaxsize(maxsize), mGettid(gettid) {
+	wPosixLogger(const std::string& fname, uint64_t (*getpid)(), off_t maxsize = 32*1024*1024) : mFname(fname), mMaxsize(maxsize), mGetpid(getpid) {
 		mFile = OpenCreatLog(mFname, "a+");
 	}
 
@@ -70,7 +70,7 @@ private:
 	FILE* mFile;
 	std::string mFname;
 	off_t mMaxsize;
-	uint64_t (*mGettid)();	// 获取当前线程id函数指针
+	uint64_t (*mGetpid)();	// 获取当前进程id函数指针
 };
 
 // 写日志函数接口
