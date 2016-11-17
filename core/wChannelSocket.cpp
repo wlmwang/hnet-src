@@ -160,11 +160,9 @@ wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
                 } else {
                 	// 文件描述符
         			wChannelOpen open;
-        			open.ParseFromArray(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + l, len - sizeof(uint32_t) - sizeof(uint8_t) - sizeof(uint16_t) - l);
-
+        			open.ParseFromArray(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + l, *size - sizeof(uint32_t) - sizeof(uint8_t) - sizeof(uint16_t) - l);
                 	int32_t fd = *(int32_t *) CMSG_DATA(&cmsg.cm);
                 	open.set_fd(fd);
-
                 	wTask::Assertbuf(buf, &open);
                 }
     		}

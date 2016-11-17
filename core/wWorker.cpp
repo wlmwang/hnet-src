@@ -18,7 +18,6 @@ wWorker::wWorker(std::string title, uint32_t slot, wMaster* master) : mMaster(ma
 mPriority(0), mRlimitCore(kRlimitCore), mSlot(slot) {
 	// 进程间通信socket
 	SAFE_NEW(wChannelSocket(kStConnect), mChannel);
-	mMaster->mServer->Worker() = this;
 }
 
 wWorker::~wWorker() {
@@ -69,7 +68,7 @@ wStatus wWorker::Prepare() {
 	if (!mStatus.Ok()) {
 		return mStatus;
 	}
-
+	mMaster->mServer->Worker() = this;
 	return mStatus;
 }
 
