@@ -25,7 +25,7 @@
 namespace hnet {
 
 wServer::wServer(wConfig* config) : mMaster(NULL), mWorker(NULL), mConfig(config), mExiting(false), mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
-mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mAcceptSem(NULL), mUseAcceptTurn(true), mAcceptHeld(false), mAcceptDisabled(0) {
+mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mAcceptSem(NULL), mUseAcceptTurn(false), mAcceptHeld(false), mAcceptDisabled(0) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
@@ -147,9 +147,8 @@ wStatus wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {
 		if (!mAcceptSem->TryWait().Ok()) {
 			return mStatus;
-		} else if (!Listener2Epoll(false).Ok()) {
-			return mStatus;
 		}
+		Listener2Epoll(false);
 		mAcceptHeld = true;
 	}
 
