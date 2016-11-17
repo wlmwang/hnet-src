@@ -42,6 +42,7 @@ public:
 	inline wMaster* Master() { return mMaster;}
     inline wChannelSocket* Channel() { return mChannel;}
     inline int& ChannelFD(uint8_t i) { return (*mChannel)[i];}
+    inline uint32_t& Slot() { return mSlot;}
 
 protected:
 	friend class wMaster;

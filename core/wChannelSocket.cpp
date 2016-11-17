@@ -153,18 +153,18 @@ wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
             uint16_t l = coding::DecodeFixed16(buf + sizeof(uint32_t) + sizeof(uint8_t));
     		std::string name(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t), l);
     		if (name == "hnet.wChannelOpen") {
-    			// 是否是同步 打开fd文件描述符 的channel
-    			wChannelOpen open;
-    			open.ParseFromArray(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + l, len - sizeof(uint32_t) - sizeof(uint8_t) - sizeof(uint16_t) - l);
-
     			if (cmsg.cm.cmsg_len < static_cast<socklen_t>(CMSG_LEN(sizeof(int32_t)))) {
                     mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", "returned too small ancillary data");
                 } else if (cmsg.cm.cmsg_level != SOL_SOCKET || cmsg.cm.cmsg_type != SCM_RIGHTS) {
                     mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", "returned invalid ancillary data");
                 } else {
-                    // 文件描述符
+                	// 文件描述符
+        			wChannelOpen open;
+        			open.ParseFromArray(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + l, len - sizeof(uint32_t) - sizeof(uint8_t) - sizeof(uint16_t) - l);
+
                 	int32_t fd = *(int32_t *) CMSG_DATA(&cmsg.cm);
                 	open.set_fd(fd);
+
                 	wTask::Assertbuf(buf, &open);
                 }
     		}

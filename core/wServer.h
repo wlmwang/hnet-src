@@ -37,14 +37,6 @@ public:
     explicit wServer(wConfig* config);
     virtual ~wServer();
 
-    inline wConfig* Config() {
-    	return mConfig;
-    }
-
-    inline wMaster* Master() {
-    	return mMaster;
-    }
-
     wStatus PrepareStart(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
 
     // single模式启动服务
@@ -91,6 +83,10 @@ public:
     // single|worker进程退出函数
     virtual void ProcessExit() { }
 
+    inline wConfig*& Config() { return mConfig;}
+    inline wMaster*& Master() { return mMaster;}
+    inline wWorker*& Worker() { return mWorker;}
+
 protected:
     friend class wMaster;
     friend class wWorker;
@@ -127,6 +123,7 @@ protected:
 
     wStatus mStatus;
     wMaster* mMaster;	// 引用进程表
+    wWorker* mWorker;	// 当前worker进程
     wConfig* mConfig;
     bool mExiting;
 

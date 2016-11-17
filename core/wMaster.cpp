@@ -28,7 +28,7 @@ mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0), mLive(1) {
 	}
 	mWorkerNum = mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
 	memset(mWorkerPool, 0, sizeof(mWorkerPool));
-	mServer->mMaster = this;
+	mServer->Master() = this;
 }
 
 wMaster::~wMaster() {
@@ -135,6 +135,7 @@ wStatus wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
 }
 
 wStatus wMaster::WorkerStart(uint32_t n, int32_t type) {
+	wChannelOpen open;
 	for (uint32_t i = 0; i < n; ++i) {
 		// 启动worker
 		if (!SpawnWorker(type).Ok()) {
@@ -145,7 +146,6 @@ wStatus wMaster::WorkerStart(uint32_t n, int32_t type) {
 		usleep(1000);
 
 		// 向所有已启动worker传递刚启动worker的channel描述符
-		wChannelOpen open;
 		open.set_slot(mSlot);
 		open.set_pid(mWorkerPool[mSlot]->mPid);
 		open.set_fd(mWorkerPool[mSlot]->ChannelFD(0));
@@ -331,7 +331,7 @@ wStatus wMaster::HandleSignal() {
 		// 重新初始化主进程配置
 		Reload();
 		
-		// 重启worker
+		// 启动新worker
 		WorkerStart(mWorkerNum, kProcessJustRespawn);
 		
 		// 100ms
