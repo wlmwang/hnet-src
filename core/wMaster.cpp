@@ -142,8 +142,8 @@ wStatus wMaster::WorkerStart(uint32_t n, int32_t type) {
 			return mStatus;
 		}
 
-		// 1ms延迟
-		usleep(1000);
+		// 0.5ms延迟
+		usleep(500);
 
 		// 向所有已启动worker传递刚启动worker的channel描述符
 		open.set_slot(mSlot);
@@ -341,7 +341,6 @@ wStatus wMaster::HandleSignal() {
 
 		// 关闭原来worker进程
 		SignalWorker(SIGTERM);
-		//SignalWorker(SIGKILL);
 	}
 	return mStatus;
 }
@@ -377,6 +376,9 @@ wStatus wMaster::ReapChildren() {
 				if (!SpawnWorker(i).Ok()) {
 					continue;
 				}
+				// 0.5ms延迟
+				usleep(500);
+
 				// 向所有已启动worker传递刚启动worker的channel描述符
 				wChannelOpen open;
 				open.set_slot(i);
@@ -522,16 +524,17 @@ void wMaster::WorkerExitStat() {
 		}
 
 		// 日志记录
+		std::string str = "wMaster::WorkerExitStat, child(" + logging::NumberToString(pid) + ") ";
         if (WTERMSIG(status)) {
-			wStatus::IOError("wMaster::WorkerExitStat, exited on signal", logging::NumberToString(WTERMSIG(status)));
+			wStatus::IOError(str + "exited on signal", logging::NumberToString(WTERMSIG(status)));
         } else {
-			wStatus::IOError("wMaster::WorkerExitStat, exited with code", logging::NumberToString(WTERMSIG(status)));
+			wStatus::IOError(str + "exited with code", logging::NumberToString(WTERMSIG(status)));
         }
 	
 		// 退出码为2时，退出后不重启
         if (WEXITSTATUS(status) == 2 && mWorkerPool[i]->mRespawn) {
         	mWorkerPool[i]->mRespawn = 0;
-        	wStatus::IOError("wMaster::WorkerExitStat, exited with fatal code, and cannot be respawned", logging::NumberToString(WTERMSIG(status)));
+        	wStatus::IOError(str + "exited with fatal code, and cannot be respawned", logging::NumberToString(WTERMSIG(status)));
         }
     }
 }

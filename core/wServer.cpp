@@ -54,7 +54,7 @@ wStatus wServer::SingleStart(bool daemon) {
 
     // 进入服务主循环
     while (daemon) {
-    	if (mExiting || !mStatus.Ok()) {
+    	if (mExiting) {
 		    ProcessExit();
 		    CleanTask();
 		    exit(0);
@@ -91,7 +91,7 @@ wStatus wServer::WorkerStart(bool daemon) {
 
     // 进入服务主循环
     while (daemon) {
-    	if (mExiting || !mStatus.Ok()) {
+    	if (mExiting) {
     	    ProcessExit();
 		    CleanTask();
 		    exit(0);

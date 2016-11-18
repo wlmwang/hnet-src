@@ -129,7 +129,7 @@ public:
 
     // 日志对象
     virtual wStatus NewLogger(const std::string& fname, wLogger** result, off_t maxsize = 32*1024*1024) {
-    	SAFE_NEW(wPosixLogger(fname, &wPosixEnv::gettid, maxsize), *result);
+    	SAFE_NEW(wPosixLogger(fname, &wPosixEnv::getpid, maxsize), *result);
 		if (*result == NULL) {
 			return wStatus::IOError(fname, strerror(errno));
 		}
@@ -230,7 +230,7 @@ public:
 
     // 获取进程id函数，返回64位类型
     static uint64_t getpid() {
-        pid_t pid = getpid();
+        pid_t pid = ::getpid();
         uint64_t pid_id = 0;
         memcpy(&pid_id, &pid, std::min(sizeof(pid_id), sizeof(pid)));
         return pid_id;
