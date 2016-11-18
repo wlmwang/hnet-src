@@ -110,10 +110,10 @@ uint64_t Ngcd(uint64_t arr[], size_t n);
 unsigned GetIpByIF(const char* ifname);
 
 // 转化成小写
-void Strlow(u_char *dst, u_char *src, size_t n);
+void Strlow(char *dst, const char *src, size_t n);
 
 // 复制字符串
-u_char *Cpystrn(u_char *dst, u_char *src, size_t n);
+char *Cpystrn(char *dst, const char *src, size_t n);
 
 inline const char* IP2Text(u_long ip) {
     in_addr in;

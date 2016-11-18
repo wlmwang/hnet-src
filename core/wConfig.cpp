@@ -12,7 +12,6 @@ namespace hnet {
 
 wConfig::wConfig() : mPool(NULL), mProcTitle(NULL) {
 	SAFE_NEW(wMemPool, mPool);
-	SAFE_NEW(wProcTitle, mProcTitle);
 }
 
 wConfig::~wConfig() {
@@ -143,6 +142,7 @@ wStatus wConfig::GetOption(int argc, const char *argv[]) {
         continue;
     }
 
+	SAFE_NEW(wProcTitle(argc, argv), mProcTitle);
     return mStatus = InitProcTitle(argc, argv);
 }
 

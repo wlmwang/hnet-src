@@ -30,8 +30,7 @@ public:
         if (mProcTitle == NULL) {
             return wStatus::IOError("wConfig::InitProcTitle", "new failed");
         }
-        mProcTitle->SaveArgv(argc, argv);
-        return mProcTitle->InitSetproctitle();
+        return mProcTitle->SaveArgv(argc, argv);
     }
 
     template<typename T>

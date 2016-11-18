@@ -166,7 +166,7 @@ uint32_t Hash(const char* data, size_t n, uint32_t seed) {
     return h;
 }
 
-void Strlow(u_char *dst, u_char *src, size_t n) {
+void Strlow(char *dst, const char *src, size_t n) {
     do {
         *dst = tolower(*src);
         dst++;
@@ -174,7 +174,7 @@ void Strlow(u_char *dst, u_char *src, size_t n) {
     } while (--n);
 }
 
-u_char *Cpystrn(u_char *dst, u_char *src, size_t n) {
+char *Cpystrn(char *dst, const char *src, size_t n) {
     if (n == 0) return dst;
 
     while (--n) {
