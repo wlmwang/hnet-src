@@ -2,9 +2,8 @@
 
 
 ```
-本章目标：学习参照Makefile写法。
-
-安装examplesvrd、exampleclient、exampledaemon。
+安装examplesvrd、exampleclient、exampledaemon
+目标：查看Makefile，熟悉该框架依赖文件。
 ```
 
 * 环境最低要求
@@ -16,6 +15,9 @@
 * make && make install
 
     * 解压hnet.tar.gz到系统目录中，以 /usr/local/hnet 为例。
+        * cd /usr/local
+        * tar -zxvf hnet.tar.gz
+        * cd hnet/example
 
     * 安装examplesvrd
         * make
