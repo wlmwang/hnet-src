@@ -57,3 +57,5 @@
             ExampleClient::PrepareRun为ExampleClient作为线程启动后调用的第一个调用的方法，此时可以做连接服务器工作，成功连接返回后，即进入客户端与服务器事件循环中。
 
 
+[详细](instructions/README.md)
+

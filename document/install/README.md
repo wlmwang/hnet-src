@@ -28,3 +28,6 @@
     * 安装exampledaemon
         * make -f MakefileDaemon
 
+
+
+[示例](example/README.md)
