@@ -98,6 +98,9 @@ const uint32_t  kPageSize = 4096;
 // 惊群锁开关
 const bool		kAcceptTurn = true;
 
+// 心跳开关
+const bool		kHeartbeatTurn = true;
+
 // 根据具体项目修改
 const char      kSoftwareName[]   = "hnet";
 const char      kSoftwareVer[]    = "0.0.1";

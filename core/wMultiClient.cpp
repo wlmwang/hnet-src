@@ -14,7 +14,7 @@
 
 namespace hnet {
 
-wMultiClient::wMultiClient(wConfig* config) : mTick(0), mHeartbeatTurn(true), mScheduleOk(true),
+wMultiClient::wMultiClient(wConfig* config) : mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleOk(true),
 mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mConfig(config) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
