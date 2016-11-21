@@ -27,16 +27,16 @@ public:
 	wWorker(std::string title, uint32_t slot, wMaster* master);
 	virtual ~wWorker();
 
-	virtual wStatus PrepareRun() {
+	virtual const wStatus& PrepareRun() {
 		return mStatus;
 	}
 
-	virtual wStatus Run() {
+	virtual const wStatus& Run() {
 		return mStatus;
 	}
 
-	wStatus Prepare();
-	wStatus Start();
+	const wStatus& Prepare();
+	const wStatus& Start();
 
 	inline pid_t& Pid() { return mPid;}
 	inline wMaster* Master() { return mMaster;}
@@ -48,7 +48,6 @@ protected:
 	friend class wMaster;
 	friend class wServer;
 
-	wStatus mStatus;
 	wMaster *mMaster;	// 引用进程表
 	std::string mTitle;	// 进程名
 	pid_t mPid;
@@ -64,6 +63,7 @@ protected:
 
 	uint32_t mSlot;	// 进程表中索引
 	wChannelSocket* mChannel;	// worker进程channel
+	wStatus mStatus;
 };
 
 }	// namespace hnet

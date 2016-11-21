@@ -16,34 +16,34 @@ wSocket::~wSocket() {
     Close();
 }
 
-wStatus wSocket::Close() {
+const wStatus& wSocket::Close() {
     if (mFD != kFDUnknown && close(mFD) == -1) {
         return mStatus = wStatus::IOError("wSocket::Close failed", strerror(errno));
     }
     mFD = kFDUnknown;
-    return mStatus = wStatus::Nothing();
+    return mStatus.Clear();
 }
 
-wStatus wSocket::SetFL(bool nonblock) {
+const wStatus& wSocket::SetFL(bool nonblock) {
     if (fcntl(mFD, F_SETFL, (nonblock == true ? fcntl(mFD, F_GETFL, 0) | O_NONBLOCK : fcntl(mFD, F_GETFL, 0) & ~O_NONBLOCK)) == -1) {
         return mStatus = wStatus::IOError("wSocket::SetFL F_SETFL failed", strerror(errno));
     }
-    return mStatus = wStatus::Nothing();
+    return mStatus.Clear();
 }
 
-wStatus wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
+const wStatus& wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     mRecvTm = misc::GetTimeofday();
     
     while (true) {
         *size = recv(mFD, reinterpret_cast<void*>(buf), len, 0);
         if (*size > 0) {
-            mStatus = wStatus::Nothing();
+            mStatus.Clear();
             break;
         } else if (*size == 0) {
         	mStatus = wStatus::IOError("wSocket::RecvBytes, client was closed", "", false);
             break;
         } else if (errno == EAGAIN) {
-            mStatus = wStatus::Nothing();
+            mStatus.Clear();
             break;
         } else if (errno == EINTR) {
             // 操作被信号中断，中断后唤醒继续处理
@@ -57,7 +57,7 @@ wStatus wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     return mStatus;
 }
 
-wStatus wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
+const wStatus& wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     mSendTm = misc::GetTimeofday();
     ssize_t sendedlen = 0, leftlen = len;
     while (true) {
@@ -65,12 +65,12 @@ wStatus wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
         if (*size >= 0) {
             sendedlen += *size;
             if ((leftlen -= *size) == 0) {
-                mStatus = wStatus::Nothing();
+                mStatus.Clear();
                 *size = sendedlen;
                 break;
             }
         } else if (errno == EAGAIN) {
-            mStatus = wStatus::Nothing();
+            mStatus.Clear();
             break;
         } else if (errno == EINTR) {
             // 操作被信号中断，中断后唤醒继续处理

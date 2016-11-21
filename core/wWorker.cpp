@@ -24,7 +24,7 @@ wWorker::~wWorker() {
 	SAFE_DELETE(mChannel);
 }
 
-wStatus wWorker::Prepare() {
+const wStatus& wWorker::Prepare() {
 	// 设置当前进程优先级。进程默认优先级为0
 	// -20 -> 20 高 -> 低。只有root可提高优先级，即可减少priority值
 	if (mSlot < kMaxProcess && mPriority != 0) {
@@ -69,10 +69,10 @@ wStatus wWorker::Prepare() {
 		return mStatus;
 	}
 	mMaster->mServer->Worker() = this;
-	return mStatus;
+	return mStatus.Clear();
 }
 
-wStatus wWorker::Start() {
+const wStatus& wWorker::Start() {
 	// worker进程中不阻塞所有信号
 	wSigSet ss;
 	mStatus = ss.Procmask(SIG_SETMASK);

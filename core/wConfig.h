@@ -20,17 +20,17 @@ class wConfig : private wNoncopyable {
 public:
     wConfig();
     virtual ~wConfig();
-    virtual wStatus GetOption(int argc, const char *argv[]);
+    virtual const wStatus& GetOption(int argc, const char *argv[]);
 
-    inline wStatus Setproctitle(const char* pretitle, const char* title) {
-    	return mProcTitle->Setproctitle(pretitle, title);
+    inline const wStatus& Setproctitle(const char* pretitle, const char* title) {
+    	return mStatus = mProcTitle->Setproctitle(pretitle, title);
     }
 
-    inline wStatus InitProcTitle(int argc, const char *argv[]) {
+    inline const wStatus& InitProcTitle(int argc, const char *argv[]) {
         if (mProcTitle == NULL) {
-            return wStatus::IOError("wConfig::InitProcTitle", "new failed");
+            return mStatus = wStatus::IOError("wConfig::InitProcTitle", "new failed");
         }
-        return mProcTitle->SaveArgv(argc, argv);
+        return mStatus = mProcTitle->SaveArgv(argc, argv);
     }
 
     template<typename T>
@@ -44,10 +44,10 @@ public:
     }
 
 protected:
-    wStatus mStatus;
     std::map<std::string, void*> mConf;
     wMemPool *mPool;
     wProcTitle *mProcTitle;
+    wStatus mStatus;
 };
 
 }    // namespace hnet

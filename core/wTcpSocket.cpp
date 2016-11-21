@@ -12,7 +12,7 @@
 
 namespace hnet {
 
-wStatus wTcpSocket::Open() {
+const wStatus& wTcpSocket::Open() {
 	if ((mFD = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Open socket() AF_INET failed", strerror(errno));
 	}
@@ -31,10 +31,10 @@ wStatus wTcpSocket::Open() {
 	if (mIsKeepAlive) {
 		return SetKeepAlive(kKeepAliveTm, kKeepAliveTm, kKeepAliveCnt);
 	}
-	return mStatus = wStatus::Nothing();
+	return mStatus.Clear();
 }
 
-wStatus wTcpSocket::Bind(const std::string& host, uint16_t port) {
+const wStatus& wTcpSocket::Bind(const std::string& host, uint16_t port) {
 	mHost = host;
 	mPort = port;
 
@@ -46,10 +46,10 @@ wStatus wTcpSocket::Bind(const std::string& host, uint16_t port) {
 	if (bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Bind bind failed", strerror(errno));
 	}
-	return mStatus = wStatus::Nothing();
+	return mStatus.Clear();
 }
 
-wStatus wTcpSocket::Listen(const std::string& host, uint16_t port) {
+const wStatus& wTcpSocket::Listen(const std::string& host, uint16_t port) {
 	if (!Bind(host, port).Ok()) {
 		return mStatus;
 	}
@@ -66,7 +66,7 @@ wStatus wTcpSocket::Listen(const std::string& host, uint16_t port) {
 	return SetFL();
 }
 
-wStatus wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16_t port, float timeout) {
+const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16_t port, float timeout) {
 	mHost = host;
 	mPort = port;
 	
@@ -125,10 +125,10 @@ wStatus wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16_t port
 		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDBUF failed", strerror(errno));
 	}
 	
-	return mStatus = wStatus::Nothing();
+	return mStatus.Clear();
 }
 
-wStatus wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *addrsize) {
+const wStatus& wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *addrsize) {
 	if (mSockType != kStListen) {
 		*fd = -1;
 		return mStatus = wStatus::InvalidArgument("wTcpSocket::Accept", "is not listen socket");
@@ -137,7 +137,7 @@ wStatus wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *
 	while (true) {
 		*fd = static_cast<int64_t>(accept(mFD, clientaddr, addrsize));
 		if (*fd > 0) {
-			mStatus = wStatus::Nothing();
+			mStatus.Clear();
 			break;
 		} else if (errno == EAGAIN) {
 			mStatus = wStatus::IOError("wTcpSocket::Accept accept() failed", strerror(errno), false);
@@ -162,14 +162,14 @@ wStatus wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *
 	return mStatus;
 }
 
-wStatus wTcpSocket::SetTimeout(float timeout) {
+const wStatus& wTcpSocket::SetTimeout(float timeout) {
 	if (SetSendTimeout(timeout).Ok()) {
 		return mStatus;
 	}
 	return SetRecvTimeout(timeout);
 }
 
-wStatus wTcpSocket::SetSendTimeout(float timeout) {
+const wStatus& wTcpSocket::SetSendTimeout(float timeout) {
 	struct timeval tv;
 	tv.tv_sec = (int)timeout>=0 ? (int)timeout : 0;
 	tv.tv_usec = (int)((timeout - (int)timeout) * 1000000);
@@ -181,10 +181,10 @@ wStatus wTcpSocket::SetSendTimeout(float timeout) {
 	if (setsockopt(mFD, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const void*>(&tv), sizeof(tv)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDTIMEO failed", strerror(errno));
 	}
-	return mStatus = wStatus::Nothing();
+	return mStatus.Clear();
 }
 
-wStatus wTcpSocket::SetRecvTimeout(float timeout) {
+const wStatus& wTcpSocket::SetRecvTimeout(float timeout) {
 	struct timeval tv;
 	tv.tv_sec = (int)timeout>=0 ? (int)timeout : 0;
 	tv.tv_usec = (int)((timeout - (int)timeout) * 1000000);
@@ -196,10 +196,10 @@ wStatus wTcpSocket::SetRecvTimeout(float timeout) {
 	if (setsockopt(mFD, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const void*>(&tv), sizeof(tv)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_RCVTIMEO failed", strerror(errno));
 	}
-	return mStatus = wStatus::Nothing();
+	return mStatus.Clear();
 }
 
-wStatus wTcpSocket::SetKeepAlive(int idle, int intvl, int cnt) {
+const wStatus& wTcpSocket::SetKeepAlive(int idle, int intvl, int cnt) {
 	int flags = 1;
 	if (setsockopt(mFD, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<const void*>(&flags), sizeof(flags)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_KEEPALIVE failed", strerror(errno));
@@ -220,7 +220,7 @@ wStatus wTcpSocket::SetKeepAlive(int idle, int intvl, int cnt) {
 	}
 #	endif
 
-	return mStatus = wStatus::Nothing();
+	return mStatus.Clear();
 }
 
 }	// namespace hnet

@@ -27,7 +27,7 @@ wProcTitle::~wProcTitle() {
     SAFE_DELETE_VEC(mEnv);
 }
 
-wStatus wProcTitle::SaveArgv(int argc, const char* argv[]) {
+const wStatus& wProcTitle::SaveArgv(int argc, const char* argv[]) {
 	mArgc = argc;
 	mOsArgv = argv;
 	mNumEnv = 0;
@@ -68,10 +68,10 @@ wStatus wProcTitle::SaveArgv(int argc, const char* argv[]) {
     }
     environ = mEnv;
 
-    return mStatus;
+    return mStatus.Clear();
 }
 
-wStatus wProcTitle::Setproctitle(const char *title, const char *pretitle) {
+const wStatus& wProcTitle::Setproctitle(const char *title, const char *pretitle) {
     if (pretitle == NULL) {
     	pretitle = "HNET: ";
     }
@@ -87,7 +87,7 @@ wStatus wProcTitle::Setproctitle(const char *title, const char *pretitle) {
     	p = misc::Cpystrn(p, " ", size -= 1);
     	p = misc::Cpystrn(p, mArgv[i], size -= strlen(mArgv[i]));
     }
-    return mStatus;
+    return mStatus.Clear();
 }
 
 }   // namespace hnet

@@ -32,48 +32,48 @@ public:
     static wEnv* Default();
 
     // 创建顺序文件访问对象
-    virtual wStatus NewSequentialFile(const std::string& fname, wSequentialFile** result) = 0;
+    virtual const wStatus& NewSequentialFile(const std::string& fname, wSequentialFile** result) = 0;
 
     // 创建随机访问文件对象
-    virtual wStatus NewRandomAccessFile(const std::string& fname, wRandomAccessFile** result) = 0;
+    virtual const wStatus& NewRandomAccessFile(const std::string& fname, wRandomAccessFile** result) = 0;
 
     // 创建写入文件对象
-    virtual wStatus NewWritableFile(const std::string& fname, wWritableFile** result) = 0;
+    virtual const wStatus& NewWritableFile(const std::string& fname, wWritableFile** result) = 0;
 
     // 返回日志对象
-    virtual wStatus NewLogger(const std::string& fname, wLogger** result, off_t maxsize = 32*1024*1024) = 0;
+    virtual const wStatus& NewLogger(const std::string& fname, wLogger** result, off_t maxsize = 32*1024*1024) = 0;
 
     // 返回信号量对象，进程间同步
-    virtual wStatus NewSem(const std::string *devshm, wSem** result) = 0;
+    virtual const wStatus& NewSem(const std::string *devshm, wSem** result) = 0;
 
     // 锁文件
-    virtual wStatus LockFile(const std::string& fname, wFileLock** lock) = 0;
+    virtual const wStatus& LockFile(const std::string& fname, wFileLock** lock) = 0;
 
     // 解锁文件
     // 要求：先调用 LockFile 成功
     // 要求：锁住还未锁定成功
-    virtual wStatus UnlockFile(wFileLock* lock) = 0;
-
-    virtual bool FileExists(const std::string& fname) = 0;
+    virtual const wStatus& UnlockFile(wFileLock* lock) = 0;
 
     // 返回目录下所有文件、目录名
-    virtual wStatus GetChildren(const std::string& dir, std::vector<std::string>* result, bool fullname = true) = 0;
+    virtual const wStatus& GetChildren(const std::string& dir, std::vector<std::string>* result, bool fullname = true) = 0;
 
-    virtual wStatus GetRealPath(const std::string& fname, std::string* result) = 0;
+    virtual const wStatus& GetRealPath(const std::string& fname, std::string* result) = 0;
 
-    virtual wStatus DeleteFile(const std::string& fname) = 0;
+    virtual const wStatus& DeleteFile(const std::string& fname) = 0;
 
     // 创建目录
-    virtual wStatus CreateDir(const std::string& dirname) = 0;
+    virtual const wStatus& CreateDir(const std::string& dirname) = 0;
 
     // 删除目录
-    virtual wStatus DeleteDir(const std::string& dirname) = 0;
+    virtual const wStatus& DeleteDir(const std::string& dirname) = 0;
 
     // 文件大小
-    virtual wStatus GetFileSize(const std::string& fname, uint64_t* file_size) = 0;
+    virtual const wStatus& GetFileSize(const std::string& fname, uint64_t* file_size) = 0;
 
     // 重命名文件名
-    virtual wStatus RenameFile(const std::string& src, const std::string& target) = 0;
+    virtual const wStatus& RenameFile(const std::string& src, const std::string& target) = 0;
+
+    virtual bool FileExists(const std::string& fname) = 0;
 
     // 添加任务到后台任务消费线程中
     virtual void Schedule(void (*function)(void* arg), void* arg) = 0;

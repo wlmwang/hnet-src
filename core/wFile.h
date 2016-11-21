@@ -26,11 +26,11 @@ public:
 
     // 读取n字节到result中，scratch为用户传入缓冲区
     // 要求：外部实现同步操作
-    virtual wStatus Read(size_t n, wSlice* result, char* scratch) = 0;
+    virtual const wStatus& Read(size_t n, wSlice* result, char* scratch) = 0;
 
     // 跳过n字节
     // 要求：外部实现同步操作
-    virtual wStatus Skip(uint64_t n) = 0;
+    virtual const wStatus& Skip(uint64_t n) = 0;
 };
 
 // 随机访问文件接口
@@ -41,7 +41,7 @@ public:
 
     // offset处读取n字节字符到result中，scratch为用户传入缓冲区
     // 要求：外部实现同步操作
-    virtual wStatus Read(uint64_t offset, size_t n, wSlice* result, char* scratch) const = 0;
+    virtual const wStatus& Read(uint64_t offset, size_t n, wSlice* result, char* scratch) = 0;
 };
 
 // 写文件类
@@ -50,10 +50,10 @@ public:
     wWritableFile() { }
     virtual ~wWritableFile() { }
 
-    virtual wStatus Append(const wSlice& data) = 0;
-    virtual wStatus Close() = 0;
-    virtual wStatus Flush() = 0;
-    virtual wStatus Sync() = 0;
+    virtual const wStatus& Append(const wSlice& data) = 0;
+    virtual const wStatus& Close() = 0;
+    virtual const wStatus& Flush() = 0;
+    virtual const wStatus& Sync() = 0;
 };
 
 // 文件锁接口
@@ -76,14 +76,15 @@ public:
     }
 
     // 要求：外部保证为同步操作
-    virtual wStatus Read(size_t n, wSlice* result, char* scratch);
+    virtual const wStatus& Read(size_t n, wSlice* result, char* scratch);
 
     // 跳过指定字节
-    virtual wStatus Skip(uint64_t n);
+    virtual const wStatus& Skip(uint64_t n);
 
 private:
     std::string mFilename;
     FILE* mFile;
+    wStatus mStatus;
 };
 
 // 随机访问文件实现类
@@ -96,11 +97,12 @@ public:
     }
 
     // 要求：外部保证同步操作
-    virtual wStatus Read(uint64_t offset, size_t n, wSlice* result, char* scratch) const;
+    virtual const wStatus& Read(uint64_t offset, size_t n, wSlice* result, char* scratch);
 
 private:
     std::string mFilename;
     int mFD;
+    wStatus mStatus;
 };
 
 // 优化存取文件时，可一次性映射到内存中。64-bit说明共享内存足够大（虚址空间）
@@ -141,13 +143,14 @@ public:
     virtual ~wPosixMmapReadableFile();
 
     // 要求：外部保证同步操作
-    virtual wStatus Read(uint64_t offset, size_t n, wSlice* result, char* scratch) const;
+    virtual const wStatus& Read(uint64_t offset, size_t n, wSlice* result, char* scratch);
 
 private:
     std::string mFilename;  // 文件名
     void* mMmappedRegion;  // 共享内存起始地址
     size_t mLength;         // 共享内存（文件）长度
     wMmapLimiter* mLimiter; // CPU平台
+    wStatus mStatus;
 };
 
 // 写文件类
@@ -162,18 +165,19 @@ public:
     }
 
     // 要求：外部保证同步操作
-    virtual wStatus Append(const wSlice& data);
+    virtual const wStatus& Append(const wSlice& data);
 
-    virtual wStatus Close();
+    virtual const wStatus& Close();
 
-    virtual wStatus Flush();
+    virtual const wStatus& Flush();
 
     // 刷新数据到文件
-    virtual wStatus Sync();
+    virtual const wStatus& Sync();
 
 private:
     std::string mFilename;
     FILE* mFile;
+    wStatus mStatus;
 };
 
 // 文件锁句柄
@@ -190,6 +194,7 @@ public:
         wMutexWrapper l(&mMutex);
         return mLockedFiles.insert(fname).second;
     }
+
     void Remove(const std::string& fname) {
         wMutexWrapper l(&mMutex);
         mLockedFiles.erase(fname);

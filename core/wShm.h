@@ -20,10 +20,10 @@ class wShm : private wNoncopyable {
 public:
 	virtual ~wShm() { }
 
-	virtual wStatus CreateShm(char* ptr, int pipeid = 'i') = 0;
-	virtual wStatus AttachShm(char* ptr, int pipeid = 'i') = 0;
-	virtual wStatus AllocShm(char* ptr, size_t size = 0) = 0;
-	virtual wStatus Destroy() = 0;
+	virtual const wStatus& CreateShm(char* ptr, int pipeid = 'i') = 0;
+	virtual const wStatus& AttachShm(char* ptr, int pipeid = 'i') = 0;
+	virtual const wStatus& AllocShm(char* ptr, size_t size = 0) = 0;
+	virtual const wStatus& Destroy() = 0;
 };
 
 
@@ -46,16 +46,17 @@ public:
 	wPosixShm(const std::string *filename, size_t size = kMsgQueueLen);
 	virtual ~wPosixShm();
 
-	wStatus CreateShm(char* ptr, int pipeid = 'i');
-	wStatus AttachShm(char* ptr, int pipeid = 'i');
-	wStatus AllocShm(char* ptr, size_t size = 0);
-	wStatus Destroy();
+	const wStatus& CreateShm(char* ptr, int pipeid = 'i');
+	const wStatus& AttachShm(char* ptr, int pipeid = 'i');
+	const wStatus& AllocShm(char* ptr, size_t size = 0);
+	const wStatus& Destroy();
 
 protected:
 	int mShmId;
 	size_t mSize;
 	std::string mFilename;
 	struct Shmhead_t *mShmhead;
+	wStatus mStatus;
 };
 
 }	// namespace hnet

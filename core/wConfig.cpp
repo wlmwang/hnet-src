@@ -24,7 +24,7 @@ wConfig::~wConfig() {
 // ./bin/server -d
 // ./bin/server -h127.0.0.1  
 // ./bin/server -h 127.0.0.1
-wStatus wConfig::GetOption(int argc, const char *argv[]) {
+const wStatus& wConfig::GetOption(int argc, const char *argv[]) {
     for (int i = 1; i < argc; i++) {
         const char* p = argv[i];
         if (*p++ != '-') {

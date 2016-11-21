@@ -47,50 +47,50 @@ public:
     // size = -1 对端发生错误|稍后重试
     // size = 0  对端关闭
     // size > 0  接受字符
-    virtual wStatus RecvBytes(char buf[], size_t len, ssize_t *size);
+    virtual const wStatus& RecvBytes(char buf[], size_t len, ssize_t *size);
 
     // 发送到客户端数据
     // wStatus返回不为空，则socket被关闭
     // size = -1 对端发生错误|稍后重试|对端关闭
     // size >= 0 发送字符
-    virtual wStatus SendBytes(char buf[], size_t len, ssize_t *size);
+    virtual const wStatus& SendBytes(char buf[], size_t len, ssize_t *size);
     
     // 从客户端接收连接
     // fd = -1 发生错误|稍后重试
     // fd > 0 新文件描述符
-    virtual wStatus Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *addrsize) {
+    virtual const wStatus& Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *addrsize) {
         return mStatus = wStatus::IOError("wSocket::Accept failed", "method should be inherit");
     }
     
     // 连接服务器
     // ret = -1 发生错误
     // ret = 0 连接成功
-    virtual wStatus Connect(int64_t *ret, const std::string& host, uint16_t port = 0, float timeout = 30) {
+    virtual const wStatus& Connect(int64_t *ret, const std::string& host, uint16_t port = 0, float timeout = 30) {
         return mStatus = wStatus::IOError("wSocket::Connect failed", "method should be inherit");
     }
     
-    virtual wStatus Listen(const std::string& host, uint16_t port = 0) {
+    virtual const wStatus& Listen(const std::string& host, uint16_t port = 0) {
         return mStatus = wStatus::IOError("wSocket::Listen failed", "method should be inherit");
     }
     
-    virtual wStatus Open() {
+    virtual const wStatus& Open() {
         return mStatus = wStatus::IOError("wSocket::Open failed", "method should be inherit");
     }
 
-    virtual wStatus SetTimeout(float fTimeout = 30) {
+    virtual const wStatus& SetTimeout(float fTimeout = 30) {
         return mStatus = wStatus::IOError("wSocket::SetTimeout failed", "method should be inherit");
     }
 
-    virtual wStatus SetSendTimeout(float fTimeout = 30) {
+    virtual const wStatus& SetSendTimeout(float fTimeout = 30) {
         return mStatus = wStatus::IOError("wSocket::SetSendTimeout failed", "method should be inherit");
     }
 
-    virtual wStatus SetRecvTimeout(float fTimeout = 30) {
+    virtual const wStatus& SetRecvTimeout(float fTimeout = 30) {
         return mStatus = wStatus::IOError("wSocket::SetRecvTimeout failed", "method should be inherit");
     }
 
-    virtual wStatus Close();
-    virtual wStatus SetFL(bool nonblock = true);
+    virtual const wStatus& Close();
+    virtual const wStatus& SetFL(bool nonblock = true);
     
     inline int64_t& FD() { return mFD;}
     inline std::string& Host() { return mHost;}
@@ -106,9 +106,7 @@ public:
     inline SockFlag& SF() { return mSockFlag;}
     
 protected:
-    virtual wStatus Bind(const std::string& host, uint16_t port = 0) = 0;
-    
-    wStatus mStatus;
+    virtual const wStatus& Bind(const std::string& host, uint16_t port = 0) = 0;
     
     int64_t  mFD;
     std::string mHost;
@@ -121,6 +119,8 @@ protected:
     SockStatus mSockStatus;
     SockProto mSockProto;
     SockFlag mSockFlag;
+
+    wStatus mStatus;
 };
 
 }   // namespace hnet

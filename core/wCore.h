@@ -24,7 +24,7 @@
 
 #define SAFE_NEW(type, ptr) \
 do { \
-   try { \
+	try { \
 		ptr = NULL; \
 		ptr = new type; \
 	} catch (...) { \
@@ -34,7 +34,7 @@ do { \
 
 #define SAFE_NEW_VEC(n, type, ptr) \
 do { \
-   try { \
+	try { \
 		ptr = NULL; \
 		ptr = new type[n]; \
 	} catch (...) { \
@@ -44,16 +44,18 @@ do { \
 
 #define SAFE_DELETE(ptr) \
 do { \
-   if (ptr) { \
-	   delete ptr; \
-	   ptr = NULL; \
-  } \
+	if (ptr) { \
+		delete ptr; \
+		ptr = NULL; \
+	} \
 } while (0)
 
 #define SAFE_DELETE_VEC(ptr) \
 do { \
-   delete[] ptr; \
-   ptr = NULL; \
+	if (ptr) { \
+		delete[] ptr; \
+		ptr = NULL; \
+	} \
 } while (0)
 
 namespace hnet {

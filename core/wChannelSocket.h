@@ -24,13 +24,13 @@ public:
     
     virtual ~wChannelSocket();
     
-    virtual wStatus Open();
+    virtual const wStatus& Open();
 
-    virtual wStatus RecvBytes(char buf[], size_t len, ssize_t *size);
+    virtual const wStatus& RecvBytes(char buf[], size_t len, ssize_t *size);
 
-    virtual wStatus SendBytes(char buf[], size_t len, ssize_t *size);
+    virtual const wStatus& SendBytes(char buf[], size_t len, ssize_t *size);
 
-    virtual wStatus Close();
+    virtual const wStatus& Close();
 
     inline int& operator[](uint8_t i) {
         assert(i == 0 || i == 1);
@@ -38,11 +38,10 @@ public:
     }
 
 protected:
-    virtual wStatus Bind(const std::string& host, uint16_t port = 0) {
-        return mStatus = wStatus::Nothing();
+    virtual const wStatus& Bind(const std::string& host, uint16_t port = 0) {
+        return mStatus.Clear();
     }
 
-    wStatus mStatus;
     // 0:传递给其他进程，供写入数据
     // 1:当前进程读取其他进程写入0中的数据
     int mChannel[2];

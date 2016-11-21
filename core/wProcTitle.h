@@ -21,21 +21,18 @@ public:
     // 务必在设置进程标题之前调用
     // 移动**argv到堆上，移动**environ到堆上
     // tips：*argv[]与**environ两个变量所占的内存是连续的，并且是**environ紧跟在*argv[]后面
-    wStatus SaveArgv(int argc, const char* argv[]);
+    const wStatus& SaveArgv(int argc, const char* argv[]);
 
     // 设置进程标题
-    wStatus Setproctitle(const char *title, const char *pretitle = NULL);
+    const wStatus& Setproctitle(const char *title, const char *pretitle = NULL);
 
 protected:
-    wStatus mStatus;
-
     const char** mOsArgv;
-
     int mArgc;
     char** mArgv;
-
     int mNumEnv;
     char** mEnv;
+    wStatus mStatus;
 };
 
 }	// namespace hnet

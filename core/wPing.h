@@ -27,21 +27,20 @@ class wPing : private wNoncopyable {
 public:
     wPing();
     ~wPing();
-    wStatus Open();
-    wStatus Close();
-    wStatus SetTimeout(float timeout = 0.1);
-    wStatus Ping(const char *ip);
+    const wStatus& Open();
+    const wStatus& Close();
+    const wStatus& SetTimeout(float timeout = 0.1);
+    const wStatus& Ping(const char *ip);
 
 protected:
-    wStatus SetSendTimeout(float timeout = 0.1);
-    wStatus SetRecvTimeout(float timeout = 0.1);
-    wStatus SendPacket();
-    wStatus RecvPacket();
+    const wStatus& SetSendTimeout(float timeout = 0.1);
+    const wStatus& SetRecvTimeout(float timeout = 0.1);
+    const wStatus& SendPacket();
+    const wStatus& RecvPacket();
     int Pack();
     int Unpack(char *buf, int len);
     unsigned short CalChksum(unsigned short *addr, int len);
 
-    wStatus mStatus;
     int mFD;
     int mSeqNum;
     pid_t mPid;
@@ -52,7 +51,8 @@ protected:
 
     char mSendpacket[kPacketSize];
     char mRecvpacket[kPacketSize];
-    char mCtlpacket[kPacketSize];	
+    char mCtlpacket[kPacketSize];
+    wStatus mStatus;
 };
 
 }   // namespace hnet

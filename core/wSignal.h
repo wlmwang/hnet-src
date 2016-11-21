@@ -24,12 +24,12 @@ public:
     wSignal(__sighandler_t  func);
     
     // 添加信号处理
-    wStatus AddSigno(int signo, struct sigaction *oact = NULL);
+    const wStatus& AddSigno(int signo, struct sigaction *oact = NULL);
 
-    wStatus AddHandler(const Signal_t *signal);
+    const wStatus& AddHandler(const Signal_t *signal);
 
     // 添加屏蔽集
-    wStatus AddMaskSet(int signo);
+    const wStatus& AddMaskSet(int signo);
 
     static void SignalHandler(int signo);
     

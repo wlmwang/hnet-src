@@ -12,34 +12,33 @@
 
 namespace hnet {
 
-wStatus wPosixSequentialFile::Read(size_t n, wSlice* result, char* scratch) {
+const wStatus& wPosixSequentialFile::Read(size_t n, wSlice* result, char* scratch) {
     size_t r = fread(scratch, 1, n, mFile);
     *result = wSlice(scratch, r);
     if (r < n) {
         if (!feof(mFile)) {
-        	return wStatus::IOError(mFilename, strerror(errno));
+        	return mStatus = wStatus::IOError(mFilename, strerror(errno));
         }
     }
-    return wStatus();
+    return mStatus.Clear();
 }
 
-wStatus wPosixSequentialFile::Skip(uint64_t n) {
+const wStatus& wPosixSequentialFile::Skip(uint64_t n) {
     if (fseek(mFile, n, SEEK_CUR)) {
-        return wStatus::IOError(mFilename, strerror(errno));
+        return mStatus = wStatus::IOError(mFilename, strerror(errno));
     }
-    return wStatus();
+    return mStatus.Clear();
 }
 
 
-wStatus wPosixRandomAccessFile::Read(uint64_t offset, size_t n, wSlice* result, char* scratch) const {
+const wStatus& wPosixRandomAccessFile::Read(uint64_t offset, size_t n, wSlice* result, char* scratch) {
     ssize_t r = pread(mFD, scratch, n, static_cast<off_t>(offset));
     *result = wSlice(scratch, (r < 0) ? 0 : r);
     if (r < 0) {
-    	return wStatus::IOError(mFilename, strerror(errno));
+    	return mStatus = wStatus::IOError(mFilename, strerror(errno));
     }
-    return wStatus();
+    return mStatus.Clear();
 }
-
 
 bool wMmapLimiter::Acquire() {
     if (GetAllowed() <= 0) {
@@ -60,47 +59,46 @@ wPosixMmapReadableFile::~wPosixMmapReadableFile() {
     mLimiter->Release();
 }
 
-wStatus wPosixMmapReadableFile::Read(uint64_t offset, size_t n, wSlice* result, char* scratch) const {
+const wStatus& wPosixMmapReadableFile::Read(uint64_t offset, size_t n, wSlice* result, char* scratch) {
     if (offset + n > mLength) {
         *result = wSlice();
-        return wStatus::IOError(mFilename, strerror(EINVAL));
+        return mStatus = wStatus::IOError(mFilename, strerror(EINVAL));
     } else {
         *result = wSlice(reinterpret_cast<char*>(mMmappedRegion) + offset, n);
     }
-    return wStatus();
+    return mStatus.Clear();
 }
 
 
-wStatus wPosixWritableFile::Append(const wSlice& data) {
+const wStatus& wPosixWritableFile::Append(const wSlice& data) {
     size_t r = fwrite(data.data(), 1, data.size(), mFile);
     if (r != data.size()) {
-        return wStatus::IOError(mFilename, strerror(errno));
+        return mStatus = wStatus::IOError(mFilename, strerror(errno));
     }
-    return wStatus();
+    return mStatus.Clear();
 }
 
-wStatus wPosixWritableFile::Close() {
+const wStatus& wPosixWritableFile::Close() {
     if (fclose(mFile) != 0) {
-        return wStatus::IOError(mFilename, strerror(errno));
+        return mStatus = wStatus::IOError(mFilename, strerror(errno));
     }
     mFile = NULL;
-    return wStatus();
+    return mStatus.Clear();
 }
 
-wStatus wPosixWritableFile::Flush() {
+const wStatus& wPosixWritableFile::Flush() {
     if (fflush(mFile) != 0) {
-    	return wStatus::IOError(mFilename, strerror(errno));
+    	return mStatus = wStatus::IOError(mFilename, strerror(errno));
     }
-    return wStatus();
+    return mStatus.Clear();
 }
 
 // 刷新数据到文件
-wStatus wPosixWritableFile::Sync() {
-    wStatus result;
+const wStatus& wPosixWritableFile::Sync() {
     if (fflush(mFile) != 0 || fdatasync(fileno(mFile)) != 0) {
-    	return wStatus::IOError(mFilename, strerror(errno));
+    	return mStatus = wStatus::IOError(mFilename, strerror(errno));
     }
-    return wStatus();
+    return mStatus.Clear();
 }
 
 // 写字符到文件接口

@@ -29,81 +29,81 @@ public:
     wPosixEnv();
     virtual ~wPosixEnv() { }
 
-    virtual wStatus NewSequentialFile(const std::string& fname, wSequentialFile** result) {
+    virtual const wStatus& NewSequentialFile(const std::string& fname, wSequentialFile** result) {
         FILE* f = fopen(fname.c_str(), "r");
         if (f == NULL) {
             *result = NULL;
-            return wStatus::IOError(fname, strerror(errno));
+            return mStatus = wStatus::IOError(fname, strerror(errno));
         } else {
             SAFE_NEW(wPosixSequentialFile(fname, f), *result);
-            return wStatus();
         }
+        return mStatus.Clear();
     }
 
-    virtual wStatus NewRandomAccessFile(const std::string& fname, wRandomAccessFile** result) {
+    virtual const wStatus& NewRandomAccessFile(const std::string& fname, wRandomAccessFile** result) {
         *result = NULL;
         int fd = open(fname.c_str(), O_RDONLY);
         if (fd < 0) {
-            return wStatus::IOError(fname, strerror(errno));
+            return mStatus = wStatus::IOError(fname, strerror(errno));
         } else if (mMmapLimit.Acquire()) {
         	// 创建mmaps
             uint64_t size;
-            wStatus s = GetFileSize(fname, &size);
-            if (s.Ok()) {
+            mStatus = GetFileSize(fname, &size);
+            if (mStatus.Ok()) {
                 // 创建可读的内存映射，其内存映射的空间进程间共享
                 // 对文件写入，相当于输出到文件。实际上直到调用msync()或者munmap()，文件才被更新
                 void* base = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
                 if (base != MAP_FAILED) {
                     SAFE_NEW(wPosixMmapReadableFile(fname, base, size, &mMmapLimit), *result);
                 } else {
-                    s = wStatus::IOError(fname, strerror(errno));
+                	mStatus = wStatus::IOError(fname, strerror(errno));
                 }
             }
             // 读取IO，映射后可关闭文件
             close(fd);
-            if (!s.Ok()) {
+            if (!mStatus.Ok()) {
                 mMmapLimit.Release();
             }
-            return s;
+            return mStatus;
         } else {
             SAFE_NEW(wPosixRandomAccessFile(fname, fd), *result);
         }
-        return wStatus();
+        return mStatus.Clear();
     }
 
-    virtual wStatus NewWritableFile(const std::string& fname, wWritableFile** result) {
+    virtual const wStatus& NewWritableFile(const std::string& fname, wWritableFile** result) {
         FILE* f = fopen(fname.c_str(), "w");
         if (f == NULL) {
             *result = NULL;
-            return wStatus::IOError(fname, strerror(errno));
+            return mStatus = wStatus::IOError(fname, strerror(errno));
         } else {
             SAFE_NEW(wPosixWritableFile(fname, f), *result);
         }
-        return wStatus();
+        return mStatus.Clear();
     }
 
-    virtual wStatus NewSem(const std::string* devshm, wSem** result) {
+    virtual const wStatus& NewSem(const std::string* devshm, wSem** result) {
     	SAFE_NEW(wPosixSem(devshm), *result);
-    	wStatus s = (*result)->Open();
-    	if (!s.Ok()) {
+    	mStatus = (*result)->Open();
+    	if (!mStatus.Ok()) {
     		SAFE_DELETE(*result);
     	}
-    	return s;
+    	return mStatus;
     }
 
     // 创建文件锁
-    virtual wStatus LockFile(const std::string& fname, wFileLock** lock) {
+    virtual const wStatus& LockFile(const std::string& fname, wFileLock** lock) {
         *lock = NULL;
         int fd = open(fname.c_str(), O_RDWR | O_CREAT, 0644);
         if (fd < 0) {
-            return wStatus::IOError(fname, strerror(errno));
+            return mStatus = wStatus::IOError(fname, strerror(errno));
         } else if (!mLocks.Insert(fname)) {   // 重复加锁
             close(fd);
-            return wStatus::IOError("lock " + fname, "already held by process");
+            return mStatus = wStatus::IOError("lock " + fname, "already held by process");
         } else if (LockOrUnlock(fd, true) == -1) {
             close(fd);
             mLocks.Remove(fname);
-            return wStatus::IOError("lock " + fname, strerror(errno));
+            return mStatus = wStatus::IOError("lock " + fname, strerror(errno));
         } else {
             wPosixFileLock* my_lock;
             SAFE_NEW(wPosixFileLock(), my_lock);
@@ -111,41 +111,37 @@ public:
             my_lock->mName = fname;
             *lock = my_lock;
         }
-        return wStatus();
+        return mStatus.Clear();
     }
 
     // 释放锁
-    virtual wStatus UnlockFile(wFileLock* lock) {
+    virtual const wStatus& UnlockFile(wFileLock* lock) {
         wPosixFileLock* my_lock = reinterpret_cast<wPosixFileLock*>(lock);
         wStatus result;
         if (LockOrUnlock(my_lock->mFD, false) == -1) {
-            return wStatus::IOError("unlock", strerror(errno));
+            return mStatus = wStatus::IOError("unlock", strerror(errno));
         }
         mLocks.Remove(my_lock->mName);
         close(my_lock->mFD);
         SAFE_DELETE(my_lock);
-        return wStatus();
+        return mStatus.Clear();
     }
 
     // 日志对象
-    virtual wStatus NewLogger(const std::string& fname, wLogger** result, off_t maxsize = 32*1024*1024) {
+    virtual const wStatus& NewLogger(const std::string& fname, wLogger** result, off_t maxsize = 32*1024*1024) {
     	SAFE_NEW(wPosixLogger(fname, &wPosixEnv::getpid, maxsize), *result);
 		if (*result == NULL) {
-			return wStatus::IOError(fname, strerror(errno));
+			return mStatus = wStatus::IOError(fname, strerror(errno));
 		}
-		return wStatus();
-    }
-
-    virtual bool FileExists(const std::string& fname) {
-        return access(fname.c_str(), F_OK) == 0;
+		return mStatus.Clear();
     }
 
     // 获取某目录下所有文件、目录名
-    virtual wStatus GetChildren(const std::string& dir, std::vector<std::string>* result, bool fullname = true) {
+    virtual const wStatus& GetChildren(const std::string& dir, std::vector<std::string>* result, bool fullname = true) {
         result->clear();
         DIR* d = opendir(dir.c_str());
         if (d == NULL) {
-            return wStatus::IOError(dir, strerror(errno));
+            return mStatus = wStatus::IOError(dir, strerror(errno));
         }
         struct dirent* entry;
         std::string dname;
@@ -157,55 +153,59 @@ public:
         	}
         }
         closedir(d);
-        return wStatus();
+        return mStatus.Clear();
     }
 
-    virtual wStatus GetRealPath(const std::string& fname, std::string* result) {
+    virtual const wStatus& GetRealPath(const std::string& fname, std::string* result) {
     	char dirPath[256];
         if (realpath(fname.c_str(), dirPath) == NULL) {
-        	return wStatus::IOError(fname, strerror(errno));
+        	return mStatus = wStatus::IOError(fname, strerror(errno));
         }
         *result = dirPath;
-        return wStatus();
+        return mStatus.Clear();
     }
 
-    virtual wStatus DeleteFile(const std::string& fname) {
+    virtual const wStatus& DeleteFile(const std::string& fname) {
         if (unlink(fname.c_str()) != 0) {
-            return  wStatus::IOError(fname, strerror(errno));
+            return  mStatus = wStatus::IOError(fname, strerror(errno));
         }
-        return wStatus();
+        return mStatus.Clear();
     }
 
-    virtual wStatus CreateDir(const std::string& name) {
+    virtual const wStatus& CreateDir(const std::string& name) {
         if (mkdir(name.c_str(), 0755) != 0) {
-            return wStatus::IOError(name, strerror(errno));
+            return mStatus = wStatus::IOError(name, strerror(errno));
         }
-        return wStatus();
+        return mStatus.Clear();
     }
 
-    virtual wStatus DeleteDir(const std::string& name) {
+    virtual const wStatus& DeleteDir(const std::string& name) {
         if (rmdir(name.c_str()) != 0) {
-        	return wStatus::IOError(name, strerror(errno));
+        	return mStatus = wStatus::IOError(name, strerror(errno));
         }
-        return wStatus();
+        return mStatus.Clear();
     }
 
-    virtual wStatus GetFileSize(const std::string& fname, uint64_t* size) {
+    virtual const wStatus& GetFileSize(const std::string& fname, uint64_t* size) {
         struct stat sbuf;
         if (stat(fname.c_str(), &sbuf) != 0) {
             *size = 0;
-            return wStatus::IOError(fname, strerror(errno));
+            return mStatus = wStatus::IOError(fname, strerror(errno));
         } else {
             *size = sbuf.st_size;
         }
-        return wStatus();
+        return mStatus.Clear();
     }
 
-    virtual wStatus RenameFile(const std::string& src, const std::string& target) {
+    virtual const wStatus& RenameFile(const std::string& src, const std::string& target) {
         if (rename(src.c_str(), target.c_str()) != 0) {
-            return wStatus::IOError(src, strerror(errno));
+            return mStatus = wStatus::IOError(src, strerror(errno));
         }
-        return wStatus();
+        return mStatus.Clear();
+    }
+
+    virtual bool FileExists(const std::string& fname) {
+        return access(fname.c_str(), F_OK) == 0;
     }
 
     // 当前微妙时间
@@ -270,6 +270,7 @@ private:
 
     wPosixLockTable mLocks;
     wMmapLimiter mMmapLimit;
+    wStatus mStatus;
 };
 
 wPosixEnv::wPosixEnv() : mStartedBgthread(false) {

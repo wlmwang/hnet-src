@@ -21,10 +21,6 @@ public:
         SAFE_DELETE_VEC(mState);
     }
 
-    static wStatus Nothing() {
-        return wStatus();
-    }
-
     static wStatus NotFound(const wSlice& msg, const wSlice& msg2 = wSlice(), bool log = true) {
         return wStatus(kNotFound, msg, msg2, log);
     }
@@ -47,6 +43,15 @@ public:
     
     static wStatus AccessIllegal(const wSlice& msg, const wSlice& msg2 = wSlice(), bool log = true) {
         return wStatus(kAccessIllegal, msg, msg2, log);
+    }
+
+    static wStatus Nothing() {
+        return wStatus();
+    }
+
+    wStatus& Clear() {
+    	SAFE_DELETE_VEC(mState);
+    	return *this;
     }
 
     bool Ok() const {

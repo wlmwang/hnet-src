@@ -11,14 +11,14 @@
 
 namespace hnet {
 
-wStatus wUnixSocket::Open() {
+const wStatus& wUnixSocket::Open() {
 	if ((mFD = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
 		return mStatus = wStatus::IOError("wUnixSocket::Open socket() AF_UNIX failed", strerror(errno));
 	}
-	return mStatus = wStatus::Nothing();
+	return mStatus.Clear();
 }
 
-wStatus wUnixSocket::Bind(const std::string& host, uint16_t port) {
+const wStatus& wUnixSocket::Bind(const std::string& host, uint16_t port) {
 	struct sockaddr_un socketAddr;
 	memset(&socketAddr, 0, sizeof(socketAddr));
 	socketAddr.sun_family = AF_UNIX;
@@ -27,10 +27,10 @@ wStatus wUnixSocket::Bind(const std::string& host, uint16_t port) {
 	if (bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr)) == -1) {
 		return mStatus = wStatus::IOError("wUnixSocket::Bind bind failed", strerror(errno));
 	}
-	return mStatus = wStatus::Nothing();
+	return mStatus.Clear();
 }
 
-wStatus wUnixSocket::Listen(const std::string& host, uint16_t port) {
+const wStatus& wUnixSocket::Listen(const std::string& host, uint16_t port) {
 	mHost = host;
 	
 	if (!Bind(mHost).Ok()) {
@@ -44,7 +44,7 @@ wStatus wUnixSocket::Listen(const std::string& host, uint16_t port) {
 	return SetFL();
 }
 
-wStatus wUnixSocket::Connect(int64_t *ret, const std::string& host, uint16_t port, float timeout) {
+const wStatus& wUnixSocket::Connect(int64_t *ret, const std::string& host, uint16_t port, float timeout) {
 	mHost = host;
 
 	std::string tmpsock = "unix_";
@@ -103,10 +103,10 @@ wStatus wUnixSocket::Connect(int64_t *ret, const std::string& host, uint16_t por
 		}
 	}
 	
-	return mStatus = wStatus::Nothing();
+	return mStatus.Clear();
 }
 
-wStatus wUnixSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *addrsize) {
+const wStatus& wUnixSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *addrsize) {
 	if (mSockType != kStListen) {
 		*fd = -1;
 		return mStatus = wStatus::InvalidArgument("wUnixSocket::Accept", "is not listen socket");
@@ -115,10 +115,10 @@ wStatus wUnixSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t 
 	while (true) {
 		*fd = static_cast<int64_t>(accept(mFD, clientaddr, addrsize));
 		if (*fd > 0) {
-			mStatus = wStatus::Nothing();
+			mStatus.Clear();
 			break;
 		} else if (errno == EAGAIN) {
-			mStatus = wStatus::Nothing();
+			mStatus.Clear();
 			break;
 		} else if (errno == EINTR) {
             // 操作被信号中断，中断后唤醒继续处理

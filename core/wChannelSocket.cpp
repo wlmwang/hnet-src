@@ -17,7 +17,7 @@ wChannelSocket::~wChannelSocket() {
     Close();
 }
 
-wStatus wChannelSocket::Open() {
+const wStatus& wChannelSocket::Open() {
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, mChannel) == -1) {
         return mStatus = wStatus::IOError("wChannelSocket::Open socketpair() AF_UNIX failed", strerror(errno));
     }
@@ -36,17 +36,17 @@ wStatus wChannelSocket::Open() {
 
     // mChannel[1]被监听（可读事件）
     mFD = mChannel[1];
-    return mStatus = wStatus::Nothing();
+    return mStatus.Clear();
 }
 
-wStatus wChannelSocket::Close() {
+const wStatus& wChannelSocket::Close() {
 	close(mChannel[0]);
 	close(mChannel[1]);
 	mFD = kFDUnknown;
     return mStatus;
 }
 
-wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
+const wStatus& wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     mSendTm = misc::GetTimeofday();
     
     // msghdr.msg_control 缓冲区必须与 cmsghdr 结构对齐
@@ -103,16 +103,16 @@ wStatus wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
 
     *size = sendmsg(mChannel[0], &msg, 0);
     if (*size >= 0) {
-        mStatus = wStatus::Nothing();
+        mStatus.Clear();
     } else if (*size == -1 && (errno == EINTR || errno == EAGAIN)) {
-        mStatus = wStatus::Nothing();
+        mStatus.Clear();
     } else {
         mStatus = wStatus::IOError("wChannelSocket::SendBytes, sendmsg failed", strerror(errno));
     }
     return mStatus;
 }
 
-wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
+const wStatus& wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     mRecvTm = misc::GetTimeofday();
 
     // msghdr.msg_control 缓冲区必须与 cmsghdr 结构对齐
@@ -139,7 +139,7 @@ wStatus wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     if (*size == 0) {
         mStatus = wStatus::IOError("wChannelSocket::RecvBytes, client was closed", "");
     } else if (*size == -1 && (errno == EINTR || errno == EAGAIN)) {
-        mStatus = wStatus::Nothing();
+        mStatus.Clear();
     } else if (*size == -1) {
         mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", strerror(errno));
     } else {
