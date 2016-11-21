@@ -18,7 +18,7 @@ wSingleClient::~wSingleClient() {
     SAFE_DELETE(mTask);
 }
 
-wStatus wSingleClient::Connect(const std::string& ipaddr, uint16_t port, std::string protocol) {
+const wStatus& wSingleClient::Connect(const std::string& ipaddr, uint16_t port, std::string protocol) {
     wSocket *socket;
     if (protocol == "TCP") {
 	   SAFE_NEW(wTcpSocket(kStConnect), socket);
@@ -53,7 +53,7 @@ wStatus wSingleClient::Connect(const std::string& ipaddr, uint16_t port, std::st
     if (mTask == NULL) {
 	   return mStatus = wStatus::IOError("wSingleClient::Connect", "task new failed");
     }
-    return mStatus;
+    return mStatus.Clear();
 }
 
 }   // namespace hnet

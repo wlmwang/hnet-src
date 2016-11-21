@@ -36,57 +36,55 @@ public:
     virtual ~wMultiClient();
 
     // 添加连接
-    wStatus AddConnect(int type, const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
+    const wStatus& AddConnect(int type, const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
 
     // 重连
-    wStatus ReConnect(wTask* task);
+    const wStatus& ReConnect(wTask* task);
     
     // 断开连接
-    wStatus DisConnect(wTask *task);
+    const wStatus& DisConnect(wTask *task);
     
     // 异步广播消息
     // 当 type== kNumShard 广播所有类型下的所有客户端
-    wStatus Broadcast(char *cmd, size_t len, int type = kClientNumShard);
-    wStatus Broadcast(const google::protobuf::Message* msg, int type = kClientNumShard);
-    wStatus Send(wTask *task, char *cmd, size_t len);
-    wStatus Send(wTask *task, const google::protobuf::Message* msg);
+    const wStatus& Broadcast(char *cmd, size_t len, int type = kClientNumShard);
+    const wStatus& Broadcast(const google::protobuf::Message* msg, int type = kClientNumShard);
+    const wStatus& Send(wTask *task, char *cmd, size_t len);
+    const wStatus& Send(wTask *task, const google::protobuf::Message* msg);
 
-    wStatus PrepareStart();
-    wStatus Start();
+    const wStatus& PrepareStart();
+    const wStatus& Start();
     
-    virtual wStatus RunThread();
+    virtual const wStatus& RunThread();
 
-    virtual wStatus PrepareRun() {
+    virtual const wStatus& PrepareRun() {
     	return mStatus;
     }
 
-    virtual wStatus Run() {
+    virtual const wStatus& Run() {
     	return mStatus;
     }
 
     // 检查时钟周期tick
     void CheckTick();
 
-    virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr, int type = 0);
-    virtual wStatus NewUnixTask(wSocket* sock, wTask** ptr, int type = 0);
+    virtual const wStatus& NewTcpTask(wSocket* sock, wTask** ptr, int type = 0);
+    virtual const wStatus& NewUnixTask(wSocket* sock, wTask** ptr, int type = 0);
 	
     virtual void CheckHeartBeat();
 
 protected:
-    wStatus Recv();
-    wStatus InitEpoll();
+    const wStatus& Recv();
+    const wStatus& InitEpoll();
 
-    wStatus AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
-    wStatus RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
-    wStatus CleanTask();
+    const wStatus& AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
+    const wStatus& RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
+    const wStatus& CleanTask();
     
-    wStatus AddToTaskPool(wTask *task);
+    const wStatus& AddToTaskPool(wTask *task);
     std::vector<wTask*>::iterator RemoveTaskPool(wTask *task);
-    wStatus CleanTaskPool(std::vector<wTask*> pool);
+    const wStatus& CleanTaskPool(std::vector<wTask*> pool);
 
     static void ScheduleRun(void* argv);
-   
-    wStatus mStatus;
 
     // 服务器当前时间 微妙
     uint64_t mLatestTm;
@@ -107,8 +105,9 @@ protected:
     wTask *mTask;
     std::vector<wTask*> mTaskPool[kClientNumShard];
     wMutex mTaskPoolMutex[kClientNumShard];
-
     wConfig* mConfig;
+
+    wStatus mStatus;
 };
 
 }	// namespace hnet

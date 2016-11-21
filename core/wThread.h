@@ -24,10 +24,10 @@ public:
     wThread(bool join = true);
     virtual ~wThread();
 
-    wStatus StartThread();
-    wStatus JoinThread();
+    const wStatus& StartThread();
+    const wStatus& JoinThread();
 
-    virtual wStatus RunThread() = 0;
+    virtual const wStatus& RunThread() = 0;
 
     inline bool Joinable() {
     	return mJoinable;
@@ -36,13 +36,14 @@ public:
 protected:
     static void* ThreadWrapper(void *argv);
 
-    wStatus mStatus;
     pthread_attr_t mAttr;
     pthread_t mPthreadId;
     bool mJoinable;
     bool mAlive;
     wMutex *mMutex;
     wCond *mCond;
+
+    wStatus mStatus;
 };
 
 }	// namespace hnet

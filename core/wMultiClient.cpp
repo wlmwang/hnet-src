@@ -24,7 +24,7 @@ wMultiClient::~wMultiClient() {
     CleanTask();
 }
 
-wStatus wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port, std::string protocol) {
+const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port, std::string protocol) {
     if (type >= kClientNumShard) {
         return mStatus = wStatus::IOError("wMultiClient::AddConnect failed", "overload type");
     }
@@ -56,16 +56,17 @@ wStatus wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t p
     socket->SS() = kSsConnected;
 
     if (protocol == "TCP") {
-        mStatus = NewTcpTask(socket, &mTask, type);
+        NewTcpTask(socket, &mTask, type);
     } else if(protocol == "UNIX") {
-        mStatus = NewUnixTask(socket, &mTask, type);
+        NewUnixTask(socket, &mTask, type);
     } else {
         mStatus = wStatus::IOError("wMultiClient::AcceptConn", "unknown task");
     }
 
     if (mStatus.Ok()) {
         // 登录
-        if (!mTask->Login().Ok()) {
+    	mStatus = mTask->Login();
+        if (!mStatus.Ok()) {
             SAFE_DELETE(mTask);
         } else if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
             SAFE_DELETE(mTask);
@@ -74,7 +75,7 @@ wStatus wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t p
     return mStatus;
 }
 
-wStatus wMultiClient::ReConnect(wTask* task) {
+const wStatus& wMultiClient::ReConnect(wTask* task) {
     wSocket *socket = task->Socket();
     if (socket->SS() == kSsConnected) {
     	socket->Close();
@@ -92,21 +93,21 @@ wStatus wMultiClient::ReConnect(wTask* task) {
     }
     socket->SS() = kSsConnected;
     task->ResetBuffer();
-    return mStatus = AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, false);
+    return AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, false);
 }
 
-wStatus wMultiClient::DisConnect(wTask* task) {
+const wStatus& wMultiClient::DisConnect(wTask* task) {
     return RemoveTask(task);
 }
 
-wStatus wMultiClient::PrepareStart() {
+const wStatus& wMultiClient::PrepareStart() {
     if (!InitEpoll().Ok()) {
        return mStatus;
     }
-    return mStatus = PrepareRun();
+    return PrepareRun();
 }
 
-wStatus wMultiClient::Start() {
+const wStatus& wMultiClient::Start() {
     // 进入服务主服务
     while (true) {
         Recv();
@@ -116,34 +117,34 @@ wStatus wMultiClient::Start() {
     return mStatus;
 }
 
-wStatus wMultiClient::RunThread() {
+const wStatus& wMultiClient::RunThread() {
 	return Start();
 }
 
-wStatus wMultiClient::NewTcpTask(wSocket* sock, wTask** ptr, int type) {
+const wStatus& wMultiClient::NewTcpTask(wSocket* sock, wTask** ptr, int type) {
     SAFE_NEW(wTcpTask(sock, type), *ptr);
     if (*ptr == NULL) {
-        return wStatus::IOError("wMultiClient::NewTcpTask", "new failed");
+        return mStatus = wStatus::IOError("wMultiClient::NewTcpTask", "new failed");
     }
-    return mStatus;
+    return mStatus.Clear();
 }
 
-wStatus wMultiClient::NewUnixTask(wSocket* sock, wTask** ptr, int type) {
+const wStatus& wMultiClient::NewUnixTask(wSocket* sock, wTask** ptr, int type) {
     SAFE_NEW(wUnixTask(sock, type), *ptr);
     if (*ptr == NULL) {
-        return wStatus::IOError("wMultiClient::NewUnixTask", "new failed");
+        return mStatus = wStatus::IOError("wMultiClient::NewUnixTask", "new failed");
     }
-    return mStatus;
+    return mStatus.Clear();
 }
 
-wStatus wMultiClient::InitEpoll() {
+const wStatus& wMultiClient::InitEpoll() {
     if ((mEpollFD = epoll_create(kListenBacklog)) == -1) {
        return mStatus = wStatus::IOError("wMultiClient::InitEpoll, epoll_create() failed", strerror(errno));
     }
-    return mStatus;
+    return mStatus.Clear();
 }
 
-wStatus wMultiClient::Recv() {
+const wStatus& wMultiClient::Recv() {
     std::vector<struct epoll_event> evt(kListenBacklog);
     int iRet = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
     if (iRet == -1) {
@@ -186,7 +187,7 @@ wStatus wMultiClient::Recv() {
     return mStatus;
 }
 
-wStatus wMultiClient::Broadcast(char *cmd, size_t len, int type) {
+const wStatus& wMultiClient::Broadcast(char *cmd, size_t len, int type) {
     if (type == kClientNumShard) {
         for (int i = 0; i < kClientNumShard; i++) {
             if (mTaskPool[i].size() > 0) {
@@ -205,7 +206,7 @@ wStatus wMultiClient::Broadcast(char *cmd, size_t len, int type) {
     return mStatus;
 }
 
-wStatus wMultiClient::Broadcast(const google::protobuf::Message* msg, int type) {
+const wStatus& wMultiClient::Broadcast(const google::protobuf::Message* msg, int type) {
     if (type == kClientNumShard) {
         for (int i = 0; i < kClientNumShard; i++) {
             if (mTaskPool[i].size() > 0) {
@@ -224,12 +225,12 @@ wStatus wMultiClient::Broadcast(const google::protobuf::Message* msg, int type) 
     return mStatus;
 }
 
-wStatus wMultiClient::Send(wTask *task, char *cmd, size_t len) {
+const wStatus& wMultiClient::Send(wTask *task, char *cmd, size_t len) {
     if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected
         && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
         mStatus = task->Send2Buf(cmd, len);
         if (mStatus.Ok()) {
-        	mStatus = AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+        	AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
         }
     } else {
         mStatus = wStatus::IOError("wMultiClient::Send, send error", "socket cannot send message");
@@ -237,12 +238,12 @@ wStatus wMultiClient::Send(wTask *task, char *cmd, size_t len) {
     return mStatus;
 }
 
-wStatus wMultiClient::Send(wTask *task, const google::protobuf::Message* msg) {
+const wStatus& wMultiClient::Send(wTask *task, const google::protobuf::Message* msg) {
     if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected 
         && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
         mStatus = task->Send2Buf(msg);
         if (mStatus.Ok()) {
-        	mStatus = AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+        	AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
         }
     } else {
         mStatus = wStatus::IOError("wMultiClient::Send, send error", "socket cannot send message");
@@ -250,7 +251,7 @@ wStatus wMultiClient::Send(wTask *task, const google::protobuf::Message* msg) {
     return mStatus;
 }
 
-wStatus wMultiClient::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter, bool delpool) {
+const wStatus& wMultiClient::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter, bool delpool) {
     struct epoll_event evt;
     evt.data.fd = task->Socket()->FD();
     if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, task->Socket()->FD(), &evt) < 0) {
@@ -275,7 +276,7 @@ std::vector<wTask*>::iterator wMultiClient::RemoveTaskPool(wTask* task) {
     return it;
 }
 
-wStatus wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) {
+const wStatus& wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) {
     struct epoll_event evt;
     evt.events = ev | EPOLLERR | EPOLLHUP | EPOLLET;
     evt.data.fd = task->Socket()->FD();
@@ -290,12 +291,12 @@ wStatus wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) {
     return mStatus;
 }
 
-wStatus wMultiClient::AddToTaskPool(wTask* task) {
+const wStatus& wMultiClient::AddToTaskPool(wTask* task) {
     mTaskPool[task->Type()].push_back(task);
     return mStatus;
 }
 
-wStatus wMultiClient::CleanTask() {
+const wStatus& wMultiClient::CleanTask() {
     if (close(mEpollFD) == -1) {
         mStatus = wStatus::IOError("wMultiClient::CleanTask, close() failed", strerror(errno));
     }
@@ -306,7 +307,7 @@ wStatus wMultiClient::CleanTask() {
     return mStatus;
 }
 
-wStatus wMultiClient::CleanTaskPool(std::vector<wTask*> pool) {
+const wStatus& wMultiClient::CleanTaskPool(std::vector<wTask*> pool) {
     if (pool.size() > 0) {
         for (std::vector<wTask*>::iterator it = pool.begin(); it != pool.end(); it++) {
             SAFE_DELETE(*it);

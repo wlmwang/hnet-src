@@ -74,18 +74,18 @@ class ExampleServer : public wServer {
 public:
 	ExampleServer(wConfig* config) : wServer(config) { }
 
-	virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr) {
+	virtual const wStatus& NewTcpTask(wSocket* sock, wTask** ptr) {
 	    SAFE_NEW(ExampleTcpTask(sock, Shard(sock)), *ptr);
 	    if (*ptr == NULL) {
-			return wStatus::IOError("ExampleServer::NewTcpTask", "ExampleTask new failed");
+			return mStatus = wStatus::IOError("ExampleServer::NewTcpTask", "ExampleTask new failed");
 	    }
 	    return mStatus;
 	}
 
-	virtual wStatus NewChannelTask(wSocket* sock, wTask** ptr) {
+	virtual const wStatus& NewChannelTask(wSocket* sock, wTask** ptr) {
 		SAFE_NEW(ExampleChannelTask(sock, mMaster, Shard(sock)), *ptr);
 	    if (*ptr == NULL) {
-			return wStatus::IOError("ExampleServer::NewChannelTask", "new failed");
+			return mStatus = wStatus::IOError("ExampleServer::NewChannelTask", "new failed");
 	    }
 	    return mStatus;
 	}
@@ -146,10 +146,10 @@ int main(int argc, const char *argv[]) {
 			s = master->PrepareStart();
 			if (s.Ok()) {
 				// single方式开启服务器
-				//wStatus s = master->SingleStart();
+				//master->SingleStart();
 
 				// Master-Worker方式开启服务器
-				wStatus s = master->MasterStart();
+				master->MasterStart();
 			} else {
 				return -1;
 			}

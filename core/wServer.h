@@ -37,45 +37,45 @@ public:
     explicit wServer(wConfig* config);
     virtual ~wServer();
 
-    wStatus PrepareStart(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
+    const wStatus& PrepareStart(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
 
     // single模式启动服务
-    wStatus SingleStart(bool daemon = true);
+    const wStatus& SingleStart(bool daemon = true);
 
     // master-worker多进程架构
     // PrepareMaster 需在master进程中调用
     // WorkerStart在worker进程提供服务
-    wStatus WorkerStart(bool daemon = true);
+    const wStatus& WorkerStart(bool daemon = true);
     
     // 异步广播消息
-    wStatus Broadcast(char *cmd, int len);
-    wStatus Broadcast(const google::protobuf::Message* msg);
+    const wStatus& Broadcast(char *cmd, int len);
+    const wStatus& Broadcast(const google::protobuf::Message* msg);
 
     // 广播消息至worker进程   blacksolt为黑名单
-    wStatus NotifyWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blacksolt = NULL);
-    wStatus NotifyWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blacksolt = NULL);
+    const wStatus& NotifyWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blacksolt = NULL);
+    const wStatus& NotifyWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blacksolt = NULL);
 
     // 异步发送消息
-    wStatus Send(wTask *task, char *cmd, size_t len);
-    wStatus Send(wTask *task, const google::protobuf::Message* msg);
+    const wStatus& Send(wTask *task, char *cmd, size_t len);
+    const wStatus& Send(wTask *task, const google::protobuf::Message* msg);
 
     // 检查时钟周期tick
     void CheckTick();
 
     // 新建客户端
-    virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr);
-    virtual wStatus NewUnixTask(wSocket* sock, wTask** ptr);
-    virtual wStatus NewChannelTask(wSocket* sock, wTask** ptr);
+    virtual const wStatus& NewTcpTask(wSocket* sock, wTask** ptr);
+    virtual const wStatus& NewUnixTask(wSocket* sock, wTask** ptr);
+    virtual const wStatus& NewChannelTask(wSocket* sock, wTask** ptr);
     
-    virtual wStatus PrepareRun() {
+    virtual const wStatus& PrepareRun() {
         return mStatus;
     }
     // 服务主循环逻辑，继承可以定制服务
-    virtual wStatus Run() {
+    virtual const wStatus& Run() {
         return mStatus;
     }
     
-    virtual wStatus HandleSignal();
+    virtual const wStatus& HandleSignal();
 
     // 连接检测（心跳）
     virtual void CheckHeartBeat();
@@ -98,27 +98,27 @@ protected:
     }
 
     // 事件读写主调函数
-    wStatus Recv();
+    const wStatus& Recv();
     // accept接受连接
-    wStatus AcceptConn(wTask *task);
+    const wStatus& AcceptConn(wTask *task);
 
-    wStatus InitEpoll();
-    wStatus AddListener(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
+    const wStatus& InitEpoll();
+    const wStatus& AddListener(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
 
     // 添加channel socket到epoll侦听事件队列
-    wStatus Channel2Epoll(bool addpool = true);
+    const wStatus& Channel2Epoll(bool addpool = true);
 
     // 添加listen socket到epoll侦听事件队列
-    wStatus Listener2Epoll(bool addpool = true);
-    wStatus RemoveListener(bool delpool = true);
+    const wStatus& Listener2Epoll(bool addpool = true);
+    const wStatus& RemoveListener(bool delpool = true);
 
-    wStatus AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
-    wStatus RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
-    wStatus CleanTask();
+    const wStatus& AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
+    const wStatus& RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
+    const wStatus& CleanTask();
 
-    wStatus AddToTaskPool(wTask *task);
+    const wStatus& AddToTaskPool(wTask *task);
     std::vector<wTask*>::iterator RemoveTaskPool(wTask *task);
-    wStatus CleanTaskPool(std::vector<wTask*> pool);
+    const wStatus& CleanTaskPool(std::vector<wTask*> pool);
 
     static void ScheduleRun(void* argv);
 

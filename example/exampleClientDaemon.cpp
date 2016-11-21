@@ -39,15 +39,15 @@ class ExampleClient : public wMultiClient {
 public:
 	ExampleClient(wConfig* config) : wMultiClient(config) { }
 
-	virtual wStatus NewTcpTask(wSocket* sock, wTask** ptr, int type = 0) {
+	virtual const wStatus& NewTcpTask(wSocket* sock, wTask** ptr, int type = 0) {
 	    SAFE_NEW(ExampleTask(sock, type), *ptr);
 	    if (*ptr == NULL) {
-	        return wStatus::IOError("ExampleClient::NewTcpTask", "new failed");
+	        return mStatus = wStatus::IOError("ExampleClient::NewTcpTask", "new failed");
 	    }
 	    return mStatus;
 	}
 
-	virtual wStatus PrepareRun() {
+	virtual const wStatus& PrepareRun() {
 	    std::string host;
 	    int16_t port = 0;
 	    if (mConfig == NULL || !mConfig->GetConf("host", &host) || !mConfig->GetConf("port", &port)) {
@@ -56,8 +56,7 @@ public:
 
 	    // 连接服务器
 		int type = 1;	// 该类服务器key，每个key可挂载连接多个服务器
-		mStatus = AddConnect(type, host, port);
-		if (!mStatus.Ok()) {
+		if (!AddConnect(type, host, port).Ok()) {
 			std::cout << "connect error:" << mStatus.ToString() << std::endl;
 		}
 		return mStatus;

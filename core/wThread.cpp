@@ -47,7 +47,7 @@ wThread::~wThread() {
 	SAFE_DELETE(mCond);
 }
 
-wStatus wThread::StartThread() {
+const wStatus& wThread::StartThread() {
 	if (pthread_attr_init(&mAttr) != 0) {
 		return mStatus = wStatus::IOError("wThread::StartThread, pthread_attr_init() failed", strerror(errno));
 	} else if (pthread_attr_setscope(&mAttr, PTHREAD_SCOPE_SYSTEM) != 0) {
@@ -76,10 +76,10 @@ wStatus wThread::StartThread() {
 	}
 	mMutex->Unlock();
 
-    return mStatus;
+    return mStatus.Clear();
 }
 
-wStatus wThread::JoinThread() {
+const wStatus& wThread::JoinThread() {
 	if (0 != mPthreadId && mJoinable) {
 	    if (pthread_join(mPthreadId, NULL) != 0) {
 	    	return mStatus = wStatus::IOError("wThread::StopThread, pthread_join() failed", strerror(errno));
@@ -91,7 +91,7 @@ wStatus wThread::JoinThread() {
 		}
 		mMutex->Unlock();
 	}
-	return mStatus;
+	return mStatus.Clear();
 }
 
 }   // namespace hnet
