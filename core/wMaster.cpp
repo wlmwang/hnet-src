@@ -37,7 +37,7 @@ wMaster::~wMaster() {
     }
 }
 
-wStatus wMaster::PrepareStart() {
+const wStatus& wMaster::PrepareStart() {
     // 检测配置、服务实例
     if (mServer == NULL || mServer->Config() == NULL) {
     	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mServer or mConfig is null");
@@ -49,8 +49,7 @@ wStatus wMaster::PrepareStart() {
     	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "host or port is illegal");
     }
 
-    mStatus = PrepareRun();
-    if (!mStatus.Ok()) {
+    if (!PrepareRun().Ok()) {
     	return mStatus;
     }
     mStatus = mServer->Config()->Setproctitle(kMasterTitle, mTitle.c_str());
@@ -67,21 +66,20 @@ wStatus wMaster::PrepareStart() {
     return mStatus;
 }
 
-wStatus wMaster::SingleStart() {
+const wStatus& wMaster::SingleStart() {
     if (!CreatePidFile().Ok()) {
 		return mStatus;
     } else if (!InitSignals().Ok()) {
         return mStatus;
     }
     
-    mStatus = Run();
-    if (!mStatus.Ok()) {
+    if (!Run().Ok()) {
     	return mStatus;
     }
     return mStatus = mServer->SingleStart();
 }
 
-wStatus wMaster::MasterStart() {
+const wStatus& wMaster::MasterStart() {
     if (mWorkerNum > kMaxProcess) {
         return mStatus = wStatus::IOError("wMaster::MasterStart, processes can be spawned", "worker number is overflow");
     }
@@ -126,15 +124,15 @@ wStatus wMaster::MasterStart() {
     }
 }
 
-wStatus wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
+const wStatus& wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
     SAFE_NEW(wWorker(mTitle, slot, this), *ptr);
     if (*ptr == NULL) {
 		return mStatus = wStatus::IOError("wMaster::NewWorker", "new failed");
     }
-    return mStatus;
+    return mStatus.Clear();
 }
 
-wStatus wMaster::WorkerStart(uint32_t n, int32_t type) {
+const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
 	wChannelOpen open;
 	for (uint32_t i = 0; i < n; ++i) {
 		// 启动worker
@@ -152,10 +150,10 @@ wStatus wMaster::WorkerStart(uint32_t n, int32_t type) {
         std::vector<uint32_t> blacksolt(1, mSlot);
         mServer->NotifyWorker(&open, kMaxProcess, &blacksolt);
 	}
-	return mStatus;
+	return mStatus.Clear();
 }
 
-wStatus wMaster::SpawnWorker(int64_t type) {
+const wStatus& wMaster::SpawnWorker(int64_t type) {
 	if (type >= 0) {
 		// 启动指定索引worker进程
 		mSlot = static_cast<uint32_t>(type);
@@ -209,7 +207,7 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 	worker->mExited = 0;
 
 	if (type >= 0) {
-		return mStatus;
+		return mStatus.Clear();
 	}
 
 	worker->mExiting = 0;
@@ -246,14 +244,22 @@ wStatus wMaster::SpawnWorker(int64_t type) {
 		break;
     }
 
+    return mStatus.Clear();
+}
+
+const wStatus& wMaster::PrepareRun() {
     return mStatus;
 }
 
-wStatus wMaster::Reload() {
+const wStatus& wMaster::Run() {
+    return mStatus;
+}
+
+const wStatus& wMaster::Reload() {
 	return mStatus;
 }
 
-wStatus wMaster::HandleSignal() {
+const wStatus& wMaster::HandleSignal() {
 	if (mDelay) {
 		if (g_sigalrm) {
 			mSigio = 0;
@@ -284,7 +290,7 @@ wStatus wMaster::HandleSignal() {
 		WorkerExitStat();
 
 		// 重启退出的worker
-		mStatus = ReapChildren();
+		ReapChildren();
 	}
 	
 	// 所有worker退出，且收到了退出信号，则master退出
@@ -345,7 +351,7 @@ wStatus wMaster::HandleSignal() {
 	return mStatus;
 }
 
-wStatus wMaster::ReapChildren() {
+const wStatus& wMaster::ReapChildren() {
 	mLive = 0;
 	for (uint32_t i = 0; i < kMaxProcess; i++) {
         if (mWorkerPool[i]->mPid == -1) {
@@ -399,7 +405,7 @@ wStatus wMaster::ReapChildren() {
 			mLive = 1;
 		}
     }
-    return mStatus;
+    return mStatus.Clear();
 }
 
 void wMaster::SignalWorker(int signo) {
@@ -453,18 +459,18 @@ void wMaster::SignalWorker(int signo) {
     }
 }
 
-wStatus wMaster::CreatePidFile() {
+const wStatus& wMaster::CreatePidFile() {
 	std::string pidstr = logging::NumberToString(mPid);
-	return mStatus = WriteStringToFile(wEnv::Default(), pidstr, mPidPath);
+	return mStatus = hnet::WriteStringToFile(wEnv::Default(), pidstr, mPidPath);
 }
 
-wStatus wMaster::DeletePidFile() {
+const wStatus& wMaster::DeletePidFile() {
 	return mStatus = wEnv::Default()->DeleteFile(mPidPath);
 }
 
-wStatus wMaster::SignalProcess(const std::string& signal) {
+const wStatus& wMaster::SignalProcess(const std::string& signal) {
 	std::string str;
-	mStatus = ReadFileToString(wEnv::Default(), mPidPath, &str);
+	mStatus = hnet::ReadFileToString(wEnv::Default(), mPidPath, &str);
 	if (!mStatus.Ok()) {
 		return mStatus;
 	}
@@ -474,17 +480,17 @@ wStatus wMaster::SignalProcess(const std::string& signal) {
 		for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
 			if (memcmp(signal.c_str(), s->mName, signal.size()) == 0) {
 				if (kill(pid, s->mSigno) == -1) {
-					return wStatus::IOError("wMaster::SignalProcess, kill() failed", strerror(errno));
+					return mStatus = wStatus::IOError("wMaster::SignalProcess, kill() failed", strerror(errno));
 				} else {
-					return wStatus::Nothing();
+					return mStatus.Clear();
 				}
 			}
 		}
 	}
-	return wStatus::IOError("wMaster::SignalProcess, signal failed", "cannot find signal");
+	return mStatus = wStatus::IOError("wMaster::SignalProcess, signal failed", "cannot find signal");
 }
 
-wStatus wMaster::InitSignals() {
+const wStatus& wMaster::InitSignals() {
 	wSignal signal;
 	for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
 		mStatus = signal.AddHandler(s);
