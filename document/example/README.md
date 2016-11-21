@@ -22,7 +22,7 @@
 # 详解
 
 ```
-注意： 三个示例从不同方向分别展示了该HNET框架的大部分一般用法。请逐行仔细阅读！
+注意： 三个示例从不同方向分别展示了HNET框架的大部分一般用法。请逐行仔细阅读！
 ```
 
 * message/example.proto
@@ -57,5 +57,5 @@
             ExampleClient::PrepareRun为ExampleClient作为线程启动后调用的第一个调用的方法，此时可以做连接服务器工作，成功连接返回后，即进入客户端与服务器事件循环中。
 
 
-[详细](instructions/README.md)
+[详细](../instructions/README.md)
 

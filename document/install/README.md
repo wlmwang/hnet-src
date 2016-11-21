@@ -3,7 +3,7 @@
 
 ```
 安装examplesvrd、exampleclient、exampledaemon
-目标：查看Makefile，熟悉该框架依赖文件。
+目标：查看Makefile，熟悉HNET框架编译依赖文件。
 ```
 
 * 环境最低要求
@@ -12,7 +12,7 @@
 
     * g++ (GCC) 4.8.x
 
-* make && make install
+* make
 
     * 解压hnet.tar.gz到系统目录中，以 /usr/local/hnet 为例。
         * cd /usr/local
@@ -30,4 +30,4 @@
 
 
 
-[示例](example/README.md)
+[示例](../example/README.md)
