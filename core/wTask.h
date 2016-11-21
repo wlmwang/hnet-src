@@ -33,8 +33,8 @@ public:
     virtual ~wTask();
 
     // 登录验证
-    virtual wStatus Login() {
-        return mStatus = wStatus::Nothing();
+    virtual const wStatus& Login() {
+        return mStatus.Clear();
     }
 
     // 处理接受到数据，转发给业务处理函数 Handlemsg 处理。每条消息大小[1b,512k]
@@ -42,33 +42,33 @@ public:
     // size = -1 对端发生错误|稍后重试
     // size = 0  对端关闭
     // size > 0  接受字符
-    virtual wStatus TaskRecv(ssize_t *size);
+    virtual const wStatus& TaskRecv(ssize_t *size);
 
     // 处理接受到数据
     // wStatus返回不为空，则task被关闭
     // size = -1 对端发生错误|稍后重试|对端关闭
     // size >= 0 发送字符
-    virtual wStatus TaskSend(ssize_t *size);
+    virtual const wStatus& TaskSend(ssize_t *size);
 
     // 解析消息
     // wStatus返回不为空，则task被关闭
-    virtual wStatus Handlemsg(char cmd[], uint32_t len);
+    virtual const wStatus& Handlemsg(char cmd[], uint32_t len);
 
     // 异步发送：将待发送客户端消息写入buf，等待TaskSend发送
     // wStatus返回不为空，则task被关闭
-    wStatus Send2Buf(char cmd[], size_t len);
-    wStatus Send2Buf(const google::protobuf::Message* msg);
+    const wStatus& Send2Buf(char cmd[], size_t len);
+    const wStatus& Send2Buf(const google::protobuf::Message* msg);
 
     // 同步发送确切长度消息
     // wStatus返回不为空，则task被关闭
     // size = -1 对端发生错误|稍后重试|对端关闭
     // size >= 0 发送字符
-    wStatus SyncSend(char cmd[], size_t len, ssize_t *size);
-    wStatus SyncSend(const google::protobuf::Message* msg, ssize_t *size);
+    const wStatus& SyncSend(char cmd[], size_t len, ssize_t *size);
+    const wStatus& SyncSend(const google::protobuf::Message* msg, ssize_t *size);
 
     // SyncSend的异步发送版本
-    wStatus AsyncSend(char cmd[], size_t len);
-    wStatus AsyncSend(const google::protobuf::Message* msg);
+    const wStatus& AsyncSend(char cmd[], size_t len);
+    const wStatus& AsyncSend(const google::protobuf::Message* msg);
 
     // 同步接受一条合法的、非心跳消息
     // 调用者：保证此sock未加入epoll中，否则出现事件竞争！另外也要确保buf有足够长的空间接受自此同步消息
@@ -76,17 +76,17 @@ public:
     // size = -1 对端发生错误|稍后重试
     // size = 0  对端关闭
     // size > 0  接受字符
-    wStatus SyncRecv(char cmd[], ssize_t *size, uint32_t timeout = 30);
-    wStatus SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t timeout = 30);
+    const wStatus& SyncRecv(char cmd[], ssize_t *size, uint32_t timeout = 30);
+    const wStatus& SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t timeout = 30);
 
     // 广播其他worker进程
-    wStatus SyncWorker(char cmd[], size_t len);
-    wStatus SyncWorker(const google::protobuf::Message* msg);
+    const wStatus& SyncWorker(char cmd[], size_t len);
+    const wStatus& SyncWorker(const google::protobuf::Message* msg);
 
     static void Assertbuf(char buf[], const char cmd[], size_t len);
     static void Assertbuf(char buf[], const google::protobuf::Message* msg);
 
-    wStatus HeartbeatSend();
+    const wStatus& HeartbeatSend();
 
     inline bool HeartbeatOut() {
         return mHeartbeat > kHeartbeat;
@@ -108,19 +108,26 @@ public:
     	mClient = client;
     }
 
-    inline wSocket *Socket() {
-        return mSocket;
-    }
+    inline wSocket *Socket() { return mSocket;}
     
-    inline size_t SendLen() {
-        return mSendLen;
-    }
+    inline size_t SendLen() { return mSendLen;}
     
-    inline int32_t Type() {
-        return mType;
-    }
+    inline int32_t Type() { return mType;}
+
 protected:
-    wStatus mStatus;
+    // command消息路由器
+    template<typename T = wTask>
+    void On(int8_t cmd, int8_t para, int (T::*func)(struct Request_t *argv), T* target) {
+    	mEventCmd.On(CmdId(cmd, para), std::bind(func, target, std::placeholders::_1));
+    }
+    wEvent<uint16_t, std::function<int(struct Request_t *argv)>, struct Request_t*> mEventCmd;
+
+    // protobuf消息路由器
+    template<typename T = wTask>
+    void On(const std::string& pbname, int (T::*func)(struct Request_t *argv), T* target) {
+    	mEventPb.On(pbname, std::bind(func, target, std::placeholders::_1));
+    }
+    wEvent<std::string, std::function<int(struct Request_t *argv)>, struct Request_t*> mEventPb;
 
     int32_t mType;
     wSocket *mSocket;
@@ -144,20 +151,7 @@ protected:
     // 0为服务器，1为客户端
     uint8_t mSCType;
 
-protected:
-    // command消息路由器
-    template<typename T = wTask>
-    void On(int8_t cmd, int8_t para, int (T::*func)(struct Request_t *argv), T* target) {
-    	mEventCmd.On(CmdId(cmd, para), std::bind(func, target, std::placeholders::_1));
-    }
-    wEvent<uint16_t, std::function<int(struct Request_t *argv)>, struct Request_t*> mEventCmd;
-
-    // protobuf消息路由器
-    template<typename T = wTask>
-    void On(const std::string& pbname, int (T::*func)(struct Request_t *argv), T* target) {
-    	mEventPb.On(pbname, std::bind(func, target, std::placeholders::_1));
-    }
-    wEvent<std::string, std::function<int(struct Request_t *argv)>, struct Request_t*> mEventPb;
+    wStatus mStatus;
 };
 
 }	// namespace hnet
