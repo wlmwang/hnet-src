@@ -31,64 +31,40 @@ const wStatus& wConfig::GetOption(int argc, const char *argv[]) {
             return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
         }
 
-        // 设置布尔值
-        auto setBoolConf = [this](const std::string& key, bool val) {
-        	bool* b = reinterpret_cast<bool *>(mPool->Allocate(sizeof(bool)));
-        	*b = val;
-        	this->mConf[key] = reinterpret_cast<void *>(b);
-        };
-
-        // 设置整型值
-        auto setIntConf = [this](const std::string& key, int val) {
-        	int* i = reinterpret_cast<int *>(mPool->Allocate(sizeof(int)));
-        	*i = val;
-        	this->mConf[key] = reinterpret_cast<void *>(i);
-        };
-
-        // 设置string值
-        auto setStrConf = [this](const std::string& key, const char *val) {
-        	char* c = mPool->Allocate(sizeof(std::string));
-        	std::string *s;
-        	// 定位new操作符，初始化string对象（string使用前必须初始化）
-        	SAFE_NEW((c)std::string(), s);
-        	*s = val;
-        	this->mConf[key] = reinterpret_cast<void *>(s);
-        };
-
         while (*p) {
             switch (*p++) {
             case '?':
-            	setBoolConf("help", true);
+            	SetBoolConf("help", true);
             	break;
             case 'v':
-            	setBoolConf("version", true);
+            	SetBoolConf("version", true);
             	break;
             case 'd':
-            	setBoolConf("daemon", true);
+            	SetBoolConf("daemon", true);
             	break;
 
             case 's':
                 if (*p) {
-                	setStrConf("signal", p);
+                	SetStrConf("signal", p);
                     goto next;
                 }
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
-                	setStrConf("signal", p);
+                	SetStrConf("signal", p);
                     goto next;
                 }
                 return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires signal");
 
             case 'h':
                 if (*p) {
-                	setStrConf("host", p);
+                	SetStrConf("host", p);
                     goto next;
                 }
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
-                	setStrConf("host", p);
+                	SetStrConf("host", p);
                     goto next;
                 }
                 return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-h\" requires host address");
@@ -96,40 +72,40 @@ const wStatus& wConfig::GetOption(int argc, const char *argv[]) {
             case 'p':
                 if (*p) {
                 	int i = atoi(p);
-                	setIntConf("port", i);
+                	SetIntConf("port", i);
                 	goto next;
                 }
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
                 	int i = atoi(p);
-                	setIntConf("port", i);
+                	SetIntConf("port", i);
                 	goto next;
                 }
                 return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires port number");
 
             case 'P':
                 if (*p) {
-                	setStrConf("pid_path", p);
+                	SetStrConf("pid_path", p);
                     goto next;
                 }
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
-                	setStrConf("pid_path", p);
+                	SetStrConf("pid_path", p);
                     goto next;
                 }
                 return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-P\" requires pid path");
 
             case 'l':
                 if (*p) {
-                	setStrConf("log_path", p);
+                	SetStrConf("log_path", p);
                     goto next;
                 }
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
-                	setStrConf("log_path", p);
+                	SetStrConf("log_path", p);
                     goto next;
                 }
                 return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-l\" requires log path address");
@@ -144,6 +120,39 @@ const wStatus& wConfig::GetOption(int argc, const char *argv[]) {
 
 	SAFE_NEW(wProcTitle(argc, argv), mProcTitle);
     return mStatus = InitProcTitle(argc, argv);
+}
+
+bool wConfig::SetBoolConf(const std::string& key, bool val, bool force) {
+	if (!force && mConf.find(key) != mConf.end()) {
+		return false;
+	}
+	bool* b = reinterpret_cast<bool *>(mPool->Allocate(sizeof(bool)));
+	*b = val;
+	mConf[key] = reinterpret_cast<void *>(b);
+	return true;
+}
+
+bool wConfig::SetIntConf(const std::string& key, int val, bool force) {
+	if (!force && mConf.find(key) != mConf.end()) {
+		return false;
+	}
+	int* i = reinterpret_cast<int *>(mPool->Allocate(sizeof(int)));
+	*i = val;
+	mConf[key] = reinterpret_cast<void *>(i);
+	return true;
+}
+
+bool wConfig::SetStrConf(const std::string& key, const char *val, bool force) {
+	if (!force && mConf.find(key) != mConf.end()) {
+		return false;
+	}
+	char* c = mPool->Allocate(sizeof(std::string));
+	std::string *s;
+	// 定位new操作符，初始化string对象（string使用前必须初始化）
+	SAFE_NEW((c)std::string(), s);
+	*s = val;
+	mConf[key] = reinterpret_cast<void *>(s);
+	return true;
 }
 
 }   // namespace hnet

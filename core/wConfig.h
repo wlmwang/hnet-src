@@ -43,6 +43,11 @@ public:
     	return false;
     }
 
+    // 设置配置函数
+    bool SetBoolConf(const std::string& key, bool val, bool force = true);
+    bool SetIntConf(const std::string& key, int val, bool force = true);
+    bool SetStrConf(const std::string& key, const char *val, bool force = true);
+
 protected:
     std::map<std::string, void*> mConf;
     wMemPool *mPool;

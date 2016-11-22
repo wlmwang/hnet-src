@@ -102,8 +102,8 @@ const bool		kAcceptTurn = true;
 const bool		kHeartbeatTurn = true;
 
 // 根据具体项目修改
-const char      kSoftwareName[]   = "hnet";
-const char      kSoftwareVer[]    = "0.0.1";
+const char      kSoftwareName[]   = "HNET";
+const char      kSoftwareVer[]    = "0.0.2";
 
 const uid_t     kDeamonUser = 0;
 const gid_t     kDeamonGroup = 0;
