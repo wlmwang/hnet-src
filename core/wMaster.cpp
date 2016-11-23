@@ -335,7 +335,9 @@ const wStatus& wMaster::HandleSignal() {
 		g_reconfigure = 0;
 		
 		// 重新初始化主进程配置
-		Reload();
+		if (!Reload().Ok()) {
+			exit(2);
+		}
 		
 		// 启动新worker
 		WorkerStart(mWorkerNum, kProcessJustRespawn);
