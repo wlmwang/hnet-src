@@ -12,7 +12,6 @@
 #include "wSignal.h"
 #include "wWorker.h"
 #include "wTask.h"
-#include "wServer.h"
 #include "wChannel.pb.h"
 
 namespace hnet {

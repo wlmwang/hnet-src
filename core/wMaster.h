@@ -12,12 +12,12 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
+#include "wServer.h"
 
 namespace hnet {
 
 const char  kMasterTitle[] = " - master process";
 
-class wServer;
 class wWorker;
 
 class wMaster : private wNoncopyable {

@@ -83,9 +83,14 @@ public:
     // single|worker进程退出函数
     virtual void ProcessExit() { }
 
-    inline wConfig*& Config() { return mConfig;}
-    inline wMaster*& Master() { return mMaster;}
-    inline wWorker*& Worker() { return mWorker;}
+    template<typename T = wConfig*>
+    inline T& Config() { return reinterpret_cast<T&>(mConfig);}
+
+    template<typename T = wMaster*>
+    inline T& Master() { return reinterpret_cast<T&>(mMaster);}
+
+    template<typename T = wWorker*>
+    inline T& Worker() { return reinterpret_cast<T&>(mWorker);}
 
 protected:
     friend class wMaster;
