@@ -72,6 +72,9 @@ public:
 	
     virtual void CheckHeartBeat();
 
+    template<typename T = wConfig*>
+    inline T& Config() { return reinterpret_cast<T&>(mConfig);}
+
 protected:
     const wStatus& Recv();
     const wStatus& InitEpoll();

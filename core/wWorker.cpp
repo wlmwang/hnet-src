@@ -17,7 +17,7 @@ namespace hnet {
 wWorker::wWorker(std::string title, uint32_t slot, wMaster* master) : mMaster(master), mTitle(title), mPid(-1),
 mPriority(0), mRlimitCore(kRlimitCore), mSlot(slot) {
 	SAFE_NEW(wChannelSocket(kStConnect), mChannel);
-	mMaster->mServer->Worker() = this;
+	mMaster->Server()->Worker() = this;
 }
 
 wWorker::~wWorker() {
@@ -64,11 +64,11 @@ const wStatus& wWorker::Prepare() {
 	}
 	
     // 进程标题
-    mStatus = mMaster->mServer->Config()->Setproctitle(kWorkerTitle, mTitle.c_str());
+    mStatus = mMaster->Server()->Config()->Setproctitle(kWorkerTitle, mTitle.c_str());
 	if (!mStatus.Ok()) {
 		return mStatus;
 	}
-	mMaster->mServer->Worker() = this;
+	mMaster->Server()->Worker() = this;
 	return mStatus.Clear();
 }
 
@@ -84,7 +84,7 @@ const wStatus& wWorker::Start() {
     if (!mStatus.Ok()) {
     	return mStatus;
     }
-	return mStatus = mMaster->mServer->WorkerStart();
+	return mStatus = mMaster->Server()->WorkerStart();
 }
 
 }	// namespace hnet
