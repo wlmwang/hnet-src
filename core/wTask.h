@@ -12,6 +12,8 @@
 #include "wStatus.h"
 #include "wNoncopyable.h"
 #include "wEvent.h"
+#include "wServer.h"
+#include "wMultiClient.h"
 
 namespace hnet {
 
@@ -23,8 +25,6 @@ struct Request_t {
 };
 
 class wSocket;
-class wServer;
-class wMultiClient;
 
 class wTask : private wNoncopyable {
 public:

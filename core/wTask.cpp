@@ -10,8 +10,6 @@
 #include "wSocket.h"
 #include "wMaster.h"
 #include "wWorker.h"
-#include "wServer.h"
-#include "wMultiClient.h"
 
 namespace hnet {
 
