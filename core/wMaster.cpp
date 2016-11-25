@@ -51,8 +51,7 @@ const wStatus& wMaster::PrepareStart() {
     if (!PrepareRun().Ok()) {
     	return mStatus;
     }
-    mStatus = mServer->Config()->Setproctitle(kMasterTitle, mTitle.c_str());
-    if (!mStatus.Ok()) {
+    if (!(mStatus = mServer->Config()->Setproctitle(kMasterTitle, mTitle.c_str())).Ok()) {
     	return mStatus;
     }
 
@@ -99,8 +98,7 @@ const wStatus& wMaster::MasterStart() {
     ss.AddSet(SIGTERM);	// 优雅退出
     ss.AddSet(SIGHUP);	// 重新读取配置
     ss.AddSet(SIGUSR1);	// 重启服务
-    mStatus = ss.Procmask();
-    if (!mStatus.Ok()) {
+    if (!(mStatus = ss.Procmask()).Ok()) {
         return mStatus;
     }
 
@@ -175,8 +173,7 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
 	if (worker->ChannelFD(0) != kFDUnknown || worker->ChannelFD(1) != kFDUnknown) {
 		worker->Channel()->Close();
 	}
-	mStatus = worker->Channel()->Open();
-	if (!mStatus.Ok()) {
+	if (!(mStatus = worker->Channel()->Open()).Ok()) {
 		return mStatus;
 	}
 	worker->Channel()->SS() = kSsConnected;
@@ -191,8 +188,7 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
     case 0:
     	// worker进程
         worker->mPid = getpid();
-        mStatus = worker->Prepare();
-        if (!mStatus.Ok()) {
+        if (!(mStatus = worker->Prepare()).Ok()) {
         	// 启动失败
         	exit(2);
         }
@@ -471,8 +467,7 @@ const wStatus& wMaster::DeletePidFile() {
 
 const wStatus& wMaster::SignalProcess(const std::string& signal) {
 	std::string str;
-	mStatus = hnet::ReadFileToString(wEnv::Default(), mPidPath, &str);
-	if (!mStatus.Ok()) {
+	if (!(mStatus = hnet::ReadFileToString(wEnv::Default(), mPidPath, &str)).Ok()) {
 		return mStatus;
 	}
 
@@ -494,8 +489,7 @@ const wStatus& wMaster::SignalProcess(const std::string& signal) {
 const wStatus& wMaster::InitSignals() {
 	wSignal signal;
 	for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
-		mStatus = signal.AddHandler(s);
-		if (!mStatus.Ok()) {
+		if (!(mStatus = signal.AddHandler(s)).Ok()) {
 			return mStatus;
 		}
 	}

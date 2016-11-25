@@ -58,14 +58,12 @@ const wStatus& wWorker::Prepare() {
     	return mStatus = wStatus::IOError("wWorker::Prepare, channel close() failed", strerror(errno));
     }
 
-	mStatus = PrepareRun();
-	if (!mStatus.Ok()) {
+	if (!(mStatus = PrepareRun()).Ok()) {
 		return mStatus;
 	}
 	
     // 进程标题
-    mStatus = mMaster->Server()->Config()->Setproctitle(kWorkerTitle, mTitle.c_str());
-	if (!mStatus.Ok()) {
+	if (!(mStatus = mMaster->Server()->Config()->Setproctitle(kWorkerTitle, mTitle.c_str())).Ok()) {
 		return mStatus;
 	}
 	mMaster->Server()->Worker() = this;
@@ -75,13 +73,11 @@ const wStatus& wWorker::Prepare() {
 const wStatus& wWorker::Start() {
 	// worker进程中不阻塞所有信号
 	wSigSet ss;
-	mStatus = ss.Procmask(SIG_SETMASK);
-	if (!mStatus.Ok()) {
+	if (!(mStatus = ss.Procmask(SIG_SETMASK)).Ok()) {
 		return mStatus;
 	}
 
-    mStatus = Run();
-    if (!mStatus.Ok()) {
+    if (!(mStatus = Run()).Ok()) {
     	return mStatus;
     }
 	return mStatus = mMaster->Server()->WorkerStart();

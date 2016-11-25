@@ -42,8 +42,7 @@ const wStatus& wPing::Open() {
 }
 
 const wStatus& wPing::SetTimeout(float timeout) {
-    mStatus = SetSendTimeout(timeout);
-    if (!mStatus.Ok()) {
+    if (!SetSendTimeout(timeout).Ok()) {
         return mStatus;
     }
     return SetRecvTimeout(timeout);

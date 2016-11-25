@@ -41,15 +41,13 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
         return mStatus = wStatus::IOError("wMultiClient::Connect", "socket new failed");
     }
 
-    mStatus = socket->Open();
-    if (!mStatus.Ok()) {
+    if (!(mStatus = socket->Open()).Ok()) {
         SAFE_DELETE(socket);
         return mStatus;
     }
 
     int64_t ret;
-    mStatus = socket->Connect(&ret, ipaddr, port);
-    if (!mStatus.Ok()) {
+    if (!(mStatus = socket->Connect(&ret, ipaddr, port)).Ok()) {
         SAFE_DELETE(socket);
         return mStatus;
     }
@@ -65,8 +63,7 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
 
     if (mStatus.Ok()) {
         // 登录
-    	mStatus = mTask->Login();
-        if (!mStatus.Ok()) {
+        if (!(mStatus = mTask->Login()).Ok()) {
             SAFE_DELETE(mTask);
         } else if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
             SAFE_DELETE(mTask);
@@ -81,14 +78,12 @@ const wStatus& wMultiClient::ReConnect(wTask* task) {
     	socket->Close();
     }
 
-    mStatus = socket->Open();
-    if (!mStatus.Ok()) {
+    if (!(mStatus = socket->Open()).Ok()) {
         return mStatus;
     }
 
     int64_t ret;
-    mStatus = socket->Connect(&ret, socket->Host(), socket->Port());
-    if (!mStatus.Ok()) {
+    if (!(mStatus = socket->Connect(&ret, socket->Host(), socket->Port())).Ok()) {
         return mStatus;
     }
     socket->SS() = kSsConnected;
@@ -163,8 +158,7 @@ const wStatus& wMultiClient::Recv() {
         } else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
             if (evt[i].events & EPOLLIN) {
                 // 套接口准备好了读取操作
-                mStatus = task->TaskRecv(&size);
-                if (!mStatus.Ok()) {
+                if (!(mStatus = task->TaskRecv(&size)).Ok()) {
                 	task->Socket()->SS() = kSsUnconnect;
                 }
             } else if (evt[i].events & EPOLLOUT) {
@@ -174,8 +168,7 @@ const wStatus& wMultiClient::Recv() {
                 } else {
                     // 套接口准备好了写入操作
                     // 写入失败，半连接，对端读关闭
-                    mStatus = task->TaskSend(&size);
-                    if (!mStatus.Ok()) {
+                    if (!(mStatus = task->TaskSend(&size)).Ok()) {
                     	task->Socket()->SS() = kSsUnconnect;
                     }
                 }
@@ -228,8 +221,7 @@ const wStatus& wMultiClient::Broadcast(const google::protobuf::Message* msg, int
 const wStatus& wMultiClient::Send(wTask *task, char *cmd, size_t len) {
     if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected
         && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
-        mStatus = task->Send2Buf(cmd, len);
-        if (mStatus.Ok()) {
+        if ((mStatus = task->Send2Buf(cmd, len)).Ok()) {
         	AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
         }
     } else {
@@ -241,8 +233,7 @@ const wStatus& wMultiClient::Send(wTask *task, char *cmd, size_t len) {
 const wStatus& wMultiClient::Send(wTask *task, const google::protobuf::Message* msg) {
     if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected 
         && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
-        mStatus = task->Send2Buf(msg);
-        if (mStatus.Ok()) {
+        if ((mStatus = task->Send2Buf(msg)).Ok()) {
         	AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
         }
     } else {

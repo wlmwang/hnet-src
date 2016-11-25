@@ -78,8 +78,7 @@ const wStatus& wServer::WorkerStart(bool daemon) {
 
     // 惊群锁
     if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
-    	mStatus = wEnv::Default()->NewSem(NULL, &mAcceptSem);
-    	if (!mStatus.Ok()) {
+    	if (!(mStatus = wEnv::Default()->NewSem(NULL, &mAcceptSem)).Ok()) {
     		return mStatus;
     	}
     	if (!RemoveListener(false).Ok()) {
@@ -145,8 +144,7 @@ const wStatus& wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
 
 const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {
-		mStatus = mAcceptSem->TryWait();
-		if (!mStatus.Ok()) {
+		if (!(mStatus = mAcceptSem->TryWait()).Ok()) {
 			return mStatus;
 		}
 		Listener2Epoll(false);
@@ -179,8 +177,7 @@ const wStatus& wServer::Recv() {
 		} else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
 			if (evt[i].events & EPOLLIN) {
 				// 套接口准备好了读取操作
-				mStatus = task->TaskRecv(&size);
-				if (!mStatus.Ok()) {
+				if (!(mStatus = task->TaskRecv(&size)).Ok()) {
 					RemoveTask(task);
 				}
 			} else if (evt[i].events & EPOLLOUT) {
@@ -190,8 +187,7 @@ const wStatus& wServer::Recv() {
 				} else {
 					// 套接口准备好了写入操作
 					// 写入失败，半连接，对端读关闭
-					mStatus = task->TaskSend(&size);
-					if (!mStatus.Ok()) {
+					if (!(mStatus = task->TaskSend(&size)).Ok()) {
 						RemoveTask(task);
 					}
 				}
@@ -214,8 +210,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_un sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);
-		mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize);
-		if (!mStatus.Ok()) {
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
 		    return mStatus;
 		}
 
@@ -226,8 +221,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		socket->Host() = sockAddr.sun_path;
 		socket->Port() = 0;
 		socket->SS() = kSsConnected;
-		mStatus = socket->SetFL();
-		if (!mStatus.Ok()) {
+		if (!(mStatus = socket->SetFL()).Ok()) {
 		    return mStatus;
 		}
 		NewUnixTask(socket, &mTask);
@@ -235,8 +229,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_in sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);	
-		mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize);
-		if (!mStatus.Ok()) {
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
 		    return mStatus;
 		}
 
@@ -247,8 +240,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		socket->Host() = inet_ntoa(sockAddr.sin_addr);
 		socket->Port() = sockAddr.sin_port;
 		socket->SS() = kSsConnected;
-		mStatus = socket->SetFL();
-		if (!mStatus.Ok()) {
+		if (!(mStatus = socket->SetFL()).Ok()) {
 		    return mStatus;
 		}
 		NewTcpTask(socket, &mTask);
@@ -258,8 +250,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
     
     if (mStatus.Ok()) {
     	// 登录
-    	mStatus = mTask->Login();
-		if (!mStatus.Ok()) {
+		if (!(mStatus = mTask->Login()).Ok()) {
 		    SAFE_DELETE(mTask);
 		} else if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
 		    SAFE_DELETE(mTask);
@@ -356,16 +347,14 @@ const wStatus& wServer::NotifyWorker(const google::protobuf::Message* msg, uint3
 }
 
 const wStatus& wServer::Send(wTask *task, char *cmd, size_t len) {
-	mStatus = task->Send2Buf(cmd, len);
-	if (mStatus.Ok()) {
+	if ((mStatus = task->Send2Buf(cmd, len)).Ok()) {
 	    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
 	}
     return mStatus;
 }
 
 const wStatus& wServer::Send(wTask *task, const google::protobuf::Message* msg) {
-	mStatus = task->Send2Buf(msg);
-	if (mStatus.Ok()) {
+	if ((mStatus = task->Send2Buf(msg)).Ok()) {
 	    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
 	}
     return mStatus;
@@ -382,13 +371,11 @@ const wStatus& wServer::AddListener(const std::string& ipaddr, uint16_t port, st
     }
     
     if (socket != NULL) {
-		mStatus = socket->Open();
-		if (!mStatus.Ok()) {
+		if (!(mStatus = socket->Open()).Ok()) {
 		    SAFE_DELETE(socket);
 		    return mStatus;
 		}
-		mStatus = socket->Listen(ipaddr, port);
-		if (!mStatus.Ok()) {
+		if (!(mStatus = socket->Listen(ipaddr, port)).Ok()) {
 		    SAFE_DELETE(socket);
 		    return mStatus;
 		}
