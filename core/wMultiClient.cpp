@@ -10,7 +10,6 @@
 #include "wUnixSocket.h"
 #include "wTcpTask.h"
 #include "wUnixTask.h"
-#include "wConfig.h"
 
 namespace hnet {
 

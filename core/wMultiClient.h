@@ -19,6 +19,7 @@
 #include "wSocket.h"
 #include "wTimer.h"
 #include "wThread.h"
+#include "wConfig.h"
 
 namespace hnet {
 
@@ -26,7 +27,6 @@ const int kClientNumShardBits = 4;
 const int kClientNumShard = 1 << kClientNumShardBits;
 
 class wTask;
-class wConfig;
 
 // 多类型客户端（类型为0-15）
 // 多用于与服务端长连，守护监听服务端消息

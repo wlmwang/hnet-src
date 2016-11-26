@@ -8,7 +8,6 @@
 #include "wStatus.h"
 #include "wMisc.h"
 #include "wTcpTask.h"
-#include "wConfig.h"
 #include "wMultiClient.h"
 #include "example.pb.h"
 
