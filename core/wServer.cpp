@@ -561,30 +561,29 @@ void wServer::CheckHeartBeat() {
     for (int i = 0; i < kServerNumShard; i++) {
     	mTaskPoolMutex[i].Lock();
 	    if (mTaskPool[i].size() > 0) {
-			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end();) {
-			    if ((*it)->Socket()->ST() == kStConnect && ((*it)->Socket()->SP() == kSpTcp || (*it)->Socket()->SP() == kSpUnix)) {
-			    	if ((*it)->Socket()->SS() == kSsUnconnect) {
-			    		RemoveTask(*it, &it);
-			    	} else {
-						// 上一次发送时间间隔
+	    	std::vector<wTask*>::iterator it = mTaskPool[i].begin();
+	    	while (it != mTaskPool[i].end()) {
+	    		if ((*it)->Socket()->ST() == kStConnect && ((*it)->Socket()->SP() == kSpTcp || (*it)->Socket()->SP() == kSpUnix)) {
+	    			if ((*it)->Socket()->SS() == kSsUnconnect) {
+	    				// 断线连接
+	    				RemoveTask(*it, &it);
+	    				continue;
+	    			} else {
+	    				// 心跳检测
 						uint64_t interval = tm - (*it)->Socket()->SendTm();
 						if (interval >= kKeepAliveTm*1000) {
 							// 发送心跳
 							(*it)->HeartbeatSend();
-							// 心跳超限
-						    if ((*it)->HeartbeatOut()) {
-						    	RemoveTask(*it, &it);
-						    } else {
-						    	it++;
-						    }
-						} else {
-							it++;
+							if ((*it)->HeartbeatOut()) {
+								// 心跳超限
+								RemoveTask(*it, &it);
+								continue;
+							}
 						}
-			    	}
-			    } else {
-			    	it++;
-			    }
-			}
+	    			}
+	    		}
+	    		it++;
+	    	}
 	    }
     	mTaskPoolMutex[i].Unlock();
     }
