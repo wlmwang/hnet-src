@@ -12,6 +12,8 @@
 #include "wStatus.h"
 #include "wNoncopyable.h"
 #include "wEvent.h"
+#include "wServer.h"
+#include "wMultiClient.h"
 
 namespace hnet {
 
@@ -23,8 +25,6 @@ struct Request_t {
 };
 
 class wSocket;
-class wServer;
-class wMultiClient;
 
 class wTask : private wNoncopyable {
 public:
@@ -101,12 +101,16 @@ public:
     	mSCType = 0;
     	mServer = server;
     }
+    template<typename T = wServer*>
+    inline T& Server() { return reinterpret_cast<T&>(mServer);}
 
     // 设置客户端对象（方便异步发送）
     inline void SetClient(wMultiClient* client) {
     	mSCType = 1;
     	mClient = client;
     }
+    template<typename T = wMultiClient*>
+    inline T& Client() { return reinterpret_cast<T&>(mClient);}
 
     inline wSocket *Socket() { return mSocket;}
     

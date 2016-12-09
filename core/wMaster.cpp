@@ -12,7 +12,6 @@
 #include "wSignal.h"
 #include "wWorker.h"
 #include "wTask.h"
-#include "wServer.h"
 #include "wChannel.pb.h"
 
 namespace hnet {
@@ -40,20 +39,19 @@ wMaster::~wMaster() {
 const wStatus& wMaster::PrepareStart() {
     // 检测配置、服务实例
     if (mServer == NULL || mServer->Config() == NULL) {
-    	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "mServer or mConfig is null");
+    	return mStatus = wStatus::Corruption("wMaster::PrepareStart failed", "mServer or mConfig is null");
     }
 
     std::string host;
     int16_t port = 0;
     if (!mServer->Config()->GetConf("host", &host) || !mServer->Config()->GetConf("port", &port)) {
-    	return mStatus = wStatus::IOError("wMaster::PrepareStart failed", "host or port is illegal");
+    	return mStatus = wStatus::Corruption("wMaster::PrepareStart failed", "host or port is illegal");
     }
 
     if (!PrepareRun().Ok()) {
     	return mStatus;
     }
-    mStatus = mServer->Config()->Setproctitle(kMasterTitle, mTitle.c_str());
-    if (!mStatus.Ok()) {
+    if (!(mStatus = mServer->Config()->Setproctitle(kMasterTitle, mTitle.c_str())).Ok()) {
     	return mStatus;
     }
 
@@ -81,7 +79,7 @@ const wStatus& wMaster::SingleStart() {
 
 const wStatus& wMaster::MasterStart() {
     if (mWorkerNum > kMaxProcess) {
-        return mStatus = wStatus::IOError("wMaster::MasterStart, processes can be spawned", "worker number is overflow");
+        return mStatus = wStatus::Corruption("wMaster::MasterStart, processes can be spawned", "worker number is overflow");
     }
 
     if (!CreatePidFile().Ok()) {
@@ -100,8 +98,7 @@ const wStatus& wMaster::MasterStart() {
     ss.AddSet(SIGTERM);	// 优雅退出
     ss.AddSet(SIGHUP);	// 重新读取配置
     ss.AddSet(SIGUSR1);	// 重启服务
-    mStatus = ss.Procmask();
-    if (!mStatus.Ok()) {
+    if (!(mStatus = ss.Procmask()).Ok()) {
         return mStatus;
     }
 
@@ -168,7 +165,7 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
 		mSlot = idx;
 	}
 	if (mSlot >= kMaxProcess) {
-		return mStatus = wStatus::IOError("wMaster::SpawnWorker failed", "slot overflow");
+		return mStatus = wStatus::Corruption("wMaster::SpawnWorker failed", "slot overflow");
 	}
 	wWorker *worker = mWorkerPool[mSlot];
 
@@ -176,8 +173,7 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
 	if (worker->ChannelFD(0) != kFDUnknown || worker->ChannelFD(1) != kFDUnknown) {
 		worker->Channel()->Close();
 	}
-	mStatus = worker->Channel()->Open();
-	if (!mStatus.Ok()) {
+	if (!(mStatus = worker->Channel()->Open()).Ok()) {
 		return mStatus;
 	}
 	worker->Channel()->SS() = kSsConnected;
@@ -187,13 +183,12 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
     case -1:
 		// 关闭channel && 释放进程表项
     	worker->Channel()->Close();
-        return mStatus = wStatus::IOError("wMaster::SpawnWorker, fork() failed", strerror(errno));
+        return mStatus = wStatus::Corruption("wMaster::SpawnWorker, fork() failed", strerror(errno));
 
     case 0:
     	// worker进程
         worker->mPid = getpid();
-        mStatus = worker->Prepare();
-        if (!mStatus.Ok()) {
+        if (!(mStatus = worker->Prepare()).Ok()) {
         	// 启动失败
         	exit(2);
         }
@@ -275,7 +270,7 @@ const wStatus& wMaster::HandleSignal() {
 
 		// 设置定时器，以系统真实时间来计算，送出SIGALRM信号（主要用户优雅退出）
 		if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
-			mStatus = wStatus::IOError("wMaster::HandleSignal, setitimer() failed", strerror(errno));
+			mStatus = wStatus::Corruption("wMaster::HandleSignal, setitimer() failed", strerror(errno));
 		}
 	}
 
@@ -335,7 +330,9 @@ const wStatus& wMaster::HandleSignal() {
 		g_reconfigure = 0;
 		
 		// 重新初始化主进程配置
-		Reload();
+		if (!Reload().Ok()) {
+			exit(2);
+		}
 		
 		// 启动新worker
 		WorkerStart(mWorkerNum, kProcessJustRespawn);
@@ -470,8 +467,7 @@ const wStatus& wMaster::DeletePidFile() {
 
 const wStatus& wMaster::SignalProcess(const std::string& signal) {
 	std::string str;
-	mStatus = hnet::ReadFileToString(wEnv::Default(), mPidPath, &str);
-	if (!mStatus.Ok()) {
+	if (!(mStatus = hnet::ReadFileToString(wEnv::Default(), mPidPath, &str)).Ok()) {
 		return mStatus;
 	}
 
@@ -480,21 +476,20 @@ const wStatus& wMaster::SignalProcess(const std::string& signal) {
 		for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
 			if (memcmp(signal.c_str(), s->mName, signal.size()) == 0) {
 				if (kill(pid, s->mSigno) == -1) {
-					return mStatus = wStatus::IOError("wMaster::SignalProcess, kill() failed", strerror(errno));
+					return mStatus = wStatus::Corruption("wMaster::SignalProcess, kill() failed", strerror(errno));
 				} else {
 					return mStatus.Clear();
 				}
 			}
 		}
 	}
-	return mStatus = wStatus::IOError("wMaster::SignalProcess, signal failed", "cannot find signal");
+	return mStatus = wStatus::Corruption("wMaster::SignalProcess, signal failed", "cannot find signal");
 }
 
 const wStatus& wMaster::InitSignals() {
 	wSignal signal;
 	for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
-		mStatus = signal.AddHandler(s);
-		if (!mStatus.Ok()) {
+		if (!(mStatus = signal.AddHandler(s)).Ok()) {
 			return mStatus;
 		}
 	}
@@ -532,15 +527,15 @@ void wMaster::WorkerExitStat() {
 		// 日志记录
 		std::string str = "wMaster::WorkerExitStat, child(" + logging::NumberToString(pid) + ") ";
         if (WTERMSIG(status)) {
-			wStatus::IOError(str + "exited on signal", logging::NumberToString(WTERMSIG(status)));
+			wStatus::Corruption(str + "exited on signal", logging::NumberToString(WTERMSIG(status)));
         } else {
-			wStatus::IOError(str + "exited with code", logging::NumberToString(WTERMSIG(status)));
+			wStatus::Corruption(str + "exited with code", logging::NumberToString(WTERMSIG(status)));
         }
 	
 		// 退出码为2时，退出后不重启
         if (WEXITSTATUS(status) == 2 && mWorkerPool[i]->mRespawn) {
         	mWorkerPool[i]->mRespawn = 0;
-        	wStatus::IOError(str + "exited with fatal code, and cannot be respawned", logging::NumberToString(WTERMSIG(status)));
+        	wStatus::Corruption(str + "exited with fatal code, and cannot be respawned", logging::NumberToString(WTERMSIG(status)));
         }
     }
 }

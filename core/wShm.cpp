@@ -101,7 +101,7 @@ const wStatus& wPosixShm::AllocShm(char* ptr, size_t size) {
 		mShmhead->mUsedOff += size;
 		return mStatus.Clear();
 	}
-	return mStatus = wStatus::IOError("wPosixShm::AllocShm failed", "shm space not enough");
+	return mStatus = wStatus::Corruption("wPosixShm::AllocShm failed", "shm space not enough");
 }
 
 const wStatus& wPosixShm::Destroy() {

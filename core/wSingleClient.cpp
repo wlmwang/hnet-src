@@ -31,15 +31,14 @@ const wStatus& wSingleClient::Connect(const std::string& ipaddr, uint16_t port, 
     	return mStatus = wStatus::IOError("wSingleClient::Connect", "socket new failed");
     }
 	
-    mStatus = socket->Open();
-    if (!mStatus.Ok()) {
+    ;
+    if (!(mStatus = socket->Open()).Ok()) {
         SAFE_DELETE(socket);
         return mStatus;
     }
 
     int64_t ret;
-    mStatus = socket->Connect(&ret, ipaddr, port);
-    if (!mStatus.Ok()) {
+    if (!(mStatus = socket->Connect(&ret, ipaddr, port)).Ok()) {
         SAFE_DELETE(socket);
         return mStatus;
     }

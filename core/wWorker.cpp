@@ -17,7 +17,7 @@ namespace hnet {
 wWorker::wWorker(std::string title, uint32_t slot, wMaster* master) : mMaster(master), mTitle(title), mPid(-1),
 mPriority(0), mRlimitCore(kRlimitCore), mSlot(slot) {
 	SAFE_NEW(wChannelSocket(kStConnect), mChannel);
-	mMaster->mServer->Worker() = this;
+	mMaster->Server()->Worker() = this;
 }
 
 wWorker::~wWorker() {
@@ -58,33 +58,29 @@ const wStatus& wWorker::Prepare() {
     	return mStatus = wStatus::IOError("wWorker::Prepare, channel close() failed", strerror(errno));
     }
 
-	mStatus = PrepareRun();
-	if (!mStatus.Ok()) {
+	if (!(mStatus = PrepareRun()).Ok()) {
 		return mStatus;
 	}
 	
     // 进程标题
-    mStatus = mMaster->mServer->Config()->Setproctitle(kWorkerTitle, mTitle.c_str());
-	if (!mStatus.Ok()) {
+	if (!(mStatus = mMaster->Server()->Config()->Setproctitle(kWorkerTitle, mTitle.c_str())).Ok()) {
 		return mStatus;
 	}
-	mMaster->mServer->Worker() = this;
+	mMaster->Server()->Worker() = this;
 	return mStatus.Clear();
 }
 
 const wStatus& wWorker::Start() {
 	// worker进程中不阻塞所有信号
 	wSigSet ss;
-	mStatus = ss.Procmask(SIG_SETMASK);
-	if (!mStatus.Ok()) {
+	if (!(mStatus = ss.Procmask(SIG_SETMASK)).Ok()) {
 		return mStatus;
 	}
 
-    mStatus = Run();
-    if (!mStatus.Ok()) {
+    if (!(mStatus = Run()).Ok()) {
     	return mStatus;
     }
-	return mStatus = mMaster->mServer->WorkerStart();
+	return mStatus = mMaster->Server()->WorkerStart();
 }
 
 }	// namespace hnet

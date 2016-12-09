@@ -8,7 +8,6 @@
 #include "wStatus.h"
 #include "wMisc.h"
 #include "wTcpTask.h"
-#include "wConfig.h"
 #include "wMultiClient.h"
 #include "example.pb.h"
 
@@ -50,8 +49,10 @@ public:
 	virtual const wStatus& PrepareRun() {
 	    std::string host;
 	    int16_t port = 0;
-	    if (mConfig == NULL || !mConfig->GetConf("host", &host) || !mConfig->GetConf("port", &port)) {
-	    	return mStatus = wStatus::IOError("ExampleClient::PrepareRun failed", "mConfig is null or host|port is illegal");
+
+	    wConfig* config = Config<wConfig*>();
+	    if (config == NULL || !config->GetConf("host", &host) || !config->GetConf("port", &port)) {
+	    	return mStatus = wStatus::IOError("ExampleClient::PrepareRun failed", "Config() is null or host|port is illegal");
 	    }
 
 	    // 连接服务器

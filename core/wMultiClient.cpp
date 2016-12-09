@@ -10,7 +10,6 @@
 #include "wUnixSocket.h"
 #include "wTcpTask.h"
 #include "wUnixTask.h"
-#include "wConfig.h"
 
 namespace hnet {
 
@@ -26,7 +25,7 @@ wMultiClient::~wMultiClient() {
 
 const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port, std::string protocol) {
     if (type >= kClientNumShard) {
-        return mStatus = wStatus::IOError("wMultiClient::AddConnect failed", "overload type");
+        return mStatus = wStatus::Corruption("wMultiClient::AddConnect failed", "overload type");
     }
 
     wSocket *socket;
@@ -41,15 +40,13 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
         return mStatus = wStatus::IOError("wMultiClient::Connect", "socket new failed");
     }
 
-    mStatus = socket->Open();
-    if (!mStatus.Ok()) {
+    if (!(mStatus = socket->Open()).Ok()) {
         SAFE_DELETE(socket);
         return mStatus;
     }
 
     int64_t ret;
-    mStatus = socket->Connect(&ret, ipaddr, port);
-    if (!mStatus.Ok()) {
+    if (!(mStatus = socket->Connect(&ret, ipaddr, port)).Ok()) {
         SAFE_DELETE(socket);
         return mStatus;
     }
@@ -60,13 +57,12 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
     } else if(protocol == "UNIX") {
         NewUnixTask(socket, &mTask, type);
     } else {
-        mStatus = wStatus::IOError("wMultiClient::AcceptConn", "unknown task");
+        mStatus = wStatus::NotSupported("wMultiClient::AcceptConn", "unknown task");
     }
 
     if (mStatus.Ok()) {
         // 登录
-    	mStatus = mTask->Login();
-        if (!mStatus.Ok()) {
+        if (!(mStatus = mTask->Login()).Ok()) {
             SAFE_DELETE(mTask);
         } else if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
             SAFE_DELETE(mTask);
@@ -81,14 +77,12 @@ const wStatus& wMultiClient::ReConnect(wTask* task) {
     	socket->Close();
     }
 
-    mStatus = socket->Open();
-    if (!mStatus.Ok()) {
+    if (!(mStatus = socket->Open()).Ok()) {
         return mStatus;
     }
 
     int64_t ret;
-    mStatus = socket->Connect(&ret, socket->Host(), socket->Port());
-    if (!mStatus.Ok()) {
+    if (!(mStatus = socket->Connect(&ret, socket->Host(), socket->Port())).Ok()) {
         return mStatus;
     }
     socket->SS() = kSsConnected;
@@ -163,8 +157,7 @@ const wStatus& wMultiClient::Recv() {
         } else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
             if (evt[i].events & EPOLLIN) {
                 // 套接口准备好了读取操作
-                mStatus = task->TaskRecv(&size);
-                if (!mStatus.Ok()) {
+                if (!(mStatus = task->TaskRecv(&size)).Ok()) {
                 	task->Socket()->SS() = kSsUnconnect;
                 }
             } else if (evt[i].events & EPOLLOUT) {
@@ -174,8 +167,7 @@ const wStatus& wMultiClient::Recv() {
                 } else {
                     // 套接口准备好了写入操作
                     // 写入失败，半连接，对端读关闭
-                    mStatus = task->TaskSend(&size);
-                    if (!mStatus.Ok()) {
+                    if (!(mStatus = task->TaskSend(&size)).Ok()) {
                     	task->Socket()->SS() = kSsUnconnect;
                     }
                 }
@@ -228,8 +220,7 @@ const wStatus& wMultiClient::Broadcast(const google::protobuf::Message* msg, int
 const wStatus& wMultiClient::Send(wTask *task, char *cmd, size_t len) {
     if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected
         && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
-        mStatus = task->Send2Buf(cmd, len);
-        if (mStatus.Ok()) {
+        if ((mStatus = task->Send2Buf(cmd, len)).Ok()) {
         	AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
         }
     } else {
@@ -241,12 +232,11 @@ const wStatus& wMultiClient::Send(wTask *task, char *cmd, size_t len) {
 const wStatus& wMultiClient::Send(wTask *task, const google::protobuf::Message* msg) {
     if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected 
         && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
-        mStatus = task->Send2Buf(msg);
-        if (mStatus.Ok()) {
+        if ((mStatus = task->Send2Buf(msg)).Ok()) {
         	AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
         }
     } else {
-        mStatus = wStatus::IOError("wMultiClient::Send, send error", "socket cannot send message");
+        mStatus = wStatus::Corruption("wMultiClient::Send, send error", "socket cannot send message");
     }
     return mStatus;
 }
@@ -348,25 +338,28 @@ void wMultiClient::CheckHeartBeat() {
     for (int i = 0; i < kClientNumShard; i++) {
         mTaskPoolMutex[i].Lock();
         if (mTaskPool[i].size() > 0) {
-            for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
-                if ((*it)->Socket()->ST() == kStConnect) {
-                    if ((*it)->Socket()->SS() == kSsUnconnect) {
-                    	// 重连
+        	std::vector<wTask*>::iterator it = mTaskPool[i].begin();
+        	while (it != mTaskPool[i].end()) {
+        		if ((*it)->Socket()->ST() == kStConnect) {
+        			if ((*it)->Socket()->SS() == kSsUnconnect) {
+                    	// 重连服务器
                     	ReConnect(*it);
-                    } else {
-                        // 上一次发送时间间隔
-                        uint64_t interval = nowTm - (*it)->Socket()->SendTm();
-                        if (interval >= kKeepAliveTm*1000) {
-                            // 发送心跳
-                            (*it)->HeartbeatSend();
-                            if ((*it)->HeartbeatOut()) {
-                            	(*it)->Socket()->SS() = kSsUnconnect;
-                            	RemoveTask(*it, NULL, false);
-                            }
-                        }
-                    }
-                }
-            }
+        			} else {
+        				// 心跳检测
+        				uint64_t interval = nowTm - (*it)->Socket()->SendTm();
+        				if (interval >= kKeepAliveTm*1000) {
+        					// 发送心跳
+        					(*it)->HeartbeatSend();
+        					if ((*it)->HeartbeatOut()) {
+        						// 心跳超限
+        						(*it)->Socket()->SS() = kSsUnconnect;
+        						RemoveTask(*it, NULL, false);
+        					}
+        				}
+        			}
+        		}
+        		it++;
+        	}
         }
         mTaskPoolMutex[i].Unlock();
     }

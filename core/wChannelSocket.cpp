@@ -76,8 +76,6 @@ const wStatus& wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) 
             cmsg.cm.cmsg_len = CMSG_LEN(sizeof(int32_t));
 
             // 文件描述符
-            // int32_t fd = open.fd();
-            //memcpy(CMSG_DATA(&cmsg.cm), &fd, sizeof(int32_t));
             *(int32_t *) CMSG_DATA(&cmsg.cm) = open.fd();
 
 		} else {

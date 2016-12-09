@@ -12,12 +12,12 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
+#include "wServer.h"
 
 namespace hnet {
 
 const char  kMasterTitle[] = " - master process";
 
-class wServer;
 class wWorker;
 
 class wMaster : private wNoncopyable {
@@ -53,9 +53,14 @@ public:
 
     // master主进程退出函数
     virtual void ProcessExit() { }
-    
-    inline wWorker* Worker(uint32_t slot) { return mWorkerPool[slot]; }
+
     inline uint32_t& WorkerNum() { return mWorkerNum;}
+
+    template<typename T = wServer*>
+    inline T& Server() { return reinterpret_cast<T&>(mServer);}
+
+    template<typename T = wWorker*>
+    inline T& Worker(uint32_t slot) { return reinterpret_cast<T&>(mWorkerPool[slot]);}
 
 protected:
     friend class wWorker;

@@ -78,8 +78,7 @@ const wStatus& wServer::WorkerStart(bool daemon) {
 
     // 惊群锁
     if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
-    	mStatus = wEnv::Default()->NewSem(NULL, &mAcceptSem);
-    	if (!mStatus.Ok()) {
+    	if (!(mStatus = wEnv::Default()->NewSem(NULL, &mAcceptSem)).Ok()) {
     		return mStatus;
     	}
     	if (!RemoveListener(false).Ok()) {
@@ -145,8 +144,7 @@ const wStatus& wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
 
 const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {
-		mStatus = mAcceptSem->TryWait();
-		if (!mStatus.Ok()) {
+		if (!(mStatus = mAcceptSem->TryWait()).Ok()) {
 			return mStatus;
 		}
 		Listener2Epoll(false);
@@ -179,8 +177,7 @@ const wStatus& wServer::Recv() {
 		} else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
 			if (evt[i].events & EPOLLIN) {
 				// 套接口准备好了读取操作
-				mStatus = task->TaskRecv(&size);
-				if (!mStatus.Ok()) {
+				if (!(mStatus = task->TaskRecv(&size)).Ok()) {
 					RemoveTask(task);
 				}
 			} else if (evt[i].events & EPOLLOUT) {
@@ -190,8 +187,7 @@ const wStatus& wServer::Recv() {
 				} else {
 					// 套接口准备好了写入操作
 					// 写入失败，半连接，对端读关闭
-					mStatus = task->TaskSend(&size);
-					if (!mStatus.Ok()) {
+					if (!(mStatus = task->TaskSend(&size)).Ok()) {
 						RemoveTask(task);
 					}
 				}
@@ -214,8 +210,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_un sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);
-		mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize);
-		if (!mStatus.Ok()) {
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
 		    return mStatus;
 		}
 
@@ -226,8 +221,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		socket->Host() = sockAddr.sun_path;
 		socket->Port() = 0;
 		socket->SS() = kSsConnected;
-		mStatus = socket->SetFL();
-		if (!mStatus.Ok()) {
+		if (!(mStatus = socket->SetFL()).Ok()) {
 		    return mStatus;
 		}
 		NewUnixTask(socket, &mTask);
@@ -235,8 +229,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_in sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);	
-		mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize);
-		if (!mStatus.Ok()) {
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
 		    return mStatus;
 		}
 
@@ -247,19 +240,17 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		socket->Host() = inet_ntoa(sockAddr.sin_addr);
 		socket->Port() = sockAddr.sin_port;
 		socket->SS() = kSsConnected;
-		mStatus = socket->SetFL();
-		if (!mStatus.Ok()) {
+		if (!(mStatus = socket->SetFL()).Ok()) {
 		    return mStatus;
 		}
 		NewTcpTask(socket, &mTask);
     } else {
-		mStatus = wStatus::IOError("wServer::AcceptConn", "unknown task");
+		mStatus = wStatus::NotSupported("wServer::AcceptConn", "unknown task");
     }
     
     if (mStatus.Ok()) {
     	// 登录
-    	mStatus = mTask->Login();
-		if (!mStatus.Ok()) {
+		if (!(mStatus = mTask->Login()).Ok()) {
 		    SAFE_DELETE(mTask);
 		} else if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
 		    SAFE_DELETE(mTask);
@@ -319,7 +310,7 @@ const wStatus& wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const st
 			wTask::Assertbuf(buf, cmd, len);
 			mStatus = mMaster->Worker(solt)->Channel()->SendBytes(buf, sizeof(uint32_t) + sizeof(uint8_t) + len, &ret);
 		} else {
-			mStatus = wStatus::IOError("wServer::NotifyWorker failed 1", "worker channel is null");
+			mStatus = wStatus::Corruption("wServer::NotifyWorker failed 1", "worker channel is null");
 		}
 	}
 
@@ -349,23 +340,21 @@ const wStatus& wServer::NotifyWorker(const google::protobuf::Message* msg, uint3
 			wTask::Assertbuf(buf, msg);
 			mStatus = mMaster->Worker(solt)->Channel()->SendBytes(buf, sizeof(uint32_t) + len, &ret);
 		} else {
-			mStatus = wStatus::IOError("wServer::NotifyWorker failed 2", "worker channel is null");
+			mStatus = wStatus::Corruption("wServer::NotifyWorker failed 2", "worker channel is null");
 		}
 	}
     return mStatus;
 }
 
 const wStatus& wServer::Send(wTask *task, char *cmd, size_t len) {
-	mStatus = task->Send2Buf(cmd, len);
-	if (mStatus.Ok()) {
+	if ((mStatus = task->Send2Buf(cmd, len)).Ok()) {
 	    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
 	}
     return mStatus;
 }
 
 const wStatus& wServer::Send(wTask *task, const google::protobuf::Message* msg) {
-	mStatus = task->Send2Buf(msg);
-	if (mStatus.Ok()) {
+	if ((mStatus = task->Send2Buf(msg)).Ok()) {
 	    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
 	}
     return mStatus;
@@ -382,13 +371,11 @@ const wStatus& wServer::AddListener(const std::string& ipaddr, uint16_t port, st
     }
     
     if (socket != NULL) {
-		mStatus = socket->Open();
-		if (!mStatus.Ok()) {
+		if (!(mStatus = socket->Open()).Ok()) {
 		    SAFE_DELETE(socket);
 		    return mStatus;
 		}
-		mStatus = socket->Listen(ipaddr, port);
-		if (!mStatus.Ok()) {
+		if (!(mStatus = socket->Listen(ipaddr, port)).Ok()) {
 		    SAFE_DELETE(socket);
 		    return mStatus;
 		}
@@ -419,7 +406,7 @@ const wStatus& wServer::Listener2Epoll(bool addpool) {
         		}
         	}
         	if (!oldtask) {
-        		return mStatus = wStatus::IOError("wServer::Listener2Epoll failed", "no task find");
+        		return mStatus = wStatus::Corruption("wServer::Listener2Epoll failed", "no task find");
         	} else {
         		continue;
         	}
@@ -435,7 +422,7 @@ const wStatus& wServer::Listener2Epoll(bool addpool) {
 		    break;
 		default:
 			task = NULL;
-		    mStatus = wStatus::IOError("wServer::Listener2Epoll", "unknown task");
+		    mStatus = wStatus::NotSupported("wServer::Listener2Epoll", "unknown task");
 		}
 		if (mStatus.Ok()) {
 		    if (!AddTask(task, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
@@ -469,10 +456,10 @@ const wStatus& wServer::Channel2Epoll(bool addpool) {
 				AddTask(task, EPOLLIN, EPOLL_CTL_ADD, addpool);
 			}
 		} else {
-			mStatus = wStatus::IOError("wServer::Channel2Epoll failed", "channel is null");
+			mStatus = wStatus::Corruption("wServer::Channel2Epoll failed", "channel is null");
 		}
 	} else {
-		mStatus = wStatus::IOError("wServer::Channel2Epoll failed", "worker is null");
+		mStatus = wStatus::Corruption("wServer::Channel2Epoll failed", "worker is null");
 	}
     return mStatus;
 }
@@ -574,30 +561,29 @@ void wServer::CheckHeartBeat() {
     for (int i = 0; i < kServerNumShard; i++) {
     	mTaskPoolMutex[i].Lock();
 	    if (mTaskPool[i].size() > 0) {
-			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end();) {
-			    if ((*it)->Socket()->ST() == kStConnect && ((*it)->Socket()->SP() == kSpTcp || (*it)->Socket()->SP() == kSpUnix)) {
-			    	if ((*it)->Socket()->SS() == kSsUnconnect) {
-			    		RemoveTask(*it, &it);
-			    	} else {
-						// 上一次发送时间间隔
+	    	std::vector<wTask*>::iterator it = mTaskPool[i].begin();
+	    	while (it != mTaskPool[i].end()) {
+	    		if ((*it)->Socket()->ST() == kStConnect && ((*it)->Socket()->SP() == kSpTcp || (*it)->Socket()->SP() == kSpUnix)) {
+	    			if ((*it)->Socket()->SS() == kSsUnconnect) {
+	    				// 断线连接
+	    				RemoveTask(*it, &it);
+	    				continue;
+	    			} else {
+	    				// 心跳检测
 						uint64_t interval = tm - (*it)->Socket()->SendTm();
 						if (interval >= kKeepAliveTm*1000) {
 							// 发送心跳
 							(*it)->HeartbeatSend();
-							// 心跳超限
-						    if ((*it)->HeartbeatOut()) {
-						    	RemoveTask(*it, &it);
-						    } else {
-						    	it++;
-						    }
-						} else {
-							it++;
+							if ((*it)->HeartbeatOut()) {
+								// 心跳超限
+								RemoveTask(*it, &it);
+								continue;
+							}
 						}
-			    	}
-			    } else {
-			    	it++;
-			    }
-			}
+	    			}
+	    		}
+	    		it++;
+	    	}
 	    }
     	mTaskPoolMutex[i].Unlock();
     }

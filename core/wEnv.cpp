@@ -48,8 +48,7 @@ public:
         } else if (mMmapLimit.Acquire()) {
         	// 创建mmaps
             uint64_t size;
-            mStatus = GetFileSize(fname, &size);
-            if (mStatus.Ok()) {
+            if ((mStatus = GetFileSize(fname, &size)).Ok()) {
                 // 创建可读的内存映射，其内存映射的空间进程间共享
                 // 对文件写入，相当于输出到文件。实际上直到调用msync()或者munmap()，文件才被更新
                 void* base = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
@@ -84,8 +83,7 @@ public:
 
     virtual const wStatus& NewSem(const std::string* devshm, wSem** result) {
     	SAFE_NEW(wPosixSem(devshm), *result);
-    	mStatus = (*result)->Open();
-    	if (!mStatus.Ok()) {
+    	if (!(mStatus = (*result)->Open()).Ok()) {
     		SAFE_DELETE(*result);
     	}
     	return mStatus;
