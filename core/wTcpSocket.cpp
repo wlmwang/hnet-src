@@ -14,7 +14,7 @@ namespace hnet {
 
 const wStatus& wTcpSocket::Open() {
 	if ((mFD = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		return mStatus = wStatus::IOError("wTcpSocket::Open socket() AF_INET failed", strerror(errno));
+		return mStatus = wStatus::AccessIllegal("wTcpSocket::Open socket() AF_INET failed", strerror(errno));
 	}
 
 	int flags = 1;

@@ -245,7 +245,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		}
 		NewTcpTask(socket, &mTask);
     } else {
-		mStatus = wStatus::IOError("wServer::AcceptConn", "unknown task");
+		mStatus = wStatus::NotSupported("wServer::AcceptConn", "unknown task");
     }
     
     if (mStatus.Ok()) {
@@ -310,7 +310,7 @@ const wStatus& wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const st
 			wTask::Assertbuf(buf, cmd, len);
 			mStatus = mMaster->Worker(solt)->Channel()->SendBytes(buf, sizeof(uint32_t) + sizeof(uint8_t) + len, &ret);
 		} else {
-			mStatus = wStatus::IOError("wServer::NotifyWorker failed 1", "worker channel is null");
+			mStatus = wStatus::Corruption("wServer::NotifyWorker failed 1", "worker channel is null");
 		}
 	}
 
@@ -340,7 +340,7 @@ const wStatus& wServer::NotifyWorker(const google::protobuf::Message* msg, uint3
 			wTask::Assertbuf(buf, msg);
 			mStatus = mMaster->Worker(solt)->Channel()->SendBytes(buf, sizeof(uint32_t) + len, &ret);
 		} else {
-			mStatus = wStatus::IOError("wServer::NotifyWorker failed 2", "worker channel is null");
+			mStatus = wStatus::Corruption("wServer::NotifyWorker failed 2", "worker channel is null");
 		}
 	}
     return mStatus;
@@ -406,7 +406,7 @@ const wStatus& wServer::Listener2Epoll(bool addpool) {
         		}
         	}
         	if (!oldtask) {
-        		return mStatus = wStatus::IOError("wServer::Listener2Epoll failed", "no task find");
+        		return mStatus = wStatus::Corruption("wServer::Listener2Epoll failed", "no task find");
         	} else {
         		continue;
         	}
@@ -422,7 +422,7 @@ const wStatus& wServer::Listener2Epoll(bool addpool) {
 		    break;
 		default:
 			task = NULL;
-		    mStatus = wStatus::IOError("wServer::Listener2Epoll", "unknown task");
+		    mStatus = wStatus::NotSupported("wServer::Listener2Epoll", "unknown task");
 		}
 		if (mStatus.Ok()) {
 		    if (!AddTask(task, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
@@ -456,10 +456,10 @@ const wStatus& wServer::Channel2Epoll(bool addpool) {
 				AddTask(task, EPOLLIN, EPOLL_CTL_ADD, addpool);
 			}
 		} else {
-			mStatus = wStatus::IOError("wServer::Channel2Epoll failed", "channel is null");
+			mStatus = wStatus::Corruption("wServer::Channel2Epoll failed", "channel is null");
 		}
 	} else {
-		mStatus = wStatus::IOError("wServer::Channel2Epoll failed", "worker is null");
+		mStatus = wStatus::Corruption("wServer::Channel2Epoll failed", "worker is null");
 	}
     return mStatus;
 }

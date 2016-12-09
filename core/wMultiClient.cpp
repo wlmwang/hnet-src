@@ -25,7 +25,7 @@ wMultiClient::~wMultiClient() {
 
 const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port, std::string protocol) {
     if (type >= kClientNumShard) {
-        return mStatus = wStatus::IOError("wMultiClient::AddConnect failed", "overload type");
+        return mStatus = wStatus::Corruption("wMultiClient::AddConnect failed", "overload type");
     }
 
     wSocket *socket;
@@ -57,7 +57,7 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
     } else if(protocol == "UNIX") {
         NewUnixTask(socket, &mTask, type);
     } else {
-        mStatus = wStatus::IOError("wMultiClient::AcceptConn", "unknown task");
+        mStatus = wStatus::NotSupported("wMultiClient::AcceptConn", "unknown task");
     }
 
     if (mStatus.Ok()) {
@@ -236,7 +236,7 @@ const wStatus& wMultiClient::Send(wTask *task, const google::protobuf::Message* 
         	AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
         }
     } else {
-        mStatus = wStatus::IOError("wMultiClient::Send, send error", "socket cannot send message");
+        mStatus = wStatus::Corruption("wMultiClient::Send, send error", "socket cannot send message");
     }
     return mStatus;
 }

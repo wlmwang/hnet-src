@@ -76,10 +76,10 @@ const wStatus& wTask::TaskRecv(ssize_t *size) {
             // 消息字符在正向缓冲中
             reallen = coding::DecodeFixed32(mRecvRead);
             if (reallen < kMinPackageSize || reallen > kMaxPackageSize) {
-                mStatus = wStatus::IOError("wTask::TaskRecv, message length error, out range", ">0");
+                mStatus = wStatus::Corruption("wTask::TaskRecv, message length error, out range", ">0");
                 break;
             } else if (reallen > static_cast<uint32_t>(len - sizeof(uint32_t))) {
-            	wStatus::IOError("wTask::TaskRecv, recv a part of message", ">0");
+            	wStatus::Corruption("wTask::TaskRecv, recv a part of message", ">0");
                 mStatus.Clear();
                 break;
             }
@@ -106,10 +106,10 @@ const wStatus& wTask::TaskRecv(ssize_t *size) {
             }
 
             if (reallen < kMinPackageSize || reallen > kMaxPackageSize) {
-                mStatus = wStatus::IOError("wTask::TaskRecv, message length error, out range", "<=0");
+                mStatus = wStatus::Corruption("wTask::TaskRecv, message length error, out range", "<=0");
                 break;
             } else if (reallen > static_cast<uint32_t>(kPackageSize - abs(len) - sizeof(uint32_t))) {
-            	wStatus::IOError("wTask::TaskRecv, recv a part of message", "<=0");
+            	wStatus::Corruption("wTask::TaskRecv, recv a part of message", "<=0");
                 mStatus.Clear();
                 break;
             }
@@ -201,9 +201,9 @@ const wStatus& wTask::Send2Buf(char cmd[], size_t len) {
 	// 消息体总长度
 	len += sizeof(uint8_t);
     if (len < kMinPackageSize || len > kMaxPackageSize) {
-        return mStatus = wStatus::IOError("wTask::Send2Buf, command message length error", "message too large");
+        return mStatus = wStatus::Corruption("wTask::Send2Buf, command message length error", "message too large");
     } else if (len > static_cast<size_t>(kPackageSize - mSendLen - sizeof(uint32_t))) {
-        return mStatus = wStatus::IOError("wTask::Send2Buf, command message length error", "left buffer not enough");
+        return mStatus = wStatus::Corruption("wTask::Send2Buf, command message length error", "left buffer not enough");
     }
     const char *buffend = mSendBuff + kPackageSize;
     ssize_t writelen =  mSendWrite - mSendRead;
@@ -220,7 +220,7 @@ const wStatus& wTask::Send2Buf(char cmd[], size_t len) {
     	memcpy(mSendWrite, mTempBuff + leftlen, sizeof(uint32_t) + len - leftlen);
     	mSendWrite += sizeof(uint32_t)+ len - leftlen;
     } else {
-    	return mStatus = wStatus::IOError("wTask::Send2Buf, message length error", "left buffer not enough");
+    	return mStatus = wStatus::Corruption("wTask::Send2Buf, message length error", "left buffer not enough");
     }
 
     mSendLen += sizeof(uint32_t) + len;
@@ -231,9 +231,9 @@ const wStatus& wTask::Send2Buf(const google::protobuf::Message* msg) {
 	// 消息体总长度
 	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
     if (len < kMinPackageSize || len > kMaxPackageSize) {
-        return mStatus = wStatus::IOError("wTask::Send2Buf, google::protobuf::Message length error", "message too large");
+        return mStatus = wStatus::Corruption("wTask::Send2Buf, google::protobuf::Message length error", "message too large");
     } else if (len > static_cast<uint32_t>(kPackageSize - mSendLen - sizeof(uint32_t))) {
-        return mStatus = wStatus::IOError("wTask::Send2Buf, google::protobuf::Message length error", "left buffer not enough");
+        return mStatus = wStatus::Corruption("wTask::Send2Buf, google::protobuf::Message length error", "left buffer not enough");
     }
     const char *buffend = mSendBuff + kPackageSize;
     ssize_t writelen =  mSendWrite - mSendRead;
@@ -249,7 +249,7 @@ const wStatus& wTask::Send2Buf(const google::protobuf::Message* msg) {
     	memcpy(mSendWrite = mSendBuff, mTempBuff + leftlen, sizeof(uint32_t) + len - leftlen);
     	mSendWrite += sizeof(uint32_t)+ len - leftlen;
     } else {
-    	return mStatus = wStatus::IOError("wTask::Send2Buf, message length error", "left buffer not enough");
+    	return mStatus = wStatus::Corruption("wTask::Send2Buf, message length error", "left buffer not enough");
     }
 
     mSendLen += sizeof(uint32_t) + len;
@@ -260,7 +260,7 @@ const wStatus& wTask::SyncSend(char cmd[], size_t len, ssize_t *size) {
 	// 消息体总长度
 	len += sizeof(uint8_t);
     if (len < kMinPackageSize || len > kMaxPackageSize) {
-        return mStatus = wStatus::IOError("wTask::SyncSend, command message length error", "out range");
+        return mStatus = wStatus::Corruption("wTask::SyncSend, command message length error", "out range");
     }
     Assertbuf(mTempBuff, cmd, len - sizeof(uint8_t));
     return mStatus = mSocket->SendBytes(mTempBuff, len + sizeof(uint32_t), size);
@@ -270,7 +270,7 @@ const wStatus& wTask::SyncSend(const google::protobuf::Message* msg, ssize_t *si
 	// 消息体总长度
 	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
 	if (len < kMinPackageSize || len > kMaxPackageSize) {
-        return mStatus = wStatus::IOError("wTask::SyncSend, google::protobuf::Message length error", "out range");
+        return mStatus = wStatus::Corruption("wTask::SyncSend, google::protobuf::Message length error", "out range");
     }
 	Assertbuf(mTempBuff, msg);
     return mStatus = mSocket->SendBytes(mTempBuff, len + sizeof(uint32_t), size);
@@ -282,7 +282,7 @@ const wStatus& wTask::AsyncSend(char cmd[], size_t len) {
 	} else if (mSCType == 1 && mClient != NULL) {
 		mStatus = mClient->Send(this, cmd, len);
 	} else {
-		mStatus = wStatus::IOError("wTask::AsyncSend, failed", "mServer or mClient is null");
+		mStatus = wStatus::Corruption("wTask::AsyncSend, failed", "mServer or mClient is null");
 	}
 	return mStatus;
 }
@@ -293,7 +293,7 @@ const wStatus& wTask::AsyncSend(const google::protobuf::Message* msg) {
 	} else if (mSCType == 1 && mClient != NULL) {
 		mStatus = mClient->Send(this, msg);
 	} else {
-		mStatus = wStatus::IOError("wTask::AsyncSend, failed", "mServer or mClient is null");
+		mStatus = wStatus::Corruption("wTask::AsyncSend, failed", "mServer or mClient is null");
 	}
 	return mStatus;
 }
@@ -340,9 +340,9 @@ const wStatus& wTask::SyncRecv(char cmd[], ssize_t *size, uint32_t timeout) {
 
     uint32_t msglen = coding::DecodeFixed32(mTempBuff);
     if (msglen < kMinPackageSize || msglen > kMaxPackageSize) {
-        return mStatus = wStatus::IOError("wTask::SyncRecv, message length error", "out range");
+        return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "out range");
     } else if (msglen + sizeof(uint32_t) != recvheadlen + recvbodylen) {
-    	return mStatus = wStatus::IOError("wTask::SyncRecv, message length error", "illegal message");
+    	return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "illegal message");
     }
 
     *size = msglen - sizeof(uint8_t);
@@ -392,9 +392,9 @@ const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, ui
 
     uint32_t msglen = coding::DecodeFixed32(mTempBuff);
     if (msglen < kMinPackageSize || msglen > kMaxPackageSize) {
-        return mStatus = wStatus::IOError("wTask::SyncRecv, message length error", "out range");
+        return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "out range");
     } else if (msglen + sizeof(uint32_t) != recvheadlen + recvbodylen) {
-    	return mStatus = wStatus::IOError("wTask::SyncRecv, message length error", "illegal message");
+    	return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "illegal message");
     }
 
     uint16_t n = coding::DecodeFixed16(mTempBuff + sizeof(uint32_t) + sizeof(uint8_t));
@@ -426,7 +426,7 @@ const wStatus& wTask::Handlemsg(char cmd[], uint32_t len) {
 		} else {
 			struct Request_t request(cmd, len);
 			if (mEventCmd(basecmd->GetId(), &request) == false) {
-				mStatus = wStatus::IOError("wTask::Handlemsg, command invalid request", "no method find");
+				mStatus = wStatus::Corruption("wTask::Handlemsg, command invalid request", "no method find");
 			}
 		}
 	} else if (sp == kMpProtobuf) {
@@ -434,10 +434,10 @@ const wStatus& wTask::Handlemsg(char cmd[], uint32_t len) {
 		std::string name(cmd + sizeof(uint16_t), l);
 		struct Request_t request(cmd + sizeof(uint16_t) + l, len - sizeof(uint16_t) - l);
 		if (mEventPb(name, &request) == false) {
-			mStatus = wStatus::IOError("wTask::Handlemsg, protobuf invalid request", "no method find");
+			mStatus = wStatus::Corruption("wTask::Handlemsg, protobuf invalid request", "no method find");
 		}
 	} else {
-		mStatus = wStatus::IOError("wTask::Handlemsg, invalid message protocol", logging::NumberToString(sp));
+		mStatus = wStatus::Corruption("wTask::Handlemsg, invalid message protocol", logging::NumberToString(sp));
 	}
 	return mStatus;
 }

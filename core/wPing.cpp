@@ -36,7 +36,7 @@ const wStatus& wPing::Open() {
     // 若无意中ping一个广播地址或多播地址，将会引来大量应答
     const int size = 50*1024;
     if (setsockopt(mFD, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) != 0) {
-        return mStatus = wStatus::AccessIllegal("wPing::open, set socket receive buf failed", strerror(errno));
+        return mStatus = wStatus::IOError("wPing::open, set socket receive buf failed", strerror(errno));
     }
     return mStatus.Clear();
 }
@@ -159,7 +159,7 @@ const wStatus& wPing::RecvPacket() {
     }
 
     if (i >= kRetryTimes) {
-        return mStatus = wStatus::IOError("wPing::Ping, ping recvmsg retry over times, ip: ", mStrIp);
+        return mStatus = wStatus::Corruption("wPing::Ping, ping recvmsg retry over times, ip: ", mStrIp);
     }
     if (Unpack(mRecvpacket, len) < 0) {
         return mStatus = wStatus::Corruption("wPing::Ping, parse error, ip: ", mStrIp);
