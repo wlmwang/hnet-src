@@ -125,13 +125,13 @@ inline uint32_t Text2IP(const char* cp) {
     return static_cast<uint32_t>(inet_addr(cp));    // typedef in_addr_t u_long
 }
 
-inline void GetTimeofday(struct timeval* pVal, void*) {
+inline void GetTimeofday(struct timeval* pVal) {
     pVal != NULL && gettimeofday(pVal, NULL);
 }
 
 inline int64_t GetTimeofday() {
     struct timeval tv;
-    GetTimeofday(&tv, NULL);
+    GetTimeofday(&tv);
     return (int64_t)tv.tv_sec * 1000000 + (int64_t)tv.tv_usec;
 }
 
