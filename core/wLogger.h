@@ -15,7 +15,7 @@
 
 #ifdef _USE_LOGGER_
 #	define  LOG_ERROR(logpath, fmt, ...)	hnet::Log(logpath, fmt, ##__VA_ARGS__)
-#	ifdef _DEBUG_
+#	ifndef _DEBUG_
 #		define  LOG_DEBUG(logpath, fmt, ...)
 #	else
 #		define  LOG_DEBUG(logpath, fmt, ...)	hnet::Log(logpath, fmt, ##__VA_ARGS__)

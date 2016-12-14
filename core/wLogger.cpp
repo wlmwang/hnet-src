@@ -93,7 +93,7 @@ void wPosixLogger::Logv(const char* format, va_list ap) {
 		const time_t seconds = tv.tv_sec;
 		struct tm t;
 		localtime_r(&seconds, &t);
-		p += snprintf(p, limit - p, "%04d/%02d/%02d-%02d:%02d:%02d.%06d %lld ",
+		p += snprintf(p, limit - p, "%04d/%02d/%02d-%02d:%02d:%02d.%06d [%lld] ",
 				t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
 				static_cast<int>(tv.tv_usec), static_cast<unsigned long long>(pid_id));
 
