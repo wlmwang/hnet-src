@@ -64,6 +64,11 @@ const wStatus& wThread::StartThread() {
 		}
 	}
 
+	// 线程预启动入口
+	if (!PrepareThread().Ok()) {
+		return mStatus;
+	}
+
 	if (pthread_create(&mPthreadId, &mAttr, &wThread::ThreadWrapper, reinterpret_cast<void*>(this)) != 0) {
 		return mStatus = wStatus::IOError("wThread::StartThread, pthread_create() failed", strerror(errno));
 	} else if (pthread_attr_destroy(&mAttr) != 0) {
@@ -75,8 +80,7 @@ const wStatus& wThread::StartThread() {
 		mCond->Wait(*mMutex);
 	}
 	mMutex->Unlock();
-
-    return PrepareThread();
+    return mStatus.Clear();
 }
 
 const wStatus& wThread::JoinThread() {
