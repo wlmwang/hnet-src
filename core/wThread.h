@@ -29,6 +29,10 @@ public:
 
     virtual const wStatus& RunThread() = 0;
 
+    virtual const wStatus& PrepareThread() {
+    	return mStatus;
+    }
+
     inline bool Joinable() {
     	return mJoinable;
     }

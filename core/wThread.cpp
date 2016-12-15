@@ -76,7 +76,7 @@ const wStatus& wThread::StartThread() {
 	}
 	mMutex->Unlock();
 
-    return mStatus.Clear();
+    return PrepareThread();
 }
 
 const wStatus& wThread::JoinThread() {
