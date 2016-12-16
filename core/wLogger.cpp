@@ -146,9 +146,9 @@ static wLogger* Logger(const std::string& logpath) {
 }
 
 // 写日志函数接口
+static wMutex g_logger_mutex;
 void Log(const std::string& logpath, const char* format, ...) {
-	wMutex m;
-	m.Lock();
+	g_logger_mutex.Lock();
 	wLogger* l = Logger(logpath);
 	if (l != NULL) {
 		va_list ap;
@@ -156,7 +156,7 @@ void Log(const std::string& logpath, const char* format, ...) {
 		l->Logv(format, ap);
 		va_end(ap);
 	}
-	m.Unlock();
+	g_logger_mutex.Unlock();
 }
 
 }	// namespace hnet
