@@ -13,8 +13,8 @@
 
 namespace hnet {
 
-wMultiClient::wMultiClient(wConfig* config) : mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleOk(true),
-mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mConfig(config) {
+wMultiClient::wMultiClient(wConfig* config, wServer* server) : mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleOk(true),
+mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mConfig(config), mServer(server) {
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
@@ -239,6 +239,24 @@ const wStatus& wMultiClient::Send(wTask *task, const google::protobuf::Message* 
         mStatus = wStatus::Corruption("wMultiClient::Send, send error", "socket cannot send message");
     }
     return mStatus;
+}
+
+const wStatus& wMultiClient::NotifyWorker(char *cmd, int len, uint32_t solt, const std::vector<uint32_t>* blacksolt) {
+	if (mServer) {
+		mStatus = mServer->NotifyWorker(cmd, len, solt, blacksolt);
+	} else {
+		mStatus = wStatus::IOError("wMultiClient::NotifyWorker, notify error", "mServer is null");
+	}
+	return mStatus;
+}
+
+const wStatus& wMultiClient::NotifyWorker(const google::protobuf::Message* msg, uint32_t solt, const std::vector<uint32_t>* blacksolt) {
+	if (mServer) {
+		mStatus = mServer->NotifyWorker(msg, solt, blacksolt);
+	} else {
+		mStatus = wStatus::IOError("wMultiClient::NotifyWorker, notify error", "mServer is null");
+	}
+	return mStatus;
 }
 
 const wStatus& wMultiClient::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter, bool delpool) {

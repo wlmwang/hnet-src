@@ -20,6 +20,7 @@
 #include "wTimer.h"
 #include "wThread.h"
 #include "wConfig.h"
+#include "wServer.h"
 
 namespace hnet {
 
@@ -32,7 +33,7 @@ class wTask;
 // 多用于与服务端长连，守护监听服务端消息
 class wMultiClient : public wThread {
 public:
-    wMultiClient(wConfig* config);
+    wMultiClient(wConfig* config, wServer* server = NULL);
     virtual ~wMultiClient();
 
     // 添加连接
@@ -75,6 +76,9 @@ public:
     template<typename T = wConfig*>
     inline T& Config() { return reinterpret_cast<T&>(mConfig);}
 
+    template<typename T = wServer*>
+    inline T& Server() { return reinterpret_cast<T&>(mServer);}
+
 protected:
     const wStatus& Recv();
     const wStatus& InitEpoll();
@@ -109,6 +113,7 @@ protected:
     std::vector<wTask*> mTaskPool[kClientNumShard];
     wMutex mTaskPoolMutex[kClientNumShard];
     wConfig* mConfig;
+    wServer* mServer;
 
     wStatus mStatus;
 };

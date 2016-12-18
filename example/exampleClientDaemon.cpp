@@ -36,7 +36,7 @@ int ExampleTask::ExampleEchoRes(struct Request_t *request) {
 
 class ExampleClient : public wMultiClient {
 public:
-	ExampleClient(wConfig* config) : wMultiClient(config) { }
+	ExampleClient(wConfig* config, wServer* server = NULL) : wMultiClient(config, server) { }
 
 	virtual const wStatus& NewTcpTask(wSocket* sock, wTask** ptr, int type = 0) {
 	    SAFE_NEW(ExampleTask(sock, type), *ptr);
