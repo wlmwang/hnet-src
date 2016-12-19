@@ -472,6 +472,7 @@ const wStatus& wServer::AddTask(wTask* task, int ev, int op, bool addpool) {
     if (epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt) == -1) {
 		return mStatus = wStatus::IOError("wServer::AddTask, epoll_ctl() failed", strerror(errno));
     }
+    // 方便异步发送
     task->SetServer(this);
     if (addpool) {
     	AddToTaskPool(task);

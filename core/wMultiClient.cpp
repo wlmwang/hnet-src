@@ -241,24 +241,6 @@ const wStatus& wMultiClient::Send(wTask *task, const google::protobuf::Message* 
     return mStatus;
 }
 
-const wStatus& wMultiClient::NotifyWorker(char *cmd, int len, uint32_t solt, const std::vector<uint32_t>* blacksolt) {
-	if (mServer) {
-		mStatus = mServer->NotifyWorker(cmd, len, solt, blacksolt);
-	} else {
-		mStatus = wStatus::IOError("wMultiClient::NotifyWorker, notify error", "mServer is null");
-	}
-	return mStatus;
-}
-
-const wStatus& wMultiClient::NotifyWorker(const google::protobuf::Message* msg, uint32_t solt, const std::vector<uint32_t>* blacksolt) {
-	if (mServer) {
-		mStatus = mServer->NotifyWorker(msg, solt, blacksolt);
-	} else {
-		mStatus = wStatus::IOError("wMultiClient::NotifyWorker, notify error", "mServer is null");
-	}
-	return mStatus;
-}
-
 const wStatus& wMultiClient::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter, bool delpool) {
     struct epoll_event evt;
     evt.data.fd = task->Socket()->FD();
@@ -292,6 +274,9 @@ const wStatus& wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) 
     if (epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt) == -1) {
         return mStatus = wStatus::IOError("wMultiClient::AddTask, epoll_ctl() failed", strerror(errno));
     }
+    // 方便进程通信
+    mTask->Server() = mServer;
+    // 方便异步发送
     mTask->SetClient(this);
     if (addpool) {
         AddToTaskPool(task);

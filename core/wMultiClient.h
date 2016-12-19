@@ -52,10 +52,6 @@ public:
     const wStatus& Send(wTask *task, char *cmd, size_t len);
     const wStatus& Send(wTask *task, const google::protobuf::Message* msg);
 
-    // 广播消息至worker进程   blacksolt为黑名单
-    const wStatus& NotifyWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blacksolt = NULL);
-    const wStatus& NotifyWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blacksolt = NULL);
-
     const wStatus& PrepareStart();
     const wStatus& Start();
     

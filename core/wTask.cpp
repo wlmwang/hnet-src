@@ -403,13 +403,23 @@ const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, ui
 }
 
 const wStatus& wTask::SyncWorker(char cmd[], size_t len) {
-	std::vector<uint32_t> blacksolt(1, mServer->Worker()->Slot());
-	return mStatus = mServer->NotifyWorker(cmd, len, kMaxProcess, &blacksolt);
+	if (mServer && mServer->Worker()) {
+		std::vector<uint32_t> blacksolt(1, mServer->Worker()->Slot());
+		mStatus = mServer->NotifyWorker(cmd, len, kMaxProcess, &blacksolt);
+	} else {
+		mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
+	}
+	return mStatus;
 }
 
 const wStatus& wTask::SyncWorker(const google::protobuf::Message* msg) {
-	std::vector<uint32_t> blacksolt(1, mServer->Worker()->Slot());
-	return mStatus = mServer->NotifyWorker(msg, kMaxProcess, &blacksolt);
+	if (mServer && mServer->Worker()) {
+		std::vector<uint32_t> blacksolt(1, mServer->Worker()->Slot());
+		mStatus = mServer->NotifyWorker(msg, kMaxProcess, &blacksolt);
+	} else {
+		mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
+	}
+	return mStatus;
 }
 
 const wStatus& wTask::Handlemsg(char cmd[], uint32_t len) {
