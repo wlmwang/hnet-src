@@ -225,6 +225,32 @@ unsigned GetIpByIF(const char* ifname) {
     return ip;
 }
 
+int FastUnixSec2Tm(time_t unix_sec, struct tm* tm, int time_zone) {
+    static const int kHoursInDay = 24;
+    static const int kMinutesInHour = 60;
+    static const int kDaysFromUnixTime = 2472632;
+    static const int kDaysFromYear = 153;
+    static const int kMagicUnkonwnFirst = 146097;
+    static const int kMagicUnkonwnSec = 1461;
+    tm->tm_sec =  unix_sec % kMinutesInHour;
+    int i = (unix_sec/kMinutesInHour);
+    tm->tm_min = i % kMinutesInHour;
+    i /= kMinutesInHour;
+    tm->tm_hour = (i + time_zone) % kHoursInDay;
+    tm->tm_mday = (i + time_zone) / kHoursInDay;
+    int a = tm->tm_mday + kDaysFromUnixTime;
+    int b = (a*4 + 3) / kMagicUnkonwnFirst;
+    int c = (-b*kMagicUnkonwnFirst)/4 + a;
+    int d =((c*4 + 3) / kMagicUnkonwnSec);
+    int e = -d * kMagicUnkonwnSec;
+    e = e/4 + c;
+    int m = (5*e + 2)/kDaysFromYear;
+    tm->tm_mday = -(kDaysFromYear * m + 2)/5 + e + 1;
+    tm->tm_mon = (-m/10)*12 + m + 2;
+    tm->tm_year = b*100 + d  - 6700 + (m/10);
+    return 0;
+}
+
 wStatus InitDaemon(std::string lock_path, const char *prefix) {
     // 获取主目录
     char dirPath[256] = {0};

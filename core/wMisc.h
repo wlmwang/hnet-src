@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <net/if.h>
+#include <time.h>
 #include "wCore.h"
 #include "wStatus.h"
 #include "wSlice.h"
@@ -114,6 +115,8 @@ void Strlow(char *dst, const char *src, size_t n);
 
 // 复制字符串
 char *Cpystrn(char *dst, const char *src, size_t n);
+
+int FastUnixSec2Tm(time_t unix_sec, struct tm* tm, int time_zone = 8);
 
 inline const char* IP2Text(u_long ip) {
     in_addr in;
