@@ -18,27 +18,35 @@ class wSigSet : private wNoncopyable {
 public:
     wSigSet() : mStatus() {
         if (sigemptyset(&mSet) == -1) {
-            mStatus = wStatus::IOError("wSigSet::wSigSet failed", strerror(errno));
+        	char err[kMaxErrorLen];
+        	::strerror_r(errno, err, kMaxErrorLen);
+            mStatus = wStatus::IOError("wSigSet::wSigSet failed", err);
         }
     }
 
     const wStatus& FillSet() {
         if (sigfillset(&mSet) == -1) {
-            return mStatus = wStatus::IOError("wSigSet::FillSet failed", strerror(errno));
+        	char err[kMaxErrorLen];
+        	::strerror_r(errno, err, kMaxErrorLen);
+            return mStatus = wStatus::IOError("wSigSet::FillSet failed", err);
         }
         return mStatus.Clear();
     }
 
     const wStatus& AddSet(int signo) {
         if (sigaddset(&mSet, signo) == -1) {
-            return mStatus = wStatus::IOError("wSigSet::AddSet failed", strerror(errno));
+        	char err[kMaxErrorLen];
+        	::strerror_r(errno, err, kMaxErrorLen);
+            return mStatus = wStatus::IOError("wSigSet::AddSet failed", err);
         }
         return mStatus.Clear();
     }
 
     const wStatus& DelSet(int signo) {
         if (sigdelset(&mSet, signo) == -1) {
-            return mStatus = wStatus::IOError("wSigSet::AddSet failed", strerror(errno));
+        	char err[kMaxErrorLen];
+        	::strerror_r(errno, err, kMaxErrorLen);
+            return mStatus = wStatus::IOError("wSigSet::AddSet failed", err);
         }
         return mStatus.Clear();
     }
@@ -46,7 +54,9 @@ public:
     // 若真则返回1,若假则返回0,若出错则返回-1
     const wStatus& Ismember(int signo) {
         if (sigismember(&mSet, signo) == -1) {
-            return mStatus = wStatus::IOError("wSigSet::AddSet failed", strerror(errno));
+        	char err[kMaxErrorLen];
+        	::strerror_r(errno, err, kMaxErrorLen);
+            return mStatus = wStatus::IOError("wSigSet::AddSet failed", err);
         }
         return mStatus.Clear();
     }
@@ -57,7 +67,9 @@ public:
     // SIG_SETMASK（新的信号屏蔽字设置为 mSet 所指向的信号集）
     const wStatus& Procmask(int iType = SIG_BLOCK, sigset_t *pOldSet = NULL) {
         if (sigprocmask(iType, &mSet, pOldSet) == -1) {
-            return mStatus = wStatus::IOError("wSigSet::Procmask failed", strerror(errno));
+        	char err[kMaxErrorLen];
+        	::strerror_r(errno, err, kMaxErrorLen);
+            return mStatus = wStatus::IOError("wSigSet::Procmask failed", err);
         }
         return mStatus.Clear();
     }
@@ -65,7 +77,9 @@ public:
     // 进程未决的信号集
     const wStatus& Pending(sigset_t *pPendSet) {
         if (sigpending(pPendSet) == -1) {
-            return mStatus = wStatus::IOError("wSigSet::Pending failed", strerror(errno));
+        	char err[kMaxErrorLen];
+        	::strerror_r(errno, err, kMaxErrorLen);
+            return mStatus = wStatus::IOError("wSigSet::Pending failed", err);
         }
         return mStatus.Clear();
     }

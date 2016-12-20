@@ -6,6 +6,7 @@
 
 #include <sys/un.h>
 #include <sys/uio.h>
+#include "wLogger.h"
 #include "wMisc.h"
 #include "wTask.h"
 #include "wChannelSocket.h"
@@ -19,19 +20,29 @@ wChannelSocket::~wChannelSocket() {
 
 const wStatus& wChannelSocket::Open() {
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, mChannel) == -1) {
-        return mStatus = wStatus::IOError("wChannelSocket::Open socketpair() AF_UNIX failed", strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+        return mStatus = wStatus::IOError("wChannelSocket::Open socketpair() AF_UNIX failed", err);
     }
     
     if (fcntl(mChannel[0], F_SETFL, fcntl(mChannel[0], F_GETFL) | O_NONBLOCK) == -1) {
-        return mStatus = wStatus::IOError("wChannelSocket::Open [0] fcntl() O_NONBLOCK failed", strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+        return mStatus = wStatus::IOError("wChannelSocket::Open [0] fcntl() O_NONBLOCK failed", err);
     } else if (fcntl(mChannel[1], F_SETFL, fcntl(mChannel[1], F_GETFL) | O_NONBLOCK) == -1) {
-        return mStatus = wStatus::IOError("wChannelSocket::Open [1] fcntl() O_NONBLOCK failed", strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+        return mStatus = wStatus::IOError("wChannelSocket::Open [1] fcntl() O_NONBLOCK failed", err);
     }
     
     if (fcntl(mChannel[0], F_SETFD, FD_CLOEXEC) == -1) {
-    	wStatus::IOError("wChannelSocket::Open [0] fcntl() FD_CLOEXEC failed", strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+    	LOG_DEBUG(kLogPath, "%s : %s", "wChannelSocket::Open [0] fcntl() FD_CLOEXEC failed", err);
     } else if (fcntl(mChannel[1], F_SETFD, FD_CLOEXEC) == -1) {
-    	wStatus::IOError("wChannelSocket::Open [1] fcntl() FD_CLOEXEC failed", strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+    	LOG_DEBUG(kLogPath, "%s : %s", "wChannelSocket::Open [1] fcntl() FD_CLOEXEC failed", err);
     }
 
     // mChannel[1]被监听（可读事件）
@@ -105,7 +116,9 @@ const wStatus& wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) 
     } else if (*size == -1 && (errno == EINTR || errno == EAGAIN)) {
         mStatus.Clear();
     } else {
-        mStatus = wStatus::IOError("wChannelSocket::SendBytes, sendmsg failed", strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+        mStatus = wStatus::IOError("wChannelSocket::SendBytes, sendmsg failed", err);
     }
     return mStatus;
 }
@@ -139,7 +152,9 @@ const wStatus& wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) 
     } else if (*size == -1 && (errno == EINTR || errno == EAGAIN)) {
         mStatus.Clear();
     } else if (*size == -1) {
-        mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+        mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", err);
     } else {
         if (msg.msg_flags & (MSG_TRUNC|MSG_CTRUNC)) {
         	wStatus::IOError("wChannelSocket::RecvBytes, recvmsg() truncated data", "");

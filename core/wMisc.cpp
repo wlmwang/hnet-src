@@ -256,14 +256,18 @@ wStatus InitDaemon(std::string lock_path, const char *prefix) {
     char dirPath[256] = {0};
     if (prefix == NULL) {
         if (getcwd(dirPath, sizeof(dirPath)) == NULL) {
-            return wStatus::Corruption("misc::InitDaemon, getcwd failed", strerror(errno));
+        	char err[kMaxErrorLen];
+        	::strerror_r(errno, err, kMaxErrorLen);
+            return wStatus::Corruption("misc::InitDaemon, getcwd failed", err);
         }
     } else {
         memcpy(dirPath, prefix, strlen(prefix) + 1);
     }
 
     if (chdir(dirPath) == -1) {
-        return wStatus::Corruption("misc::InitDaemon, chdir failed", strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+        return wStatus::Corruption("misc::InitDaemon, chdir failed", err);
     }
     umask(0);
 
@@ -273,19 +277,27 @@ wStatus InitDaemon(std::string lock_path, const char *prefix) {
     }
     int lockFD = open(lock_path.c_str(), O_RDWR|O_CREAT, 0640);
     if (lockFD < 0) {
-        return wStatus::IOError("misc::InitDaemon, open lock_path failed", strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+        return wStatus::IOError("misc::InitDaemon, open lock_path failed", err);
     }
     if (flock(lockFD, LOCK_EX | LOCK_NB) < 0) {
-        return wStatus::IOError("misc::InitDaemon, flock lock_path failed(maybe server is already running)", strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+        return wStatus::IOError("misc::InitDaemon, flock lock_path failed(maybe server is already running)", err);
     }
 
     // 若是以root身份运行，设置进程的实际、有效uid
     if (geteuid() == 0) {
         if (setuid(kDeamonUser) == -1) {
-            return wStatus::Corruption("misc::InitDaemon, setuid failed", strerror(errno));
+        	char err[kMaxErrorLen];
+        	::strerror_r(errno, err, kMaxErrorLen);
+            return wStatus::Corruption("misc::InitDaemon, setuid failed", err);
         }
         if (setgid(kDeamonGroup) == -1) {
-            return wStatus::Corruption("misc::InitDaemon, setgid failed", strerror(errno));
+        	char err[kMaxErrorLen];
+        	::strerror_r(errno, err, kMaxErrorLen);
+            return wStatus::Corruption("misc::InitDaemon, setgid failed", err);
         }
     }
 

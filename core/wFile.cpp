@@ -17,7 +17,9 @@ const wStatus& wPosixSequentialFile::Read(size_t n, wSlice* result, char* scratc
     *result = wSlice(scratch, r);
     if (r < n) {
         if (!feof(mFile)) {
-        	return mStatus = wStatus::IOError(mFilename, strerror(errno));
+	    	char err[kMaxErrorLen];
+	    	::strerror_r(errno, err, kMaxErrorLen);
+        	return mStatus = wStatus::IOError(mFilename, err);
         }
     }
     return mStatus.Clear();
@@ -25,7 +27,9 @@ const wStatus& wPosixSequentialFile::Read(size_t n, wSlice* result, char* scratc
 
 const wStatus& wPosixSequentialFile::Skip(uint64_t n) {
     if (fseek(mFile, n, SEEK_CUR)) {
-        return mStatus = wStatus::IOError(mFilename, strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+        return mStatus = wStatus::IOError(mFilename, err);
     }
     return mStatus.Clear();
 }
@@ -35,7 +39,9 @@ const wStatus& wPosixRandomAccessFile::Read(uint64_t offset, size_t n, wSlice* r
     ssize_t r = pread(mFD, scratch, n, static_cast<off_t>(offset));
     *result = wSlice(scratch, (r < 0) ? 0 : r);
     if (r < 0) {
-    	return mStatus = wStatus::IOError(mFilename, strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+    	return mStatus = wStatus::IOError(mFilename, err);
     }
     return mStatus.Clear();
 }
@@ -62,7 +68,9 @@ wPosixMmapReadableFile::~wPosixMmapReadableFile() {
 const wStatus& wPosixMmapReadableFile::Read(uint64_t offset, size_t n, wSlice* result, char* scratch) {
     if (offset + n > mLength) {
         *result = wSlice();
-        return mStatus = wStatus::IOError(mFilename, strerror(EINVAL));
+    	char err[kMaxErrorLen];
+    	::strerror_r(EINVAL, err, kMaxErrorLen);
+        return mStatus = wStatus::IOError(mFilename, err);
     } else {
         *result = wSlice(reinterpret_cast<char*>(mMmappedRegion) + offset, n);
     }
@@ -73,14 +81,18 @@ const wStatus& wPosixMmapReadableFile::Read(uint64_t offset, size_t n, wSlice* r
 const wStatus& wPosixWritableFile::Append(const wSlice& data) {
     size_t r = fwrite(data.data(), 1, data.size(), mFile);
     if (r != data.size()) {
-        return mStatus = wStatus::IOError(mFilename, strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+        return mStatus = wStatus::IOError(mFilename, err);
     }
     return mStatus.Clear();
 }
 
 const wStatus& wPosixWritableFile::Close() {
     if (fclose(mFile) != 0) {
-        return mStatus = wStatus::IOError(mFilename, strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+        return mStatus = wStatus::IOError(mFilename, err);
     }
     mFile = NULL;
     return mStatus.Clear();
@@ -88,7 +100,9 @@ const wStatus& wPosixWritableFile::Close() {
 
 const wStatus& wPosixWritableFile::Flush() {
     if (fflush(mFile) != 0) {
-    	return mStatus = wStatus::IOError(mFilename, strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+    	return mStatus = wStatus::IOError(mFilename, err);
     }
     return mStatus.Clear();
 }
@@ -96,7 +110,9 @@ const wStatus& wPosixWritableFile::Flush() {
 // 刷新数据到文件
 const wStatus& wPosixWritableFile::Sync() {
     if (fflush(mFile) != 0 || fdatasync(fileno(mFile)) != 0) {
-    	return mStatus = wStatus::IOError(mFilename, strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+    	return mStatus = wStatus::IOError(mFilename, err);
     }
     return mStatus.Clear();
 }

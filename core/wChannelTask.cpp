@@ -5,6 +5,7 @@
  */
 
 #include "wChannelTask.h" 
+#include "wLogger.h"
 #include "wCommand.h"
 #include "wMaster.h"
 #include "wWorker.h"
@@ -33,7 +34,9 @@ int wChannelTask::ChannelClose(struct Request_t *request) {
 	cls.ParseFromArray(request->mBuf, request->mLen);
 	if (mMaster->Worker(cls.slot())->ChannelFD(0) != kFDUnknown) {
 		if (close(mMaster->Worker(cls.slot())->ChannelFD(0)) == -1) {
-			wStatus::IOError("wChannelTask::ChannelClose, close() failed", strerror(errno));
+	    	char err[kMaxErrorLen];
+	    	::strerror_r(errno, err, kMaxErrorLen);
+	    	LOG_DEBUG(kLogPath, "%s : %s", "wChannelTask::ChannelClose, close() failed", err);
 		}
 		mMaster->Worker(cls.slot())->ChannelFD(0) = kFDUnknown;
 	}

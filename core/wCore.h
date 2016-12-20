@@ -65,6 +65,7 @@ const char      kLF = '\n';
 const char      kCR = '\r';
 const char      kCRLF[] = "\r\n";
 
+const uint32_t	kMaxErrorLen = 255;
 const uint32_t  kMaxHostNameLen = 255;
 const uint8_t   kMaxIpLen = 16;
 const uint32_t  kListenBacklog = 511;

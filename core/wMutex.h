@@ -15,7 +15,9 @@ namespace hnet {
 
 static int PthreadCall(const char* label, int errNumber) {
     if (errNumber != 0) {
-        fprintf(stderr, "pthread %s: %s\n", label, strerror(errNumber));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+        fprintf(stderr, "pthread %s: %s\n", label, err);
         abort();
     }
     return errNumber;

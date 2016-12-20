@@ -13,7 +13,9 @@ namespace hnet {
 
 const wStatus& wUnixSocket::Open() {
 	if ((mFD = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-		return mStatus = wStatus::IOError("wUnixSocket::Open socket() AF_UNIX failed", strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+		return mStatus = wStatus::IOError("wUnixSocket::Open socket() AF_UNIX failed", err);
 	}
 	return mStatus.Clear();
 }
@@ -25,7 +27,9 @@ const wStatus& wUnixSocket::Bind(const std::string& host, uint16_t port) {
 	strncpy(socketAddr.sun_path, host.c_str(), sizeof(socketAddr.sun_path) - 1);
 
 	if (bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr)) == -1) {
-		return mStatus = wStatus::IOError("wUnixSocket::Bind bind failed", strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+		return mStatus = wStatus::IOError("wUnixSocket::Bind bind failed", err);
 	}
 	return mStatus.Clear();
 }
@@ -38,7 +42,9 @@ const wStatus& wUnixSocket::Listen(const std::string& host, uint16_t port) {
 	}
 
 	if (listen(mFD, kListenBacklog) < 0) {
-		return mStatus = wStatus::IOError("wUnixSocket::Listen listen failed", strerror(errno));
+    	char err[kMaxErrorLen];
+    	::strerror_r(errno, err, kMaxErrorLen);
+		return mStatus = wStatus::IOError("wUnixSocket::Listen listen failed", err);
 	}
 	
 	return SetFL();
@@ -81,16 +87,24 @@ const wStatus& wUnixSocket::Connect(int64_t *ret, const std::string& host, uint1
 					if (errno == EINTR) {
 					    continue;
 					}
-					return mStatus = wStatus::IOError("wUnixSocket::Connect poll failed", strerror(errno));
+			    	char err[kMaxErrorLen];
+			    	::strerror_r(errno, err, kMaxErrorLen);
+					return mStatus = wStatus::IOError("wUnixSocket::Connect poll failed", err);
 				} else if(rt == 0) {
+			    	char err[kMaxErrorLen];
+			    	::strerror_r(errno, err, kMaxErrorLen);
 					return mStatus = wStatus::IOError("wUnixSocket::Connect connect timeout", "");
 				} else {
 					int val, len = sizeof(int);
 					if (getsockopt(mFD, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&val), reinterpret_cast<socklen_t*>(&len)) == -1) {
-					    return mStatus = wStatus::IOError("wUnixSocket::Connect getsockopt SO_ERROR failed", strerror(errno));
+				    	char err[kMaxErrorLen];
+				    	::strerror_r(errno, err, kMaxErrorLen);
+					    return mStatus = wStatus::IOError("wUnixSocket::Connect getsockopt SO_ERROR failed", err);
 					}
 					if (val > 0) {
-					    return mStatus = wStatus::IOError("wUnixSocket::Connect connect failed", strerror(errno));
+				    	char err[kMaxErrorLen];
+				    	::strerror_r(errno, err, kMaxErrorLen);
+					    return mStatus = wStatus::IOError("wUnixSocket::Connect connect failed", err);
 					}
 
 					// 连接成功
@@ -99,7 +113,9 @@ const wStatus& wUnixSocket::Connect(int64_t *ret, const std::string& host, uint1
 				}
 			}
 		} else {
-			return mStatus = wStatus::IOError("wUnixSocket::Connect connect directly failed", strerror(errno));
+	    	char err[kMaxErrorLen];
+	    	::strerror_r(errno, err, kMaxErrorLen);
+			return mStatus = wStatus::IOError("wUnixSocket::Connect connect directly failed", err);
 		}
 	}
 	
@@ -125,7 +141,9 @@ const wStatus& wUnixSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, soc
             // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
 			continue;
 		} else {
-			mStatus = wStatus::IOError("wUnixSocket::Accept, accept failed", strerror(errno));
+	    	char err[kMaxErrorLen];
+	    	::strerror_r(errno, err, kMaxErrorLen);
+			mStatus = wStatus::IOError("wUnixSocket::Accept, accept failed", err);
 			break;
 		}
 	}
