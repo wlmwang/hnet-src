@@ -15,7 +15,7 @@ namespace hnet {
 
 class wProcTitle : private wNoncopyable {
 public:
-    wProcTitle(int argc, const char* argv[]);
+    wProcTitle() { }
     ~wProcTitle();
 
     // 务必在设置进程标题之前调用

@@ -118,7 +118,7 @@ const wStatus& wConfig::GetOption(int argc, const char *argv[]) {
         continue;
     }
 
-	SAFE_NEW(wProcTitle(argc, argv), mProcTitle);
+	SAFE_NEW(wProcTitle, mProcTitle);
     return mStatus = InitProcTitle(argc, argv);
 }
 

@@ -11,10 +11,6 @@ extern char **environ;
 
 namespace hnet {
 
-wProcTitle::wProcTitle(int argc, const char* argv[]) {
-    SaveArgv(argc, argv);
-}
-
 wProcTitle::~wProcTitle() {
     for (int i = 0; i < mArgc; ++i) {
         SAFE_DELETE_VEC(mArgv[i]);
@@ -52,19 +48,13 @@ const wStatus& wProcTitle::SaveArgv(int argc, const char* argv[]) {
 
     // 移动**environ到堆上mEnv
     while (environ[mNumEnv]) { mNumEnv++;}
+
     SAFE_NEW_VEC(mNumEnv, char*, mEnv);
-    if (mEnv == NULL) {
-	   return mStatus = wStatus::IOError("wProcTitle::SaveArgv", "new failed");
-    }
     for (int i = 0; i < mNumEnv; ++i) {
         // 包含\0结尾
         size = strlen(environ[i]) + 1;
         SAFE_NEW_VEC(size, char, mEnv[i]);
-    	if (mEnv[i] == NULL) {
-    	    mStatus = wStatus::IOError("wProcTitle::SaveArgv", "new failed");
-    	    break;
-    	}
-        memcpy(mEnv[i], environ[i], size);
+        ::memcpy(mEnv[i], environ[i], size);
     }
     environ = mEnv;
 
