@@ -4,6 +4,12 @@
 # Copyright (C) Hupu, Inc.
 ###############################
 
+#
+# gcc 4.8+(gdb7.6+)
+# 需要预先编译vendor目录下的protobuf软件包
+# 所需的.so文件建议安装到ldconfig加载路径中(/usr/local/lib)
+#
+
 CC		:= g++
 AR		:= ar
 LD		:= ld
@@ -15,23 +21,30 @@ CFLAGS	:= -Wall -O3 -std=c++11 -D_USE_LOGGER_ -D_DEBUG_
 DIR_LIB		:=	./
 LIBFLAGS	:= -L${DIR_LIB} -lpthread -lprotobuf
 
+# 主目录
+DIR_SRC		:= ./
+
 # 头文件
-DIR_CORE	:= ./
-INCFLAGS	:= -I${DIR_CORE}
+INCFLAGS	:= -I${DIR_SRC}
 
 # 源文件
-DIR_SRC	:= $(wildcard ${DIR_CORE}/*.cpp ${DIR_CORE}/*.cc)
+CPP_SRC	:= $(wildcard ${DIR_SRC}*.cpp)
+CC_SRC	:= $(wildcard ${DIR_SRC}*.cc)
 
 # 编译文件
 DIR_AR	:= ./ar
 DIR_LD	:= ./ld
-AR_OBJ	:= $(patsubst %.cpp, ${DIR_AR}/%.o, $(notdir ${SRC})) $(patsubst %.cc, ${DIR_AR}/%.o, $(notdir ${SRC}))
-LD_OBJ	:= $(patsubst %.cpp, ${DIR_LD}/%.o, $(notdir ${SRC})) $(patsubst %.cc, ${DIR_LD}/%.o, $(notdir ${SRC}))
+AR_OBJ	:= $(patsubst %.cpp, ${DIR_AR}/%.o, $(notdir ${CPP_SRC})) $(patsubst %.cc, ${DIR_AR}/%.o, $(notdir ${CC_SRC}))
+LD_OBJ	:= $(patsubst %.cpp, ${DIR_LD}/%.o, $(notdir ${CPP_SRC})) $(patsubst %.cc, ${DIR_LD}/%.o, $(notdir ${CC_SRC}))
 
 # 目标文件
 LIBNAME	:= libhnet
 AR_LIB	:= ${LIBNAME}.a
 LD_LIB	:= ${LIBNAME}.so
+
+# 安装目录
+INS_LIB	:= /usr/local/lib
+INS_INC	:= /usr/local/include/hnet
 
 .PHONY:all clean install
 
@@ -43,20 +56,35 @@ $(AR_LIB):$(AR_OBJ)
 	
 $(LD_LIB):$(LD_OBJ)
 	-rm -f $@
-	$(LD) $(LDFLAGS) -o $@ $^
-	
-$(DIR_AR)/%.o:$(DIR_CORE)/%.cpp
-	@echo "Compiling ar $@"
-	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ $(LIBFLAGS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(CFLAGS) $(LIBFLAGS)
 
-$(DIR_LD)/%.o:$(DIR_CORE)/%.cpp
-	@echo "Compiling ld $@"
-	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ $(LIBFLAGS) $(LDFLAGS)
+# 编译ar
+$(DIR_AR)/%.o:$(DIR_SRC)/%.cpp
+	@echo "Compiling $@"
+	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@
+
+$(DIR_AR)/%.o:$(DIR_SRC)/%.cc
+	@echo "Compiling $@"
+	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@
+
+# 编译ld
+$(DIR_LD)/%.o:$(DIR_SRC)/%.cpp
+	@echo "Compiling $@"
+	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ -fpic -pipe -fno-ident
+
+$(DIR_LD)/%.o:$(DIR_SRC)/%.cc
+	@echo "Compiling $@"
+	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ -fpic -pipe -fno-ident
 
 clean:
-	@echo "Clean"
-	-rm -rf $(DIR_AR) $(DIR_LD)
-	-rm -rf $(AR_LIB) $(LD_LIB)
+	@echo "Clean and Rebuild"
+	-rm -rf $(DIR_AR) $(DIR_LD) $(AR_LIB) $(LD_LIB)
+	-mkdir $(DIR_AR) $(DIR_LD)
 	
 install:
-	@echo "Install"
+	@echo "Install LIB and HEADER"
+	-rm -rf $(INS_INC)
+	-mkdir $(INS_INC)
+	-cp -f $(DIR_SRC)/*.h $(INS_INC)
+	-cp -f $(DIR_SRC)/*.inl $(INS_INC)
+	-cp -f ${LIBNAME}.* $(INS_LIB)

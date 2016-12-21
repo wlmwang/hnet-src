@@ -120,9 +120,7 @@ const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16
 					    return mStatus = wStatus::IOError("wTcpSocket::Connect getsockopt SO_ERROR failed", err);
 					}
 					if (val > 0) {
-				    	char err[kMaxErrorLen];
-				    	::strerror_r(errno, err, kMaxErrorLen);
-					    return mStatus = wStatus::IOError("wTcpSocket::Connect connect failed", err);
+					    return mStatus = wStatus::IOError("wTcpSocket::Connect connect failed", "");
 					}
 
 					// 连接成功
