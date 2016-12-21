@@ -33,7 +33,7 @@ int main(int argc, const char *argv[]) {
 	// 版本输出
 	bool version;
 	if (config->GetConf("version", &version) && version == true) {
-		std::cout << kSoftwareName << kSoftwareVer << std::endl;
+		std::cout << soft::SetSoftName("example client -") << soft::GetSoftVer() << std::endl;
 		return -1;
 	}
 

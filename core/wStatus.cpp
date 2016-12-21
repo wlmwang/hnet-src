@@ -6,6 +6,7 @@
 
 #include "wCore.h"
 #include "wStatus.h"
+#include "wMisc.h"
 #include "wLogger.h"
 
 namespace hnet {
@@ -40,7 +41,7 @@ wStatus::wStatus(Code code, const wSlice& msg, const wSlice& msg2, bool log) {
     mState = result;
     // 日志
     if (log) {
-    	LOG_ERROR(kLogPath, "%s", ToString().c_str());
+    	LOG_ERROR(soft::GetLogPath(), "%s", ToString().c_str());
     }
 }
 

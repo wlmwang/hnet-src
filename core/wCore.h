@@ -76,25 +76,16 @@ const uint8_t   kKeepAliveCnt = 5;
 
 const uint8_t   kHeartbeat = 5;
 
-// 1m消息队列大小
+// 1M消息队列大小
 const uint32_t  kMsgQueueLen = 1048576;
 
-// 512k 客户端task消息缓冲大小
+// 512k客户端task消息缓冲大小
 const uint32_t  kPackageSize = 131072;
 const uint32_t  kMaxPackageSize = 131068;
 const uint32_t  kMinPackageSize = 3;
 
-//进程相关
-const uint32_t	kMaxProcess = 1024;
-
-const int8_t    kProcessNoRespawn = -1;		// 子进程退出时，父进程不再创建
-const int8_t    kProcessJustSpawn = -2;		// 子进程正在重启，该进程创建之后，再次退出时，父进程不再创建
-const int8_t    kProcessRespawn = -3;     	// 子进程异常退出时，父进程会重新创建它
-const int8_t    kProcessJustRespawn = -4;	// 子进程正在重启，该进程创建之后，再次退出时，父进程会重新创建它
-const int8_t    kProcessDetached = -5;		// 分离进程
-
-const bool      kLittleEndian = true;
 const uint32_t  kPageSize = 4096;
+const bool      kLittleEndian = true;
 
 // 惊群锁开关
 const bool		kAcceptTurn = true;
@@ -102,22 +93,28 @@ const bool		kAcceptTurn = true;
 // 心跳开关
 const bool		kHeartbeatTurn = true;
 
-// 根据具体项目修改
-const char      kSoftwareName[]   = "HNET";
-const char      kSoftwareVer[]    = "0.0.3";
+// 消息协议
+const int8_t	kMpCommand = 1;
+const int8_t	kMpProtobuf = 2;
 
+// 进程相关
+const uint32_t	kMaxProcess = 1024;
+const int8_t    kProcessNoRespawn = -1;		// 子进程退出时，父进程不再创建
+const int8_t    kProcessJustSpawn = -2;		// 子进程正在重启，该进程创建之后，再次退出时，父进程不再创建
+const int8_t    kProcessRespawn = -3;     	// 子进程异常退出时，父进程会重新创建它
+const int8_t    kProcessJustRespawn = -4;	// 子进程正在重启，该进程创建之后，再次退出时，父进程会重新创建它
+const int8_t    kProcessDetached = -5;		// 分离进程
+
+// 项目相关
 const uid_t     kDeamonUser = 0;
 const gid_t     kDeamonGroup = 0;
+
+const char      kSoftwareName[]   = "HNET";
+const char      kSoftwareVer[]    = "0.0.3";
 
 const char      kLockPath[] = "hnet.lock";
 const char      kPidPath[] = "hnet.pid";
 const char      kLogPath[] = "hnet.log";
-
-const char      kToken[] = "Anny Wang";
-
-// message消息协议
-const int8_t	kMpCommand = 1;
-const int8_t	kMpProtobuf = 2;
 
 }   // namespace hnet
 

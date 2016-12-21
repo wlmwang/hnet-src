@@ -22,7 +22,7 @@ mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0), mLive(1) {
 	if (mServer->Config()->GetConf("pid_path", &pid_path) && pid_path.size() > 0) {
 		mPidPath = pid_path;
 	} else {
-		mPidPath = kPidPath;
+		mPidPath = soft::GetPidPath();
 	}
 	mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
 	mWorkerNum = 2*mNcpu;

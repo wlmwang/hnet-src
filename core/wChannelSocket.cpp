@@ -38,11 +38,11 @@ const wStatus& wChannelSocket::Open() {
     if (fcntl(mChannel[0], F_SETFD, FD_CLOEXEC) == -1) {
     	char err[kMaxErrorLen];
     	::strerror_r(errno, err, kMaxErrorLen);
-    	LOG_DEBUG(kLogPath, "%s : %s", "wChannelSocket::Open [0] fcntl() FD_CLOEXEC failed", err);
+    	LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelSocket::Open [0] fcntl() FD_CLOEXEC failed", err);
     } else if (fcntl(mChannel[1], F_SETFD, FD_CLOEXEC) == -1) {
     	char err[kMaxErrorLen];
     	::strerror_r(errno, err, kMaxErrorLen);
-    	LOG_DEBUG(kLogPath, "%s : %s", "wChannelSocket::Open [1] fcntl() FD_CLOEXEC failed", err);
+    	LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelSocket::Open [1] fcntl() FD_CLOEXEC failed", err);
     }
 
     // mChannel[1]被监听（可读事件）

@@ -85,7 +85,8 @@ int main(int argc, const char *argv[]) {
 	// 版本输出 && 守护进程创建
 	bool version, daemon;
 	if (config->GetConf("version", &version) && version == true) {
-		std::cout << kSoftwareName << kSoftwareVer << std::endl;
+		;
+		std::cout << soft::SetSoftName("example client daemon -") << soft::GetSoftVer() << std::endl;
 		return -1;
 	} else if (config->GetConf("daemon", &daemon) && daemon == true) {
 		std::string lock_path;

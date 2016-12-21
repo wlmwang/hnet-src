@@ -272,8 +272,8 @@ wStatus InitDaemon(std::string lock_path, const char *prefix) {
     umask(0);
 
     // 独占式锁定文件，防止有相同程序的进程已经启动
-    if (lock_path.size() == 0) {
-    	lock_path = kLockPath;
+    if (lock_path.size() <= 0) {
+    	lock_path = soft::GetLockPath();
     }
     int lockFD = open(lock_path.c_str(), O_RDWR|O_CREAT, 0640);
     if (lockFD < 0) {
@@ -289,12 +289,12 @@ wStatus InitDaemon(std::string lock_path, const char *prefix) {
 
     // 若是以root身份运行，设置进程的实际、有效uid
     if (geteuid() == 0) {
-        if (setuid(kDeamonUser) == -1) {
+        if (setuid(soft::GetUser()) == -1) {
         	char err[kMaxErrorLen];
         	::strerror_r(errno, err, kMaxErrorLen);
             return wStatus::Corruption("misc::InitDaemon, setuid failed", err);
         }
-        if (setgid(kDeamonGroup) == -1) {
+        if (setgid(soft::GetGroup()) == -1) {
         	char err[kMaxErrorLen];
         	::strerror_r(errno, err, kMaxErrorLen);
             return wStatus::Corruption("misc::InitDaemon, setgid failed", err);
@@ -325,4 +325,32 @@ wStatus InitDaemon(std::string lock_path, const char *prefix) {
 }
 
 }	// namespace misc
+
+namespace soft {
+uid_t	gDeamonUser = kDeamonUser;
+gid_t	gDeamonGroup = kDeamonGroup;
+std::string	gSoftwareName = kSoftwareName;
+std::string	gSoftwareVer = kSoftwareVer;
+std::string	gLockPath = kLockPath;
+std::string	gPidPath = kPidPath;
+std::string	gLogPath = kLogPath;
+
+uid_t GetUser() { return gDeamonUser;}
+gid_t GetGroup() { return gDeamonGroup;}
+const std::string& GetSoftName() { return gSoftwareName;}
+const std::string& GetSoftVer() { return gSoftwareVer;}
+const std::string& GetLockPath() { return gLockPath;}
+const std::string& GetPidPath() { return gPidPath;}
+const std::string& GetLogPath() { return gLogPath;}
+
+uid_t SetUser(uid_t uid) { return gDeamonUser = uid;}
+gid_t SetGroup(gid_t gid) { return gDeamonGroup = gid;}
+const std::string& SetSoftName(const std::string& name) { return gSoftwareName = name;}
+const std::string& SetSoftVer(const std::string& ver) { return gSoftwareVer = ver;}
+const std::string& SetLockPath(const std::string& path) { return gLockPath = path;}
+const std::string& SetPidPath(const std::string& path) { return gPidPath = path;}
+const std::string& SetLogPath(const std::string& path) { return gLogPath = path;}
+
+}	// namespace hnet
+
 }	// namespace hnet

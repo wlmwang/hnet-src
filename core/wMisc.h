@@ -156,6 +156,37 @@ inline void Swap(T a, T b) {
 }
 
 }   // namespace misc
+
+namespace soft {
+
+uid_t GetUser();
+gid_t GetGroup();
+const std::string& GetSoftName();
+const std::string& GetSoftVer();
+const std::string& GetLockPath();
+const std::string& GetPidPath();
+const std::string& GetLogPath();
+
+uid_t SetUser(uid_t uid);
+gid_t SetGroup(gid_t gid);
+const std::string& SetSoftName(const std::string& name);
+const std::string& SetSoftVer(const std::string& ver);
+const std::string& SetLockPath(const std::string& path);
+const std::string& SetPidPath(const std::string& path);
+const std::string& SetLogPath(const std::string& path);
+
+// 工程相关全局变量
+extern uid_t	gDeamonUser;
+extern gid_t	gDeamonGroup;
+
+extern std::string	gSoftwareName;
+extern std::string	gSoftwareVer;
+extern std::string	gLockPath;
+extern std::string	gPidPath;
+extern std::string	gLogPath;
+
+}	// namespace soft
+
 }   // namespace hnet
 
 #endif
