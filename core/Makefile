@@ -12,7 +12,7 @@
 
 CC		:= g++
 AR		:= ar
-LD		:= ld
+LD		:= g++
 ARFLAGS := -rc
 LDFLAGS := -shared -fpic -pipe -fno-ident
 CFLAGS	:= -Wall -O3 -std=c++11 -D_USE_LOGGER_ -D_DEBUG_
@@ -56,7 +56,7 @@ $(AR_LIB):$(AR_OBJ)
 	
 $(LD_LIB):$(LD_OBJ)
 	-rm -f $@
-	$(CC) $(LDFLAGS) -o $@ $^ $(CFLAGS) $(LIBFLAGS)
+	$(LD) $(LDFLAGS) -o $@ $^ $(CFLAGS) $(LIBFLAGS)
 
 # 编译ar
 $(DIR_AR)/%.o:$(DIR_SRC)/%.cpp
