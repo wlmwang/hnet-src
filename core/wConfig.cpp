@@ -11,6 +11,8 @@
 namespace hnet {
 
 wConfig::wConfig() : mPool(NULL), mProcTitle(NULL) {
+	// 初始化错误列表
+	error::StrerrorInit();
 	SAFE_NEW(wMemPool, mPool);
 }
 

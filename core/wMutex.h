@@ -9,15 +9,14 @@
 
 #include <pthread.h>
 #include "wCore.h"
+#include "wMisc.h"
 #include "wNoncopyable.h"
 
 namespace hnet {
 
 static int PthreadCall(const char* label, int errNumber) {
     if (errNumber != 0) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-        fprintf(stderr, "pthread %s: %s\n", label, err);
+        fprintf(stderr, "pthread %s: %s\n", label, error::Strerror(errNumber).c_str());
         abort();
     }
     return errNumber;

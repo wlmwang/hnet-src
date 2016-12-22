@@ -5,6 +5,7 @@
  */
 
 #include "wSignal.h"
+#include "wMisc.h"
 
 namespace hnet {
 
@@ -37,26 +38,20 @@ wSignal::wSignal(__sighandler_t  func) {
     mSigAct.sa_handler = func;
     mSigAct.sa_flags = 0;
     if (sigemptyset(&mSigAct.sa_mask) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-        mStatus = wStatus::IOError("wSignal::wSignal, sigemptyset failed", err);
+        mStatus = wStatus::IOError("wSignal::wSignal, sigemptyset failed", error::Strerror(errno));
     }
 }
 
 const wStatus& wSignal::AddMaskSet(int signo) {
     if (sigaddset(&mSigAct.sa_mask, signo) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-        return mStatus = wStatus::IOError("wSignal::wSignal, sigaddset failed", err);
+        return mStatus = wStatus::IOError("wSignal::wSignal, sigaddset failed", error::Strerror(errno));
     }
     return mStatus.Clear();
 }
 
 const wStatus& wSignal::AddSigno(int signo, struct sigaction *oact) {
     if (sigaction(signo, &mSigAct, oact) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-        mStatus = wStatus::IOError("wSignal::wSignal, sigaction failed", err);
+        mStatus = wStatus::IOError("wSignal::wSignal, sigaction failed", error::Strerror(errno));
     }
     return mStatus.Clear();
 }
@@ -65,9 +60,7 @@ const wStatus& wSignal::AddHandler(const Signal_t *signal) {
     mSigAct.sa_handler = signal->mHandler;
     mSigAct.sa_flags = 0;
     if (sigemptyset(&mSigAct.sa_mask) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-        return mStatus = wStatus::IOError("wSignal::wSignal, sigemptyset failed", err);
+        return mStatus = wStatus::IOError("wSignal::wSignal, sigemptyset failed", error::Strerror(errno));
     }
     return AddSigno(signal->mSigno);
 }

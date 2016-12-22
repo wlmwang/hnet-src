@@ -157,6 +157,16 @@ inline void Swap(T a, T b) {
 
 }   // namespace misc
 
+namespace error {
+
+// 初始化系统错误字符
+void StrerrorInit();
+
+// 获取错误字符
+const std::string& Strerror(int32_t err);
+
+}	// namespace error
+
 namespace soft {
 
 uid_t GetUser();

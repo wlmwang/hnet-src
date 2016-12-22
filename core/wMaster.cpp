@@ -183,9 +183,7 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
     case -1:
 		// 关闭channel && 释放进程表项
     	worker->Channel()->Close();
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-        return mStatus = wStatus::Corruption("wMaster::SpawnWorker, fork() failed", err);
+        return mStatus = wStatus::Corruption("wMaster::SpawnWorker, fork() failed", error::Strerror(errno));
 
     case 0:
     	// worker进程
@@ -272,9 +270,7 @@ const wStatus& wMaster::HandleSignal() {
 
 		// 设置定时器，以系统真实时间来计算，送出SIGALRM信号（主要用户优雅退出）
 		if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
-	    	char err[kMaxErrorLen];
-	    	::strerror_r(errno, err, kMaxErrorLen);
-			mStatus = wStatus::Corruption("wMaster::HandleSignal, setitimer() failed", err);
+			mStatus = wStatus::Corruption("wMaster::HandleSignal, setitimer() failed", error::Strerror(errno));
 		}
 	}
 
@@ -480,9 +476,7 @@ const wStatus& wMaster::SignalProcess(const std::string& signal) {
 		for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
 			if (memcmp(signal.c_str(), s->mName, signal.size()) == 0) {
 				if (kill(pid, s->mSigno) == -1) {
-			    	char err[kMaxErrorLen];
-			    	::strerror_r(errno, err, kMaxErrorLen);
-					return mStatus = wStatus::Corruption("wMaster::SignalProcess, kill() failed", err);
+					return mStatus = wStatus::Corruption("wMaster::SignalProcess, kill() failed", error::Strerror(errno));
 				} else {
 					return mStatus.Clear();
 				}

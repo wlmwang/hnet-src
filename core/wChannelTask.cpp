@@ -35,9 +35,7 @@ int wChannelTask::ChannelClose(struct Request_t *request) {
 	cls.ParseFromArray(request->mBuf, request->mLen);
 	if (mMaster->Worker(cls.slot())->ChannelFD(0) != kFDUnknown) {
 		if (close(mMaster->Worker(cls.slot())->ChannelFD(0)) == -1) {
-	    	char err[kMaxErrorLen];
-	    	::strerror_r(errno, err, kMaxErrorLen);
-	    	LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelClose, close() failed", err);
+	    	LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelClose, close() failed", error::Strerror(errno).c_str());
 		}
 		mMaster->Worker(cls.slot())->ChannelFD(0) = kFDUnknown;
 	}

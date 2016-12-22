@@ -18,9 +18,7 @@ wSocket::~wSocket() {
 
 const wStatus& wSocket::Close() {
     if (mFD != kFDUnknown && close(mFD) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-        return mStatus = wStatus::IOError("wSocket::Close failed", err);
+        return mStatus = wStatus::IOError("wSocket::Close failed", error::Strerror(errno));
     }
     mFD = kFDUnknown;
     return mStatus.Clear();
@@ -28,9 +26,7 @@ const wStatus& wSocket::Close() {
 
 const wStatus& wSocket::SetFL(bool nonblock) {
     if (fcntl(mFD, F_SETFL, (nonblock == true ? fcntl(mFD, F_GETFL, 0) | O_NONBLOCK : fcntl(mFD, F_GETFL, 0) & ~O_NONBLOCK)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-        return mStatus = wStatus::IOError("wSocket::SetFL F_SETFL failed", err);
+        return mStatus = wStatus::IOError("wSocket::SetFL F_SETFL failed", error::Strerror(errno));
     }
     return mStatus.Clear();
 }
@@ -54,9 +50,7 @@ const wStatus& wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
             // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
             continue;
         } else {
-        	char err[kMaxErrorLen];
-        	::strerror_r(errno, err, kMaxErrorLen);
-            mStatus = wStatus::IOError("wSocket::RecvBytes, recv failed", err);
+            mStatus = wStatus::IOError("wSocket::RecvBytes, recv failed", error::Strerror(errno));
             break;
         }
     }
@@ -83,9 +77,7 @@ const wStatus& wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
             // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
             continue;
         } else {
-        	char err[kMaxErrorLen];
-        	::strerror_r(errno, err, kMaxErrorLen);
-            mStatus = wStatus::IOError("wSocket::SendBytes, send failed", err);
+            mStatus = wStatus::IOError("wSocket::SendBytes, send failed", error::Strerror(errno));
             break;
         }
     }

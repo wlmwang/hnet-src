@@ -29,9 +29,7 @@ const wStatus& wWorker::Prepare() {
 	// -20 -> 20 高 -> 低。只有root可提高优先级，即可减少priority值
 	if (mSlot < kMaxProcess && mPriority != 0) {
         if (setpriority(PRIO_PROCESS, 0, mPriority) == -1) {
-        	char err[kMaxErrorLen];
-        	::strerror_r(errno, err, kMaxErrorLen);
-			return mStatus = wStatus::IOError("wWorker::Prepare, setpriority() failed", err);
+			return mStatus = wStatus::IOError("wWorker::Prepare, setpriority() failed", error::Strerror(errno));
         }
     }
 	
@@ -41,9 +39,7 @@ const wStatus& wWorker::Prepare() {
         rlmt.rlim_cur = static_cast<rlim_t>(mRlimitCore);
         rlmt.rlim_max = static_cast<rlim_t>(mRlimitCore);
         if (setrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
-        	char err[kMaxErrorLen];
-        	::strerror_r(errno, err, kMaxErrorLen);
-        	return mStatus = wStatus::IOError("wWorker::Prepare, setrlimit(RLIMIT_NOFILE) failed", err);
+        	return mStatus = wStatus::IOError("wWorker::Prepare, setrlimit(RLIMIT_NOFILE) failed", error::Strerror(errno));
         }
     }
 	
@@ -54,16 +50,12 @@ const wStatus& wWorker::Prepare() {
     	if (n == mSlot || mMaster->Worker(n) == NULL || mMaster->Worker(n)->mPid == -1) {
     		continue;
     	} else if (close(mMaster->Worker(n)->ChannelFD(1)) == -1) {
-        	char err[kMaxErrorLen];
-        	::strerror_r(errno, err, kMaxErrorLen);
-    		return mStatus = wStatus::IOError("wWorker::Prepare, channel close() failed", err);
+    		return mStatus = wStatus::IOError("wWorker::Prepare, channel close() failed", error::Strerror(errno));
     	}
     }
     // 关闭该进程worker进程的ch[0]描述符
     if (close(mMaster->Worker(mSlot)->ChannelFD(0)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-    	return mStatus = wStatus::IOError("wWorker::Prepare, channel close() failed", err);
+    	return mStatus = wStatus::IOError("wWorker::Prepare, channel close() failed", error::Strerror(errno));
     }
 
 	if (!(mStatus = PrepareRun()).Ok()) {

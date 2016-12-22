@@ -155,7 +155,7 @@ const wStatus& wServer::Recv() {
 	std::vector<struct epoll_event> evt(kListenBacklog);
 	int ret = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
 	if (ret == -1) {
-		mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", "");
+		mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", error::Strerror(errno));
 	}
 	wTask* task;
 	ssize_t size;
@@ -389,9 +389,7 @@ const wStatus& wServer::AddListener(const std::string& ipaddr, uint16_t port, st
 
 const wStatus& wServer::InitEpoll() {
     if ((mEpollFD = epoll_create(kListenBacklog)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wServer::InitEpoll, epoll_create() failed", err);
+		return mStatus = wStatus::IOError("wServer::InitEpoll, epoll_create() failed", error::Strerror(errno));
     }
     return mStatus;
 }
@@ -472,9 +470,7 @@ const wStatus& wServer::AddTask(wTask* task, int ev, int op, bool addpool) {
     evt.data.fd = task->Socket()->FD();
     evt.data.ptr = task;
     if (epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wServer::AddTask, epoll_ctl() failed", err);
+		return mStatus = wStatus::IOError("wServer::AddTask, epoll_ctl() failed", error::Strerror(errno));
     }
     // 方便异步发送
     task->SetServer(this);
@@ -488,9 +484,7 @@ const wStatus& wServer::RemoveTask(wTask* task, std::vector<wTask*>::iterator* i
     struct epoll_event evt;
     evt.data.fd = task->Socket()->FD();
     if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, task->Socket()->FD(), &evt) < 0) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wServer::RemoveTask, epoll_ctl() failed", err);
+		return mStatus = wStatus::IOError("wServer::RemoveTask, epoll_ctl() failed", error::Strerror(errno));
     }
     if (delpool) {
         std::vector<wTask*>::iterator it = RemoveTaskPool(task);
@@ -503,9 +497,7 @@ const wStatus& wServer::RemoveTask(wTask* task, std::vector<wTask*>::iterator* i
 
 const wStatus& wServer::CleanTask() {
     if (close(mEpollFD) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wServer::CleanTask, close() failed", err);
+		return mStatus = wStatus::IOError("wServer::CleanTask, close() failed", error::Strerror(errno));
     }
     mEpollFD = kFDUnknown;
     for (int i = 0; i < kServerNumShard; i++) {

@@ -4,6 +4,7 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include <map>
 #include <pwd.h>
 #include <grp.h>
 #include <sys/file.h>
@@ -325,6 +326,29 @@ wStatus InitDaemon(std::string lock_path, const char *prefix) {
 }
 
 }	// namespace misc
+
+namespace error {
+
+const int32_t kSysNerr = 132;
+std::map<int32_t, const std::string> gSysErrlist;
+
+void StrerrorInit() {
+	char* msg;
+	for (int32_t err = 0; err < kSysNerr; err++) {
+		msg = ::strerror(err);
+		gSysErrlist.insert(std::make_pair(err, msg));
+	}
+	gSysErrlist.insert(std::make_pair(kSysNerr, "Unknown error"));
+}
+
+const std::string& Strerror(int32_t err) {
+	if (err >= 0 && err < kSysNerr) {
+		return gSysErrlist[err];
+	}
+	return gSysErrlist[kSysNerr];
+}
+
+}	//namespace error
 
 namespace soft {
 uid_t	gDeamonUser = kDeamonUser;

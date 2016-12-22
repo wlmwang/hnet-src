@@ -49,26 +49,18 @@ wThread::~wThread() {
 
 const wStatus& wThread::StartThread() {
 	if (pthread_attr_init(&mAttr) != 0) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wThread::StartThread, pthread_attr_init() failed", err);
+		return mStatus = wStatus::IOError("wThread::StartThread, pthread_attr_init() failed", error::Strerror(errno));
 	} else if (pthread_attr_setscope(&mAttr, PTHREAD_SCOPE_SYSTEM) != 0) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wThread::StartThread, pthread_attr_setscope() PTHREAD_SCOPE_SYSTEM failed", err);
+		return mStatus = wStatus::IOError("wThread::StartThread, pthread_attr_setscope() PTHREAD_SCOPE_SYSTEM failed", error::Strerror(errno));
 	}
 
 	if (mJoinable) {
 		if (pthread_attr_setdetachstate(&mAttr, PTHREAD_CREATE_JOINABLE) != 0) {
-	    	char err[kMaxErrorLen];
-	    	::strerror_r(errno, err, kMaxErrorLen);
-			return mStatus = wStatus::IOError("wThread::StartThread, pthread_attr_setdetachstate() PTHREAD_CREATE_JOINABLE failed", err);
+			return mStatus = wStatus::IOError("wThread::StartThread, pthread_attr_setdetachstate() PTHREAD_CREATE_JOINABLE failed", error::Strerror(errno));
 		}
 	} else {
 		if (pthread_attr_setdetachstate(&mAttr, PTHREAD_CREATE_DETACHED) == -1) {
-	    	char err[kMaxErrorLen];
-	    	::strerror_r(errno, err, kMaxErrorLen);
-			return mStatus = wStatus::IOError("wThread::StartThread, pthread_attr_setdetachstate() PTHREAD_CREATE_DETACHED failed", err);
+			return mStatus = wStatus::IOError("wThread::StartThread, pthread_attr_setdetachstate() PTHREAD_CREATE_DETACHED failed", error::Strerror(errno));
 		}
 	}
 
@@ -78,13 +70,9 @@ const wStatus& wThread::StartThread() {
 	}
 
 	if (pthread_create(&mPthreadId, &mAttr, &wThread::ThreadWrapper, reinterpret_cast<void*>(this)) != 0) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wThread::StartThread, pthread_create() failed", err);
+		return mStatus = wStatus::IOError("wThread::StartThread, pthread_create() failed", error::Strerror(errno));
 	} else if (pthread_attr_destroy(&mAttr) != 0) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wThread::StartThread, pthread_attr_destroy() failed", err);
+		return mStatus = wStatus::IOError("wThread::StartThread, pthread_attr_destroy() failed", error::Strerror(errno));
 	}
 
 	mMutex->Lock();
@@ -98,9 +86,7 @@ const wStatus& wThread::StartThread() {
 const wStatus& wThread::JoinThread() {
 	if (0 != mPthreadId && mJoinable) {
 	    if (pthread_join(mPthreadId, NULL) != 0) {
-	    	char err[kMaxErrorLen];
-	    	::strerror_r(errno, err, kMaxErrorLen);
-	    	return mStatus = wStatus::IOError("wThread::StopThread, pthread_join() failed", err);
+	    	return mStatus = wStatus::IOError("wThread::StopThread, pthread_join() failed", error::Strerror(errno));
 	    }
 	    mPthreadId = 0;
 		mMutex->Lock();

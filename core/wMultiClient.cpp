@@ -133,9 +133,7 @@ const wStatus& wMultiClient::NewUnixTask(wSocket* sock, wTask** ptr, int type) {
 
 const wStatus& wMultiClient::InitEpoll() {
     if ((mEpollFD = epoll_create(kListenBacklog)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-       return mStatus = wStatus::IOError("wMultiClient::InitEpoll, epoll_create() failed", err);
+       return mStatus = wStatus::IOError("wMultiClient::InitEpoll, epoll_create() failed", error::Strerror(errno));
     }
     return mStatus.Clear();
 }
@@ -144,9 +142,7 @@ const wStatus& wMultiClient::Recv() {
     std::vector<struct epoll_event> evt(kListenBacklog);
     int ret = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
     if (ret == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-       return mStatus = wStatus::IOError("wMultiClient::Recv, epoll_wait() failed", err);
+       return mStatus = wStatus::IOError("wMultiClient::Recv, epoll_wait() failed", error::Strerror(errno));
     }
 
     wTask* task;
@@ -249,9 +245,7 @@ const wStatus& wMultiClient::RemoveTask(wTask* task, std::vector<wTask*>::iterat
     struct epoll_event evt;
     evt.data.fd = task->Socket()->FD();
     if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, task->Socket()->FD(), &evt) < 0) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-        mStatus = wStatus::IOError("wMultiClient::RemoveTask, epoll_ctl() failed", err);
+        mStatus = wStatus::IOError("wMultiClient::RemoveTask, epoll_ctl() failed", error::Strerror(errno));
     }
     if (delpool) {
         std::vector<wTask*>::iterator it = RemoveTaskPool(task);
@@ -278,9 +272,7 @@ const wStatus& wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) 
     evt.data.fd = task->Socket()->FD();
     evt.data.ptr = task;
     if (epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-        return mStatus = wStatus::IOError("wMultiClient::AddTask, epoll_ctl() failed", err);
+        return mStatus = wStatus::IOError("wMultiClient::AddTask, epoll_ctl() failed", error::Strerror(errno));
     }
     // 方便进程通信
     mTask->Server() = mServer;
@@ -299,9 +291,7 @@ const wStatus& wMultiClient::AddToTaskPool(wTask* task) {
 
 const wStatus& wMultiClient::CleanTask() {
     if (close(mEpollFD) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-        mStatus = wStatus::IOError("wMultiClient::CleanTask, close() failed", err);
+        mStatus = wStatus::IOError("wMultiClient::CleanTask, close() failed", error::Strerror(errno));
     }
     mEpollFD = kFDUnknown;
     for (int i = 0; i < kClientNumShard; i++) {

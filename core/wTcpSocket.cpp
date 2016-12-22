@@ -9,28 +9,23 @@
 #include <netinet/tcp.h>
 #include <poll.h>
 #include "wTcpSocket.h"
+#include "wMisc.h"
 
 namespace hnet {
 
 const wStatus& wTcpSocket::Open() {
 	if ((mFD = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::AccessIllegal("wTcpSocket::Open socket() AF_INET failed", err);
+		return mStatus = wStatus::AccessIllegal("wTcpSocket::Open socket() AF_INET failed", error::Strerror(errno));
 	}
 
 	int flags = 1;
 	if (setsockopt(mFD, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wTcpSocket::Open setsockopt() SO_REUSEADDR failed", err);
+		return mStatus = wStatus::IOError("wTcpSocket::Open setsockopt() SO_REUSEADDR failed", error::Strerror(errno));
 	}
 
 	struct linger l = {0, 0};	// 优雅断开
 	if (setsockopt(mFD, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wTcpSocket::Open setsockopt() SO_LINGER failed", err);
+		return mStatus = wStatus::IOError("wTcpSocket::Open setsockopt() SO_LINGER failed", error::Strerror(errno));
 	}
 
 	// 启用保活机制
@@ -50,7 +45,7 @@ const wStatus& wTcpSocket::Bind(const std::string& host, uint16_t port) {
 	socketAddr.sin_addr.s_addr = inet_addr(mHost.c_str());
 
 	if (bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr)) == -1) {
-		return mStatus = wStatus::IOError("wTcpSocket::Bind bind failed", "");
+		return mStatus = wStatus::IOError("wTcpSocket::Bind bind failed", error::Strerror(errno));
 	}
 	return mStatus.Clear();
 }
@@ -63,15 +58,11 @@ const wStatus& wTcpSocket::Listen(const std::string& host, uint16_t port) {
 	// 设置发送缓冲大小4M
 	socklen_t optVal = 0x400000;
 	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void *>(&optVal), sizeof(socklen_t)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wTcpSocket::Listen setsockopt() SO_SNDBUF failed", err);
+		return mStatus = wStatus::IOError("wTcpSocket::Listen setsockopt() SO_SNDBUF failed", error::Strerror(errno));
 	}
 	
 	if (listen(mFD, kListenBacklog) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wTcpSocket::Listen listen failed", err);
+		return mStatus = wStatus::IOError("wTcpSocket::Listen listen failed", error::Strerror(errno));
 	}
 	return SetFL();
 }
@@ -96,8 +87,8 @@ const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16
 
 	*ret = static_cast<int64_t>(::connect(mFD, reinterpret_cast<const struct sockaddr *>(&stSockAddr), sizeof(stSockAddr)));
 	if (*ret == -1 && timeout > 0) {
-		// 建立启动但是尚未完成
 		if (errno == EINPROGRESS) {
+			// 建立启动但是尚未完成
 			while (true) {
 				struct pollfd pfd;
 				pfd.fd = mFD;
@@ -107,17 +98,13 @@ const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16
 					if (errno == EINTR) {
 					    continue;
 					}
-			    	char err[kMaxErrorLen];
-			    	::strerror_r(errno, err, kMaxErrorLen);
-					return mStatus = wStatus::IOError("wTcpSocket::Connect poll failed", err);
+					return mStatus = wStatus::IOError("wTcpSocket::Connect poll failed", error::Strerror(errno));
 				} else if(rt == 0) {
 					return mStatus = wStatus::IOError("wTcpSocket::Connect connect timeout", "");
 				} else {
 					int val, len = sizeof(int);
 					if (getsockopt(mFD, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&val), reinterpret_cast<socklen_t*>(&len)) == -1) {
-				    	char err[kMaxErrorLen];
-				    	::strerror_r(errno, err, kMaxErrorLen);
-					    return mStatus = wStatus::IOError("wTcpSocket::Connect getsockopt SO_ERROR failed", err);
+					    return mStatus = wStatus::IOError("wTcpSocket::Connect getsockopt SO_ERROR failed", error::Strerror(errno));
 					}
 					if (val > 0) {
 					    return mStatus = wStatus::IOError("wTcpSocket::Connect connect failed", "");
@@ -129,18 +116,14 @@ const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16
 				}
 			}
 		} else {
-	    	char err[kMaxErrorLen];
-	    	::strerror_r(errno, err, kMaxErrorLen);
-			return mStatus = wStatus::IOError("wTcpSocket::Connect connect directly failed", err);
+			return mStatus = wStatus::IOError("wTcpSocket::Connect connect directly failed", error::Strerror(errno));
 		}
 	}
 	
 	socklen_t optVal = 100*1024;
 	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void *>(&optVal), sizeof(socklen_t)) == -1) {
 		*ret = -1;
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDBUF failed", err);
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDBUF failed", error::Strerror(errno));
 	}
 	
 	return mStatus.Clear();
@@ -158,18 +141,14 @@ const wStatus& wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, sock
 			mStatus.Clear();
 			break;
 		} else if (errno == EAGAIN) {
-	    	char err[kMaxErrorLen];
-	    	::strerror_r(errno, err, kMaxErrorLen);
-			mStatus = wStatus::IOError("wTcpSocket::Accept accept() failed", err, false);
+			mStatus = wStatus::IOError("wTcpSocket::Accept accept() failed", "", false);
 			break;
 		} else if (errno == EINTR) {
 		    // 操作被信号中断，中断后唤醒继续处理
 		    // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
 		    continue;
 		} else {
-	    	char err[kMaxErrorLen];
-	    	::strerror_r(errno, err, kMaxErrorLen);
-		    mStatus = wStatus::IOError("wSocket::Accept, accept failed", err);
+		    mStatus = wStatus::IOError("wSocket::Accept, accept failed", "");
 		    break;
 		}
 	}
@@ -178,9 +157,7 @@ const wStatus& wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, sock
 		// 设置发送缓冲大小3M
 		socklen_t optVal = 0x300000;
 		if (setsockopt(static_cast<int>(*fd), SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void*>(&optVal), sizeof(socklen_t)) == -1) {
-	    	char err[kMaxErrorLen];
-	    	::strerror_r(errno, err, kMaxErrorLen);
-			mStatus = wStatus::IOError("wTcpSocket::Accept setsockopt() SO_SNDBUF failed", err);
+			mStatus = wStatus::IOError("wTcpSocket::Accept setsockopt() SO_SNDBUF failed", error::Strerror(errno));
 		}
 	}
 	return mStatus;
@@ -203,9 +180,7 @@ const wStatus& wTcpSocket::SetSendTimeout(float timeout) {
 	}
 
 	if (setsockopt(mFD, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const void*>(&tv), sizeof(tv)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDTIMEO failed", err);
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDTIMEO failed", error::Strerror(errno));
 	}
 	return mStatus.Clear();
 }
@@ -220,9 +195,7 @@ const wStatus& wTcpSocket::SetRecvTimeout(float timeout) {
 	}
 	
 	if (setsockopt(mFD, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const void*>(&tv), sizeof(tv)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_RCVTIMEO failed", err);
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_RCVTIMEO failed", error::Strerror(errno));
 	}
 	return mStatus.Clear();
 }
@@ -230,21 +203,13 @@ const wStatus& wTcpSocket::SetRecvTimeout(float timeout) {
 const wStatus& wTcpSocket::SetKeepAlive(int idle, int intvl, int cnt) {
 	int flags = 1;
 	if (setsockopt(mFD, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<const void*>(&flags), sizeof(flags)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_KEEPALIVE failed", err);
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_KEEPALIVE failed", error::Strerror(errno));
 	} else if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_KEEPIDLE failed", err);
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_KEEPIDLE failed", error::Strerror(errno));
 	} else if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_KEEPINTVL failed", err);
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_KEEPINTVL failed", error::Strerror(errno));
 	} else if (setsockopt(mFD, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_KEEPCNT failed", err);
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_KEEPCNT failed", error::Strerror(errno));
 	}
 
 	// Linux Kernel 2.6.37
@@ -252,9 +217,7 @@ const wStatus& wTcpSocket::SetKeepAlive(int idle, int intvl, int cnt) {
 #	ifdef TCP_USER_TIMEOUT
 	unsigned int timeout = 10000;
 	if (setsockopt(mFD, IPPROTO_TCP, TCP_USER_TIMEOUT, reinterpret_cast<const void*>(&timeout), sizeof(timeout)) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_USER_TIMEOUT failed", err);
+		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() TCP_USER_TIMEOUT failed", error::Strerror(errno));
 	}
 #	endif
 
