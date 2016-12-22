@@ -142,8 +142,8 @@ const wStatus& wMultiClient::InitEpoll() {
 
 const wStatus& wMultiClient::Recv() {
     std::vector<struct epoll_event> evt(kListenBacklog);
-    int iRet = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
-    if (iRet == -1) {
+    int ret = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
+    if (ret == -1) {
     	char err[kMaxErrorLen];
     	::strerror_r(errno, err, kMaxErrorLen);
        return mStatus = wStatus::IOError("wMultiClient::Recv, epoll_wait() failed", err);
@@ -151,7 +151,7 @@ const wStatus& wMultiClient::Recv() {
 
     wTask* task;
     ssize_t size;
-    for (int i = 0 ; i < iRet ; i++) {
+    for (int i = 0 ; i < ret ; i++) {
         task = reinterpret_cast<wTask*>(evt[i].data.ptr);
         // 加锁
         int type = task->Type();
