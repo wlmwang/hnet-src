@@ -45,7 +45,7 @@ public:
 // 日志实现类
 class wPosixLogger : public wLogger {
 public:
-	wPosixLogger(const std::string& fname, uint64_t (*getpid)(), off_t maxsize = 32*1024*1024) : mFname(fname), mMaxsize(maxsize), mGetpid(getpid) {
+	wPosixLogger(const std::string& fname, uint64_t (*getpid)(), off_t maxsize = kMaxLoggerSize) : mFname(fname), mMaxsize(maxsize), mGetpid(getpid) {
 		mFile = OpenCreatLog(mFname, "a+");
 	}
 
