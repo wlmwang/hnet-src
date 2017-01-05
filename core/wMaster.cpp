@@ -136,10 +136,6 @@ const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
 		if (!SpawnWorker(type).Ok()) {
 			return mStatus;
 		}
-
-		// 0.5ms延迟
-		usleep(500);
-
 		// 向所有已启动worker传递刚启动worker的channel描述符
 		open.set_slot(mSlot);
 		open.set_pid(mWorkerPool[mSlot]->mPid);
