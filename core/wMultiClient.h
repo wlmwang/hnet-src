@@ -112,8 +112,10 @@ protected:
     wTask *mTask;
     std::vector<wTask*> mTaskPool[kClientNumShard];
     wMutex mTaskPoolMutex[kClientNumShard];
+
+    // 配置 && 监听服务
     wConfig* mConfig;
-    wServer* mServer;
+    wServer* mServer;	// 可能为空（即没有监听服务，纯净客户端）
 
     wStatus mStatus;
 };

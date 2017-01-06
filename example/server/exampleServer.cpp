@@ -145,9 +145,6 @@ int main(int argc, const char *argv[]) {
 	    	// 准备服务器
 			s = master->PrepareStart();
 			if (s.Ok()) {
-				// single方式开启服务器
-				//master->SingleStart();
-
 				// Master-Worker方式开启服务器
 				master->MasterStart();
 			} else {

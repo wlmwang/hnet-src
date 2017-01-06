@@ -51,9 +51,9 @@ public:
     const wStatus& Broadcast(char *cmd, int len);
     const wStatus& Broadcast(const google::protobuf::Message* msg);
 
-    // 广播消息至worker进程   blacksolt为黑名单
-    const wStatus& NotifyWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blacksolt = NULL);
-    const wStatus& NotifyWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blacksolt = NULL);
+    // 广播消息至worker进程   black slot为黑名单
+    const wStatus& NotifyWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
+    const wStatus& NotifyWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
 
     // 异步发送消息
     const wStatus& Send(wTask *task, char *cmd, size_t len);

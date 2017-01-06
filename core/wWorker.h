@@ -16,15 +16,17 @@
 
 namespace hnet {
 
-const uint32_t	kRlimitCore = 65535;
+const uint32_t	kRlimitCore = 512000;
 const char     	kWorkerTitle[] = " - worker process";
 
 class wMaster;
 class wServer;
+class wChannelSocket;
+class wWorkerIpc;
 
 class wWorker : public wNoncopyable {
 public:
-	wWorker(std::string title, uint32_t slot, wMaster* master);
+	wWorker(const std::string& title, uint32_t slot, wMaster* master);
 	virtual ~wWorker();
 
 	virtual const wStatus& PrepareRun() {
@@ -35,7 +37,9 @@ public:
 		return mStatus;
 	}
 
-	const wStatus& Prepare();
+	virtual const wStatus& NewChannelTask(wSocket* sock, wTask** ptr);
+
+	const wStatus& PrepareStart();
 	const wStatus& Start();
 
 	inline pid_t& Pid() { return mPid;}
@@ -47,6 +51,9 @@ public:
 protected:
 	friend class wMaster;
 	friend class wServer;
+
+	// 散列
+    static uint32_t Shard(wSocket* sock);
 
 	wMaster *mMaster;	// 引用进程表
 	std::string mTitle;	// 进程名
@@ -62,7 +69,9 @@ protected:
 	int mJustSpawn;
 
 	uint32_t mSlot;	// 进程表中索引
-	wChannelSocket* mChannel;	// worker进程channel
+	wChannelSocket* mChannel;	// worker进程channel通信对象
+	wWorkerIpc* mWorkerIpc;		// channel通信监听对象
+
 	wStatus mStatus;
 };
 

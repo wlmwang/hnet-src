@@ -18,6 +18,7 @@ namespace hnet {
 
 wMaster::wMaster(const std::string& title, wServer* server) : mServer(server), mPid(getpid()),
 mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0), mLive(1) {
+	assert(mServer != NULL);
     std::string pid_path;
 	if (mServer->Config()->GetConf("pid_path", &pid_path) && pid_path.size() > 0) {
 		mPidPath = pid_path;
@@ -25,9 +26,11 @@ mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0), mLive(1) {
 		mPidPath = soft::GetPidPath();
 	}
 	mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
-	mWorkerNum = 2*mNcpu;
+	mWorkerNum = mNcpu;
 	memset(mWorkerPool, 0, sizeof(mWorkerPool));
-	mServer->Master() = this;
+
+	// 便于wServer引用wMaster中进程表
+	mServer->mMaster = this;
 }
 
 wMaster::~wMaster() {
@@ -37,24 +40,23 @@ wMaster::~wMaster() {
 }
 
 const wStatus& wMaster::PrepareStart() {
-    // 检测配置、服务实例
-    if (mServer == NULL || mServer->Config() == NULL) {
-    	return mStatus = wStatus::Corruption("wMaster::PrepareStart failed", "mServer or mConfig is null");
-    }
-
     std::string host;
     int16_t port = 0;
     if (!mServer->Config()->GetConf("host", &host) || !mServer->Config()->GetConf("port", &port)) {
     	return mStatus = wStatus::Corruption("wMaster::PrepareStart failed", "host or port is illegal");
     }
 
+    // 可自定义worker数量，日志文件等
     if (!PrepareRun().Ok()) {
     	return mStatus;
     }
+
+    // 设置进程标题
     if (!(mStatus = mServer->Config()->Setproctitle(kMasterTitle, mTitle.c_str())).Ok()) {
     	return mStatus;
     }
 
+    // 预启动服务器（创建监听socket）
     std::string protocol;
     if (!mServer->Config()->GetConf("protocol", &protocol)) {
     	mStatus = mServer->PrepareStart(host, port);
@@ -78,17 +80,18 @@ const wStatus& wMaster::SingleStart() {
 }
 
 const wStatus& wMaster::MasterStart() {
-    if (mWorkerNum > kMaxProcess) {
-        return mStatus = wStatus::Corruption("wMaster::MasterStart, processes can be spawned", "worker number is overflow");
+    if (mWorkerNum == 0 || mWorkerNum > kMaxProcess) {
+        return mStatus = wStatus::Corruption("wMaster::MasterStart, processes cannot spawned", "worker number is 0 or overflow");
     }
 
+    // 创建pid文件 && 注册信号处理器
     if (!CreatePidFile().Ok()) {
 		return mStatus;
     } else if (!InitSignals().Ok()) {
         return mStatus;
     }
 
-    // 信号阻塞
+    // 暂时信号阻塞
     wSigSet ss;
     ss.AddSet(SIGCHLD);
     ss.AddSet(SIGALRM);
@@ -102,7 +105,7 @@ const wStatus& wMaster::MasterStart() {
         return mStatus;
     }
 
-    // 初始化进程表
+    // 初始化进程表对象
 	for (uint32_t i = 0; i < kMaxProcess; i++) {
 		if (!NewWorker(i, &mWorkerPool[i]).Ok()) {
 			return mStatus;
@@ -114,7 +117,7 @@ const wStatus& wMaster::MasterStart() {
     	return mStatus;
     }
 
-    // 主进程监听信号
+    // master主进程监听信号
     while (true) {
 		HandleSignal();
 		Run();
@@ -136,12 +139,12 @@ const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
 		if (!SpawnWorker(type).Ok()) {
 			return mStatus;
 		}
-		// 向所有已启动worker传递刚启动worker的channel描述符
+		// 向所有已启动worker（除自己外）传递刚启动worker的channel描述符（用户通信）
 		open.set_slot(mSlot);
 		open.set_pid(mWorkerPool[mSlot]->mPid);
 		open.set_fd(mWorkerPool[mSlot]->ChannelFD(0));
-        std::vector<uint32_t> blacksolt(1, mSlot);
-        mServer->NotifyWorker(&open, kMaxProcess, &blacksolt);
+        std::vector<uint32_t> blackslot(1, mSlot);
+        mServer->NotifyWorker(&open, kMaxProcess, &blackslot);
 	}
 	return mStatus.Clear();
 }
@@ -154,18 +157,18 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
 		// 启动指定类型worker进程
 		uint32_t idx;
 		for (idx = 0; idx < kMaxProcess; ++idx) {
-			if (mWorkerPool[idx]->mPid == -1 || mWorkerPool[idx]->ChannelFD(0) == kFDUnknown || mWorkerPool[idx]->ChannelFD(1) == kFDUnknown) {
+			if (mWorkerPool[idx]->mPid == -1 || (mWorkerPool[idx]->ChannelFD(0) == kFDUnknown && mWorkerPool[idx]->ChannelFD(1) == kFDUnknown)) {
 				break;
 			}
 		}
 		mSlot = idx;
 	}
 	if (mSlot >= kMaxProcess) {
-		return mStatus = wStatus::Corruption("wMaster::SpawnWorker failed", "slot overflow");
+		return mStatus = wStatus::Corruption("wMaster::SpawnWorker failed", "slot is overflow");
 	}
 	wWorker *worker = mWorkerPool[mSlot];
 
-	// 打开进程间channel通道
+	// 重新打开进程间channel通道
 	if (worker->ChannelFD(0) != kFDUnknown || worker->ChannelFD(1) != kFDUnknown) {
 		worker->Channel()->Close();
 	}
@@ -182,14 +185,14 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
         return mStatus = wStatus::Corruption("wMaster::SpawnWorker, fork() failed", error::Strerror(errno));
 
     case 0:
-    	// worker进程
-        worker->mPid = getpid();
-        if (!(mStatus = worker->Prepare()).Ok()) {
-        	// 启动失败
+        worker->Pid() = getpid();
+        // worker进程预启动
+        if (!(mStatus = worker->PrepareStart()).Ok()) {
+        	// 启动失败（主进程不拉起）
         	exit(2);
         }
         // 进入worker主循环
-        mStatus = worker->Start();
+        worker->Start();
         exit(0);
     }
 
@@ -484,7 +487,7 @@ const wStatus& wMaster::SignalProcess(const std::string& signal) {
 
 const wStatus& wMaster::InitSignals() {
 	wSignal signal;
-	for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
+	for (wSignal::Signal_t* s = g_signals; s && s->mSigno != 0; ++s) {
 		if (!(mStatus = signal.AddHandler(s)).Ok()) {
 			return mStatus;
 		}
