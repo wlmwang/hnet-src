@@ -132,6 +132,9 @@ const wStatus& wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
 const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
 	wChannelOpen open;
 	for (uint32_t i = 0; i < n; ++i) {
+		// 0.5ms延迟
+		usleep(500);
+
 		// 启动worker
 		if (!SpawnWorker(type).Ok()) {
 			return mStatus;
