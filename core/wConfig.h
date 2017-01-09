@@ -22,8 +22,8 @@ public:
     virtual ~wConfig();
     virtual const wStatus& GetOption(int argc, const char *argv[]);
 
-    inline const wStatus& Setproctitle(const char* pretitle, const char* title) {
-    	return mStatus = mProcTitle->Setproctitle(pretitle, title);
+    inline const wStatus& Setproctitle(const char* pretitle, const char* title, bool attach = true) {
+    	return mStatus = mProcTitle->Setproctitle(pretitle, title, attach);
     }
 
     inline const wStatus& InitProcTitle(int argc, const char *argv[]) {

@@ -81,8 +81,8 @@ const wStatus& wWorker::PrepareStart() {
 		return mStatus;
 	}
 	
-    // 进程标题
-	if (!(mStatus = mMaster->Server()->Config()->Setproctitle(kWorkerTitle, mTitle.c_str())).Ok()) {
+    // 子进程标题
+	if (!(mStatus = mMaster->Server()->Config()->Setproctitle(kWorkerTitle, mTitle.c_str(), false)).Ok()) {
 		return mStatus;
 	}
 
