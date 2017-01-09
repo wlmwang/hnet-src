@@ -12,7 +12,6 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
-#include "wChannelSocket.h"
 
 namespace hnet {
 

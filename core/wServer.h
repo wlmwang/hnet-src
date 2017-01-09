@@ -51,10 +51,6 @@ public:
     const wStatus& Broadcast(char *cmd, int len);
     const wStatus& Broadcast(const google::protobuf::Message* msg);
 
-    // 广播消息至worker进程   black slot为黑名单
-    const wStatus& NotifyWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
-    const wStatus& NotifyWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
-
     // 异步发送消息
     const wStatus& Send(wTask *task, char *cmd, size_t len);
     const wStatus& Send(wTask *task, const google::protobuf::Message* msg);
@@ -65,7 +61,6 @@ public:
     // 新建客户端
     virtual const wStatus& NewTcpTask(wSocket* sock, wTask** ptr);
     virtual const wStatus& NewUnixTask(wSocket* sock, wTask** ptr);
-    virtual const wStatus& NewChannelTask(wSocket* sock, wTask** ptr);
     
     virtual const wStatus& PrepareRun() {
         return mStatus;
@@ -110,9 +105,6 @@ protected:
     const wStatus& InitEpoll();
     const wStatus& AddListener(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
 
-    // 添加channel socket到epoll侦听事件队列
-    const wStatus& Channel2Epoll(bool addpool = true);
-
     // 添加listen socket到epoll侦听事件队列
     const wStatus& Listener2Epoll(bool addpool = true);
     const wStatus& RemoveListener(bool delpool = true);
@@ -129,7 +121,6 @@ protected:
 
     wStatus mStatus;
     wMaster* mMaster;	// 引用进程表
-    wWorker* mWorker;	// 当前worker进程
     wConfig* mConfig;
     bool mExiting;
 

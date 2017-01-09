@@ -152,6 +152,9 @@ protected:
     wServer* mServer;
     wMultiClient* mClient;
 
+    // 主要用于进程间同步
+    wMaster* mMaster;
+
     // 0为服务器，1为客户端
     uint8_t mSCType;
 

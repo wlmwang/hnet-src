@@ -34,7 +34,6 @@ public:
 	virtual ~wWorkerIpc();
 
     const wStatus& PrepareStart();
-    const wStatus& Start();
 
     virtual const wStatus& RunThread();
 
@@ -64,18 +63,6 @@ protected:
     const wStatus& AddToTaskPool(wTask *task);
     std::vector<wTask*>::iterator RemoveTaskPool(wTask *task);
     const wStatus& CleanTaskPool(std::vector<wTask*> pool);
-
-    // 服务器当前时间 微妙
-    uint64_t mLatestTm;
-    uint64_t mTick;
-
-    // 心跳任务，强烈建议移动互联网环境下打开，而非依赖keepalive机制保活
-    bool mHeartbeatTurn;
-    // 心跳定时器
-    wTimer mHeartbeatTimer;
-
-    bool mScheduleOk;
-    wMutex mScheduleMutex;
 
     int32_t mEpollFD;
     uint64_t mTimeout;

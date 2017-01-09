@@ -12,6 +12,7 @@
 #include "wSignal.h"
 #include "wWorker.h"
 #include "wTask.h"
+#include "wChannelSocket.h"
 #include "wChannel.pb.h"
 
 namespace hnet {
@@ -144,7 +145,7 @@ const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
 		open.set_pid(mWorkerPool[mSlot]->mPid);
 		open.set_fd(mWorkerPool[mSlot]->ChannelFD(0));
         std::vector<uint32_t> blackslot(1, mSlot);
-        mServer->NotifyWorker(&open, kMaxProcess, &blackslot);
+        mWorkerPool[mSlot]->NotifyWorker(&open, kMaxProcess, &blackslot);
 	}
 	return mStatus.Clear();
 }
@@ -369,7 +370,7 @@ const wStatus& wMaster::ReapChildren() {
 					if (mWorkerPool[n]->mExited || mWorkerPool[n]->mPid == -1 || mWorkerPool[n]->ChannelFD(0) == kFDUnknown) {
 						continue;
 					}
-					mServer->NotifyWorker(&close, n);
+					mWorkerPool[n]->NotifyWorker(&close, n);
 				}
 			}
 			
@@ -388,7 +389,7 @@ const wStatus& wMaster::ReapChildren() {
 				open.set_fd(mWorkerPool[i]->ChannelFD(0));
 
 				std::vector<uint32_t> blacksolt(1, i);
-				mServer->NotifyWorker(&open, kMaxProcess, &blacksolt);
+				mWorkerPool[i]->NotifyWorker(&open, kMaxProcess, &blacksolt);
 
 				mLive = 1;
 				continue;
@@ -433,7 +434,7 @@ void wMaster::SignalWorker(int signo) {
         if (channel != NULL) {
 
 	        /* TODO: EAGAIN */
-        	if (mServer->NotifyWorker(channel, i).Ok()) {
+        	if (mWorkerPool[i]->NotifyWorker(channel, i).Ok()) {
         		mWorkerPool[i]->mExiting = 1;
 				continue;
         	}
@@ -453,6 +454,65 @@ void wMaster::SignalWorker(int signo) {
         	mWorkerPool[i]->mExiting = 1;
         }
     }
+}
+
+const wStatus& wMaster::NotifyWorker(char *cmd, int len, uint32_t slot, const std::vector<uint32_t>* blackslot) {
+	ssize_t ret;
+	char buf[kPackageSize];
+	if (slot == kMaxProcess) {
+		// 广播消息
+		for (uint32_t i = 0; i < kMaxProcess; i++) {
+			if (mWorkerPool[i]->mPid == -1 || mWorkerPool[i]->ChannelFD(0) == kFDUnknown) {
+				continue;
+			} else if (blackslot != NULL && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
+				continue;
+			}
+
+			/* TODO: EAGAIN */
+			wTask::Assertbuf(buf, cmd, len);
+			mStatus = mWorkerPool[i]->Channel()->SendBytes(buf, sizeof(uint32_t) + sizeof(uint8_t) + len, &ret);
+	    }
+	} else {
+		if (mWorkerPool[slot]->mPid != -1 && mWorkerPool[slot]->ChannelFD(0) != kFDUnknown) {
+
+			/* TODO: EAGAIN */
+			wTask::Assertbuf(buf, cmd, len);
+			mStatus = mWorkerPool[slot]->Channel()->SendBytes(buf, sizeof(uint32_t) + sizeof(uint8_t) + len, &ret);
+		} else {
+			mStatus = wStatus::Corruption("wMaster::NotifyWorker failed 1", "worker channel is null");
+		}
+	}
+
+    return mStatus;
+}
+
+const wStatus& wMaster::NotifyWorker(const google::protobuf::Message* msg, uint32_t slot, const std::vector<uint32_t>* blackslot) {
+	ssize_t ret;
+	char buf[kPackageSize];
+	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
+	if (slot == kMaxProcess) {
+		for (uint32_t i = 0; i < kMaxProcess; i++) {
+			if (mWorkerPool[i]->mPid == -1 || mWorkerPool[i]->ChannelFD(0) == kFDUnknown) {
+				continue;
+			} else if (blackslot != NULL && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
+				continue;
+			}
+
+			/* TODO: EAGAIN */
+			wTask::Assertbuf(buf, msg);
+			mStatus = mWorkerPool[i]->Channel()->SendBytes(buf, sizeof(uint32_t) + len, &ret);
+	    }
+	} else {
+		if (mWorkerPool[slot]->mPid != -1 && mWorkerPool[slot]->ChannelFD(0) != kFDUnknown) {
+
+			/* TODO: EAGAIN */
+			wTask::Assertbuf(buf, msg);
+			mStatus = mWorkerPool[slot]->Channel()->SendBytes(buf, sizeof(uint32_t) + len, &ret);
+		} else {
+			mStatus = wStatus::Corruption("wMaster::NotifyWorker failed 2", "worker channel is null");
+		}
+	}
+    return mStatus;
 }
 
 const wStatus& wMaster::CreatePidFile() {

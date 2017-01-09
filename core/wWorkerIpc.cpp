@@ -10,11 +10,8 @@
 
 namespace hnet {
 
-wWorkerIpc::wWorkerIpc(wWorker *worker) : mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleOk(true),
-mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mWorker(worker) {
+wWorkerIpc::wWorkerIpc(wWorker *worker) : mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mWorker(worker) {
 	assert(mWorker != NULL);
-    mLatestTm = misc::GetTimeofday();
-    mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
 
 wWorkerIpc::~wWorkerIpc() {
@@ -30,18 +27,13 @@ const wStatus& wWorkerIpc::PrepareStart() {
     return PrepareRun();
 }
 
-const wStatus& wWorkerIpc::Start() {
+const wStatus& wWorkerIpc::RunThread() {
     // 进入服务主服务
     while (true) {
         Recv();
         Run();
-        CheckTick();
     }
     return mStatus;
-}
-
-const wStatus& wWorkerIpc::RunThread() {
-	return Start();
 }
 
 const wStatus& wWorkerIpc::InitEpoll() {
@@ -56,9 +48,12 @@ const wStatus& wWorkerIpc::Channel2Epoll(bool addpool) {
 	wChannelSocket *socket = mWorker->Channel();
 	if (socket != NULL) {
 		wTask *task;
-		mWorker->NewChannelTask(socket, &task);
+		mStatus = mWorker->NewChannelTask(socket, &task);
 		if (mStatus.Ok()) {
 			AddTask(task, EPOLLIN, EPOLL_CTL_ADD, addpool);
+		} else {
+			// 重启该进程
+			exit(1);
 		}
 	} else {
 		mStatus = wStatus::Corruption("wWorkerIpc::Channel2Epoll failed", "channel is null");
@@ -130,21 +125,6 @@ const wStatus& wWorkerIpc::CleanTaskPool(std::vector<wTask*> pool) {
     }
     pool.clear();
     return mStatus;
-}
-
-void wServer::CheckTick() {
-	if (mScheduleMutex.TryLock() == 0) {
-		mTick = misc::GetTimeofday() - mLatestTm;
-		if (mTick >= 10*1000) {
-		    mLatestTm += mTick;
-		    // 添加任务到线程池中
-		    if (mScheduleOk == true) {
-		    	mScheduleOk = false;
-		    	wEnv::Default()->Schedule(wServer::ScheduleRun, this);
-		    }
-		}
-	}
-	mScheduleMutex.Unlock();
 }
 
 const wStatus& wWorkerIpc::Recv() {

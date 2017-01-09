@@ -17,14 +17,12 @@
 #include "wWorker.h"
 #include "wTcpSocket.h"
 #include "wUnixSocket.h"
-#include "wChannelSocket.h"
 #include "wTcpTask.h"
 #include "wUnixTask.h"
-#include "wChannelTask.h"
 
 namespace hnet {
 
-wServer::wServer(wConfig* config) : mMaster(NULL), mWorker(NULL), mConfig(config), mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleOk(true),
+wServer::wServer(wConfig* config) : mMaster(NULL), mConfig(config), mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleOk(true),
 mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), mAcceptHeld(false), mAcceptDisabled(0) {
 	assert(mConfig != NULL);
     mLatestTm = misc::GetTimeofday();
@@ -71,13 +69,11 @@ const wStatus& wServer::SingleStart(bool daemon) {
 
 const wStatus& wServer::WorkerStart(bool daemon) {
 	// 创建epoll
-	// 监听socket、channel socket添加到epoll中
+	// listen socket添加到epoll中
     if (!InitEpoll().Ok()) {
 		return mStatus;
     } else if (!Listener2Epoll(true).Ok()) {
 		return mStatus;
-    } else if (!Channel2Epoll(true).Ok()) {
-    	return mStatus;
     }
 
     // 惊群锁
@@ -139,16 +135,9 @@ const wStatus& wServer::NewUnixTask(wSocket* sock, wTask** ptr) {
     return mStatus.Clear();
 }
 
-const wStatus& wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
-	SAFE_NEW(wChannelTask(sock, mMaster, Shard(sock)), *ptr);
-    if (*ptr == NULL) {
-		return mStatus = wStatus::IOError("wServer::NewChannelTask", "new failed");
-    }
-    return mStatus.Clear();
-}
-
 const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {
+		// 获取惊群锁
 		if (!(mStatus = mAcceptSem->TryWait()).Ok()) {
 			return mStatus;
 		}
@@ -204,6 +193,7 @@ const wStatus& wServer::Recv() {
 	}
 
 	if (mUseAcceptTurn == true && mAcceptHeld == true) {
+		// 释放惊群锁
 		// 清除epoll中listen socket的写入事件
 		RemoveListener(false);
 		mAcceptHeld = false;
@@ -291,65 +281,6 @@ const wStatus& wServer::Broadcast(const google::protobuf::Message* msg) {
 			}
 	    }
     }
-    return mStatus;
-}
-
-const wStatus& wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const std::vector<uint32_t>* blackslot) {
-	ssize_t ret;
-	char buf[kPackageSize];
-	if (solt == kMaxProcess) {
-		// 广播消息
-		for (uint32_t i = 0; i < kMaxProcess; i++) {
-			if (mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
-				continue;
-			} else if (blackslot != NULL && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
-				continue;
-			}
-
-			/* TODO: EAGAIN */
-			wTask::Assertbuf(buf, cmd, len);
-			mStatus = mMaster->Worker(i)->Channel()->SendBytes(buf, sizeof(uint32_t) + sizeof(uint8_t) + len, &ret);
-	    }
-	} else {
-		if (mMaster->Worker(solt)->mPid != -1 && mMaster->Worker(solt)->ChannelFD(0) != kFDUnknown) {
-
-			/* TODO: EAGAIN */
-			wTask::Assertbuf(buf, cmd, len);
-			mStatus = mMaster->Worker(solt)->Channel()->SendBytes(buf, sizeof(uint32_t) + sizeof(uint8_t) + len, &ret);
-		} else {
-			mStatus = wStatus::Corruption("wServer::NotifyWorker failed 1", "worker channel is null");
-		}
-	}
-
-    return mStatus;
-}
-
-const wStatus& wServer::NotifyWorker(const google::protobuf::Message* msg, uint32_t solt, const std::vector<uint32_t>* blackslot) {
-	ssize_t ret;
-	char buf[kPackageSize];
-	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
-	if (solt == kMaxProcess) {
-		for (uint32_t i = 0; i < kMaxProcess; i++) {
-			if (mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
-				continue;
-			} else if (blackslot != NULL && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
-				continue;
-			}
-
-			/* TODO: EAGAIN */
-			wTask::Assertbuf(buf, msg);
-			mStatus = mMaster->Worker(i)->Channel()->SendBytes(buf, sizeof(uint32_t) + len, &ret);
-	    }
-	} else {
-		if (mMaster->Worker(solt)->mPid != -1 && mMaster->Worker(solt)->ChannelFD(0) != kFDUnknown) {
-
-			/* TODO: EAGAIN */
-			wTask::Assertbuf(buf, msg);
-			mStatus = mMaster->Worker(solt)->Channel()->SendBytes(buf, sizeof(uint32_t) + len, &ret);
-		} else {
-			mStatus = wStatus::Corruption("wServer::NotifyWorker failed 2", "worker channel is null");
-		}
-	}
     return mStatus;
 }
 
@@ -455,25 +386,6 @@ const wStatus& wServer::RemoveListener(bool delpool) {
     return mStatus;
 }
 
-const wStatus& wServer::Channel2Epoll(bool addpool) {
-	// channel socket加入epoll写入事件
-	if (mMaster != NULL && mWorker != NULL && mMaster->Worker(mWorker->mSlot) != NULL) {
-		wChannelSocket *socket = mMaster->Worker(mWorker->mSlot)->Channel();
-		if (socket != NULL) {
-			wTask *task;
-			NewChannelTask(socket, &task);
-			if (mStatus.Ok()) {
-				AddTask(task, EPOLLIN, EPOLL_CTL_ADD, addpool);
-			}
-		} else {
-			mStatus = wStatus::Corruption("wServer::Channel2Epoll failed", "channel is null");
-		}
-	} else {
-		mStatus = wStatus::Corruption("wServer::Channel2Epoll failed", "worker is null");
-	}
-    return mStatus;
-}
-
 const wStatus& wServer::AddTask(wTask* task, int ev, int op, bool addpool) {
     struct epoll_event evt;
     evt.events = ev | EPOLLERR | EPOLLHUP | EPOLLET;
@@ -483,7 +395,8 @@ const wStatus& wServer::AddTask(wTask* task, int ev, int op, bool addpool) {
 		return mStatus = wStatus::IOError("wServer::AddTask, epoll_ctl() failed", error::Strerror(errno));
     }
     // 方便异步发送
-    task->SetServer(this);
+    //task->SetServer(this);
+
     if (addpool) {
     	// 加入客户端队列
     	AddToTaskPool(task);

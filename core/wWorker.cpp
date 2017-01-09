@@ -5,10 +5,10 @@
  */
 
 #include "wWorker.h"
+#include "wMaster.h"
 #include "wWorkerIpc.h"
 #include "wMisc.h"
 #include "wSigSet.h"
-#include "wMaster.h"
 #include "wConfig.h"
 #include "wServer.h"
 #include "wChannelSocket.h"
@@ -27,8 +27,8 @@ mPriority(0), mRlimitCore(kRlimitCore), mSlot(slot) {
 	SAFE_NEW(wChannelSocket(kStConnect), mChannel);
 	SAFE_NEW(wWorkerIpc(this), mWorkerIpc);
 
-	// 便于wServer引用wWorker（当前进程）
-	mMaster->Server()->Worker() = this;
+	// 便于wMaster引用wWorker（当前进程）
+	mMaster->mWorker = this;
 }
 
 wWorker::~wWorker() {
@@ -91,8 +91,8 @@ const wStatus& wWorker::PrepareStart() {
 		return mStatus;
 	}
 
-	// 便于wServer引用wWorker（当前进程）
-	mMaster->Server()->Worker() = this;
+	// 便于wMaster引用wWorker（当前进程）
+	mMaster->mWorker = this;
 	return mStatus.Clear();
 }
 
@@ -107,8 +107,8 @@ const wStatus& wWorker::Start() {
     	return mStatus;
     }
 
-    // 启动workerIpc
-	if (!(mStatus = mWorkerIpc->Start()).Ok()) {
+    // 启动workerIpc线程
+	if (!(mStatus = mWorkerIpc->StartThread()).Ok()) {
 		return mStatus;
 	}
 

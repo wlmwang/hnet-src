@@ -7,6 +7,7 @@
 #ifndef _W_MASTER_H_
 #define _W_MASTER_H_
 
+#include <google/protobuf/message.h>
 #include <map>
 #include <vector>
 #include "wCore.h"
@@ -18,6 +19,7 @@ namespace hnet {
 
 const char  kMasterTitle[] = " - master process";
 
+class wServer;
 class wWorker;
 
 class wMaster : private wNoncopyable {
@@ -56,6 +58,10 @@ public:
 
     inline uint32_t& WorkerNum() { return mWorkerNum;}
 
+    // 广播消息至worker进程   black slot为黑名单
+    const wStatus& NotifyWorker(char *cmd, int len, uint32_t slot = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
+    const wStatus& NotifyWorker(const google::protobuf::Message* msg, uint32_t slot = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
+
     template<typename T = wServer*>
     inline T& Server() { return reinterpret_cast<T&>(mServer);}
 
@@ -88,7 +94,8 @@ protected:
     // 回收退出进程状态（waitpid以防僵尸进程）
     void WorkerExitStat();
 
-    wServer* mServer;
+    wServer* mServer;	// 当前server对象
+    wWorker* mWorker;	// 当前worker对象
 
     // master进程id
     pid_t mPid;
