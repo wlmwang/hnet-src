@@ -24,8 +24,7 @@ mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0), mLive(1) {
 	} else {
 		mPidPath = soft::GetPidPath();
 	}
-	mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
-	mWorkerNum = 2*mNcpu;
+	mWorkerNum = mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
 	memset(mWorkerPool, 0, sizeof(mWorkerPool));
 	mServer->Master() = this;
 }
@@ -132,9 +131,6 @@ const wStatus& wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
 const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
 	wChannelOpen open;
 	for (uint32_t i = 0; i < n; ++i) {
-		// 0.5ms延迟
-		usleep(500);
-
 		// 启动worker
 		if (!SpawnWorker(type).Ok()) {
 			return mStatus;
@@ -145,6 +141,9 @@ const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
 		open.set_fd(mWorkerPool[mSlot]->ChannelFD(0));
         std::vector<uint32_t> blacksolt(1, mSlot);
         mServer->NotifyWorker(&open, kMaxProcess, &blacksolt);
+
+		// 0.5ms延迟
+		usleep(500);
 	}
 	return mStatus.Clear();
 }

@@ -24,7 +24,7 @@ public:
     const wStatus& SaveArgv(int argc, const char* argv[]);
 
     // 设置进程标题
-    const wStatus& Setproctitle(const char *title, const char *pretitle = NULL);
+    const wStatus& Setproctitle(const char *title, const char *pretitle = NULL, bool attach = true);
 
 protected:
     const char** mOsArgv;

@@ -61,7 +61,7 @@ const wStatus& wProcTitle::SaveArgv(int argc, const char* argv[]) {
     return mStatus.Clear();
 }
 
-const wStatus& wProcTitle::Setproctitle(const char *title, const char *pretitle) {
+const wStatus& wProcTitle::Setproctitle(const char *title, const char *pretitle, bool attach) {
     if (pretitle == NULL) {
     	pretitle = "HNET: ";
     }
@@ -71,11 +71,13 @@ const wStatus& wProcTitle::Setproctitle(const char *title, const char *pretitle)
 	char* p = const_cast<char*>(mOsArgv[0]);
     p = misc::Cpystrn(p, pretitle, size);
     p = misc::Cpystrn(p, title, size -= strlen(pretitle));
-
     size -= strlen(title);
-    for (int i = 0; i < mArgc; i++) {
-    	p = misc::Cpystrn(p, " ", size -= 1);
-    	p = misc::Cpystrn(p, mArgv[i], size -= strlen(mArgv[i]));
+
+    if (attach) {
+        for (int i = 0; i < mArgc; i++) {
+        	p = misc::Cpystrn(p, " ", size -= 1);
+        	p = misc::Cpystrn(p, mArgv[i], size -= strlen(mArgv[i]));
+        }
     }
     return mStatus.Clear();
 }

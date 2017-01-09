@@ -275,7 +275,7 @@ const wStatus& wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) 
         return mStatus = wStatus::IOError("wMultiClient::AddTask, epoll_ctl() failed", error::Strerror(errno));
     }
     // 方便进程通信
-    // mTask->Server() = mServer;
+    mTask->Server() = mServer;
     // 方便异步发送
     mTask->SetClient(this);
     if (addpool) {
