@@ -81,12 +81,6 @@ public:
     template<typename T = wConfig*>
     inline T& Config() { return reinterpret_cast<T&>(mConfig);}
 
-    template<typename T = wMaster*>
-    inline T& Master() { return reinterpret_cast<T&>(mMaster);}
-
-    template<typename T = wWorker*>
-    inline T& Worker() { return reinterpret_cast<T&>(mWorker);}
-
 protected:
     friend class wMaster;
     friend class wWorker;
@@ -119,9 +113,9 @@ protected:
 
     static void ScheduleRun(void* argv);
 
-    wStatus mStatus;
     wMaster* mMaster;	// 引用进程表
     wConfig* mConfig;
+
     bool mExiting;
 
     // 服务器当前时间 微妙
@@ -152,6 +146,8 @@ protected:
     bool mUseAcceptTurn;
     bool mAcceptHeld;
     int64_t mAcceptDisabled;
+
+    wStatus mStatus;
 };
 
 }	// namespace hnet

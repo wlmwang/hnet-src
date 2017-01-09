@@ -13,7 +13,7 @@
 
 namespace hnet {
 
-wTask::wTask(wSocket* socket, int32_t type) : mType(type), mSocket(socket), mHeartbeat(0), mServer(NULL), mClient(NULL), mSCType(0) {
+wTask::wTask(wSocket* socket, int32_t type) : mType(type), mSocket(socket), mHeartbeat(0), mMaster(NULL), mServer(NULL), mClient(NULL), mSCType(-1) {
 	ResetBuffer();
 }
 
@@ -403,9 +403,9 @@ const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, ui
 }
 
 const wStatus& wTask::SyncWorker(char cmd[], size_t len) {
-	if (mServer && mServer->Worker()) {
-		std::vector<uint32_t> blacksolt(1, mServer->Worker()->Slot());
-		mStatus = mServer->NotifyWorker(cmd, len, kMaxProcess, &blacksolt);
+	if (mMaster && mMaster->Worker()) {
+		std::vector<uint32_t> blacksolt(1, mMaster->Worker()->Slot());
+		mStatus = mMaster->NotifyWorker(cmd, len, kMaxProcess, &blacksolt);
 	} else {
 		mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
 	}
@@ -413,9 +413,9 @@ const wStatus& wTask::SyncWorker(char cmd[], size_t len) {
 }
 
 const wStatus& wTask::SyncWorker(const google::protobuf::Message* msg) {
-	if (mServer && mServer->Worker()) {
-		std::vector<uint32_t> blacksolt(1, mServer->Worker()->Slot());
-		mStatus = mServer->NotifyWorker(msg, kMaxProcess, &blacksolt);
+	if (mMaster && mMaster->Worker()) {
+		std::vector<uint32_t> blacksolt(1, mMaster->Worker()->Slot());
+		mStatus = mMaster->NotifyWorker(msg, kMaxProcess, &blacksolt);
 	} else {
 		mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
 	}

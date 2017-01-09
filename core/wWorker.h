@@ -12,6 +12,7 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
+#include "wChannelSocket.h"
 
 namespace hnet {
 
@@ -19,9 +20,9 @@ const uint32_t	kRlimitCore = 512000;
 const char     	kWorkerTitle[] = " - worker process";
 
 class wMaster;
-class wServer;
-class wChannelSocket;
 class wWorkerIpc;
+class wServer;
+class wTask;
 
 class wWorker : public wNoncopyable {
 public:

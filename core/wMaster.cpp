@@ -17,8 +17,7 @@
 
 namespace hnet {
 
-wMaster::wMaster(const std::string& title, wServer* server) : mServer(server), mPid(getpid()),
-mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0), mLive(1) {
+wMaster::wMaster(const std::string& title, wServer* server) : mPid(getpid()), mTitle(title), mServer(server), mWorker(NULL), mSlot(kMaxProcess), mDelay(0), mSigio(0), mLive(1) {
 	assert(mServer != NULL);
     std::string pid_path;
 	if (mServer->Config()->GetConf("pid_path", &pid_path) && pid_path.size() > 0) {
@@ -145,7 +144,7 @@ const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
 		open.set_pid(mWorkerPool[mSlot]->mPid);
 		open.set_fd(mWorkerPool[mSlot]->ChannelFD(0));
         std::vector<uint32_t> blackslot(1, mSlot);
-        mWorkerPool[mSlot]->NotifyWorker(&open, kMaxProcess, &blackslot);
+        NotifyWorker(&open, kMaxProcess, &blackslot);
 	}
 	return mStatus.Clear();
 }
@@ -370,7 +369,7 @@ const wStatus& wMaster::ReapChildren() {
 					if (mWorkerPool[n]->mExited || mWorkerPool[n]->mPid == -1 || mWorkerPool[n]->ChannelFD(0) == kFDUnknown) {
 						continue;
 					}
-					mWorkerPool[n]->NotifyWorker(&close, n);
+					NotifyWorker(&close, n);
 				}
 			}
 			
@@ -389,7 +388,7 @@ const wStatus& wMaster::ReapChildren() {
 				open.set_fd(mWorkerPool[i]->ChannelFD(0));
 
 				std::vector<uint32_t> blacksolt(1, i);
-				mWorkerPool[i]->NotifyWorker(&open, kMaxProcess, &blacksolt);
+				NotifyWorker(&open, kMaxProcess, &blacksolt);
 
 				mLive = 1;
 				continue;
@@ -434,7 +433,7 @@ void wMaster::SignalWorker(int signo) {
         if (channel != NULL) {
 
 	        /* TODO: EAGAIN */
-        	if (mWorkerPool[i]->NotifyWorker(channel, i).Ok()) {
+        	if (NotifyWorker(channel, i).Ok()) {
         		mWorkerPool[i]->mExiting = 1;
 				continue;
         	}

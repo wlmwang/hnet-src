@@ -168,4 +168,4 @@ const wStatus& wWorkerIpc::Recv() {
     return mStatus;
 }
 
-}
+}	// namespace hnet

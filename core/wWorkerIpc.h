@@ -27,6 +27,7 @@ const int kChannelNumShardBits = 4;
 const int kChannelNumShard = 1 << kChannelNumShardBits;
 
 class wWorker;
+class wTask;
 
 class wWorkerIpc : public wThread {
 public:
@@ -46,10 +47,15 @@ public:
     }
 
 protected:
+    friend class wWorker;
+
     static uint32_t Shard(wSocket* sock) {
         uint32_t hash = misc::Hash(sock->Host().c_str(), sock->Host().size(), 0);
         return hash >> (32 - kChannelNumShard);
     }
+
+    // 事件读写主调函数
+    const wStatus& Recv();
 
     const wStatus& InitEpoll();
 
@@ -79,6 +85,5 @@ protected:
 };
 
 }	// namespace hnet
-
 
 #endif

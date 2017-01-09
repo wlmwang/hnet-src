@@ -13,6 +13,7 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
+#include "wWorker.h"
 #include "wServer.h"
 
 namespace hnet {
@@ -58,7 +59,7 @@ public:
 
     inline uint32_t& WorkerNum() { return mWorkerNum;}
 
-    // 广播消息至worker进程   black slot为黑名单
+    // 广播消息至worker进程   black slot为黑名单（一般不同步自身进程）
     const wStatus& NotifyWorker(char *cmd, int len, uint32_t slot = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
     const wStatus& NotifyWorker(const google::protobuf::Message* msg, uint32_t slot = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
 
@@ -66,7 +67,14 @@ public:
     inline T& Server() { return reinterpret_cast<T&>(mServer);}
 
     template<typename T = wWorker*>
-    inline T& Worker(uint32_t slot) { return reinterpret_cast<T&>(mWorkerPool[slot]);}
+    inline T& Worker(uint32_t slot = kMaxProcess) {
+    	if (slot == kMaxProcess && mWorker != NULL) {
+    		return reinterpret_cast<T&>(mWorkerPool[mWorker->Slot()]);
+    	} else if (slot < 0 || slot >= kMaxProcess) {
+    		slot = mSlot;
+    	}
+    	return reinterpret_cast<T&>(mWorkerPool[slot]);
+    }
 
 protected:
     friend class wWorker;
@@ -94,14 +102,14 @@ protected:
     // 回收退出进程状态（waitpid以防僵尸进程）
     void WorkerExitStat();
 
-    wServer* mServer;	// 当前server对象
-    wWorker* mWorker;	// 当前worker对象
-
     // master进程id
     pid_t mPid;
     uint8_t mNcpu;
     std::string mTitle;
     std::string mPidPath;
+
+    wServer* mServer;	// 当前server对象
+    wWorker* mWorker;	// 当前worker对象
 
     // 进程表
     uint32_t mSlot;	//	子进程中该值等于wWorker::mSlot

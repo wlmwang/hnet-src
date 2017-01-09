@@ -12,8 +12,10 @@
 #include "wStatus.h"
 #include "wNoncopyable.h"
 #include "wEvent.h"
+#include "wMaster.h"
 #include "wServer.h"
 #include "wMultiClient.h"
+#include "wConfig.h"
 
 namespace hnet {
 
@@ -96,6 +98,12 @@ public:
         mHeartbeat = 0;
     }
 
+    inline void SetMaster(wMaster* master) {
+    	mMaster = master;
+    }
+    template<typename T = wMaster*>
+    inline T& Master() { return reinterpret_cast<T&>(mMaster);}
+
     // 设置服务端对象（方便异步发送）
     inline void SetServer(wServer* server) {
     	mSCType = 0;
@@ -111,6 +119,16 @@ public:
     }
     template<typename T = wMultiClient*>
     inline T& Client() { return reinterpret_cast<T&>(mClient);}
+
+    template<typename T = wConfig*>
+    inline T Config() {
+    	if (mSCType == 0 && mServer) {
+    		return mServer->Config<T>();
+    	} else if (mSCType == 1 && mClient) {
+    		return mClient->Config<T>();
+    	}
+    	return NULL;
+    }
 
     inline wSocket *Socket() { return mSocket;}
     
@@ -149,11 +167,12 @@ protected:
     char *mSendWrite;
     size_t mSendLen;  // 可发送数据长度
 
-    wServer* mServer;
-    wMultiClient* mClient;
-
     // 主要用于进程间同步
     wMaster* mMaster;
+
+    // 主要用于发送数据
+    wServer* mServer;
+    wMultiClient* mClient;
 
     // 0为服务器，1为客户端
     uint8_t mSCType;

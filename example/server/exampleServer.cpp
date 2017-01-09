@@ -81,6 +81,11 @@ public:
 	    }
 	    return mStatus;
 	}
+};
+
+class ExampleWorker : public wWorker {
+public:
+	ExampleWorker(const std::string& title, uint32_t slot, wMaster* master) : wWorker(title, slot, master) { }
 
 	virtual const wStatus& NewChannelTask(wSocket* sock, wTask** ptr) {
 		SAFE_NEW(ExampleChannelTask(sock, mMaster, Shard(sock)), *ptr);
@@ -88,6 +93,19 @@ public:
 			return mStatus = wStatus::IOError("ExampleServer::NewChannelTask", "new failed");
 	    }
 	    return mStatus;
+	}
+};
+
+class ExampleMaster : public wMaster {
+public:
+	ExampleMaster(const std::string& title, wServer* server) : wMaster(title, server) { }
+
+	const wStatus& NewWorker(uint32_t slot, wWorker** ptr) {
+	    SAFE_NEW(ExampleWorker(mTitle, slot, this), *ptr);
+	    if (*ptr == NULL) {
+			return mStatus = wStatus::IOError("ExampleMaster::NewWorker", "new failed");
+	    }
+	    return mStatus.Clear();
 	}
 };
 
@@ -130,8 +148,8 @@ int main(int argc, const char *argv[]) {
 	}
 
 	// 创建master对象
-	wMaster* master;
-	SAFE_NEW(wMaster("EXAMPLE", server), master);
+	ExampleMaster* master;
+	SAFE_NEW(ExampleMaster("EXAMPLE", server), master);
 	if (master != NULL) {
 		// 接受命令信号
 	    std::string signal;
