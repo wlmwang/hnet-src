@@ -149,11 +149,10 @@ const wStatus& wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
 const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {
 		// 争抢锁
-		if (!(mStatus = mAcceptSem->TryWait()).Ok()) {
-			return mStatus;
+		if ((mStatus = mAcceptSem->TryWait()).Ok()) {
+			Listener2Epoll(false);
+			mAcceptHeld = true;
 		}
-		Listener2Epoll(false);
-		mAcceptHeld = true;
 	}
 
 	// 事件循环
