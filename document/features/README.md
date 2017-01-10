@@ -26,7 +26,6 @@
     " NGINX是一个完整的产品，旨在能够提供较为完整的Web Server的服务。而HNET作为框架，主要侧重点则是提供较为规范化的继承体系、一致的编程模式和极简的接口方法。 "
 ```
 
-
-[安装](../install/README.md)
-
 [目录](../SUMMARY.md)
+
+[第二章：安装](../install/README.md)

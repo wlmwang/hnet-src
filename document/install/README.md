@@ -29,7 +29,6 @@
         * make -f MakefileDaemon
 
 
-
-[示例](../example/README.md)
-
 [目录](../SUMMARY.md)
+
+[第三章：示例](../example/README.md)
