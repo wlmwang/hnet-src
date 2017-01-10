@@ -1,28 +1,42 @@
 # 示例
 
 * 安装
-    * 请参考 [安装](install/README.md) 一节。
+    * 安装examplesvrd
+        * cd /usr/local/hnet/example/server
+        * make
+
+    * 安装exampleclient
+        * cd /usr/local/hnet/example/client
+        * make
+
+    * 安装exampleclientd
+        * cd /usr/local/hnet/example/clientd
+        * make
 
 * 运行
     * 服务器
+        * cd /usr/local/hnet/example/server
         * ./examplesvrd -h127.0.0.1 -p10025 -d
 
     * 客户端（单次）
+        * cd /usr/local/hnet/example/client
         * ./exampleclient -h 127.0.0.7 -p 10025
 
     * 客户端（守护）
-        * ./exampledaemon -h127.0.0.7 -p 10025
+        * cd /usr/local/hnet/example/clientd
+        * ./exampleclientd -h127.0.0.7 -p 10025
 
 * 命令
     * 重启
         * ./examplesvrd -s restart
+
     * 停止
         * ./examplesvrd -s stop
 
-# 详解
+# 代码详解
 
 ```
-注意： 三个示例从不同方向分别展示了HNET框架的大部分一般用法。请逐行仔细阅读！
+注意： 三个示例从不同方向分别展示了HNET框架一般用法。请逐行仔细阅读！
 ```
 
 * message/example.proto
@@ -30,7 +44,7 @@
         * 请求：example.ExampleEchoReq
         * 响应：example.ExampleEchoRes
 
-* example/exampleServer.cpp
+* example/server/exampleServer.cpp
     * Task客户端
         * ExampleChannelTask继承之wChannelTask，为Worker进程间同步类。构造函数中的On("example.ExampleEchoReq", &ExampleChannelTask::ExampleEchoReq, this);为事件注册。意为：当Worker进程接受到example.ExampleEchoReq（protobuf）消息的回调函数为ExampleChannelTask::ExampleEchoReq方法。
 
@@ -44,11 +58,11 @@
     * main
         * 写法较为有代表性。值得注意的时，wConfig、wMaster用户均可再继承来实现更为定制化配置命令以及启动方式。
 
-* example/exampleClient.cpp
+* example/client/exampleClient.cpp
     * 单次客户端
         * 请看注释
 
-* example/exampleClientDaemon.cpp
+* example/clientd/exampleClientD.cpp
     * 守护客户端
         * ExampleTask方法说明如上。
 

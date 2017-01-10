@@ -1,9 +1,7 @@
 # 安装
 
-
 ```
-安装examplesvrd、exampleclient、exampledaemon
-目标：查看Makefile，熟悉HNET框架编译依赖文件。
+编译libhnet.so libhnet.a
 ```
 
 * 环境最低要求
@@ -12,21 +10,14 @@
 
     * g++ (GCC) 4.8.x
 
-* make
+* 编译
 
-    * 解压hnet.tar.gz到系统目录中，以 /usr/local/hnet 为例。
+    * 解压hnet.tar.gz到任一目录中，以 /usr/local/hnet 为例。
         * cd /usr/local
         * tar -zxvf hnet.tar.gz
-        * cd hnet/example
-
-    * 安装examplesvrd
+        * cd hnet/core
         * make
-
-    * 安装exampleclient
-        * make -f MakefileClient
-
-    * 安装exampledaemon
-        * make -f MakefileDaemon
+        * make install
 
 
 [目录](../SUMMARY.md)
