@@ -74,10 +74,10 @@ public:
     virtual void CheckHeartBeat();
 
     template<typename T = wConfig*>
-    inline T& Config() { return reinterpret_cast<T&>(mConfig);}
+    inline T Config() { return reinterpret_cast<T>(mConfig);}
 
     template<typename T = wServer*>
-    inline T& Server() { return reinterpret_cast<T&>(mServer);}
+    inline T Server() { return reinterpret_cast<T>(mServer);}
 
 protected:
     const wStatus& Recv();
@@ -112,6 +112,7 @@ protected:
     wTask *mTask;
     std::vector<wTask*> mTaskPool[kClientNumShard];
     wMutex mTaskPoolMutex[kClientNumShard];
+
     wConfig* mConfig;
     wServer* mServer;
 

@@ -12,12 +12,12 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
-#include "wServer.h"
 
 namespace hnet {
 
 const char  kMasterTitle[] = " - master process";
 
+class wServer;
 class wWorker;
 
 class wMaster : private wNoncopyable {
@@ -57,10 +57,16 @@ public:
     inline uint32_t& WorkerNum() { return mWorkerNum;}
 
     template<typename T = wServer*>
-    inline T& Server() { return reinterpret_cast<T&>(mServer);}
+    inline T Server() { return reinterpret_cast<T>(mServer);}
 
     template<typename T = wWorker*>
-    inline T& Worker(uint32_t slot) { return reinterpret_cast<T&>(mWorkerPool[slot]);}
+    inline T Worker(uint32_t slot = kMaxProcess) {
+    	if (slot >= 0 && slot < kMaxProcess && mWorkerPool[slot]) {
+    		return reinterpret_cast<T>(mWorkerPool[slot]);
+    	} else {
+    		return reinterpret_cast<T>(mWorker);
+    	}
+    }
 
 protected:
     friend class wWorker;
@@ -88,8 +94,6 @@ protected:
     // 回收退出进程状态（waitpid以防僵尸进程）
     void WorkerExitStat();
 
-    wServer* mServer;
-
     // master进程id
     pid_t mPid;
     uint8_t mNcpu;
@@ -97,13 +101,16 @@ protected:
     std::string mPidPath;
 
     // 进程表
-    uint32_t mSlot;	//	子进程中该值等于wWorker::mSlot
+    uint32_t mSlot;
     uint32_t mWorkerNum;
     wWorker *mWorkerPool[kMaxProcess];
 
     int32_t mDelay;
     int32_t mSigio;
     int32_t mLive;
+
+    wServer* mServer;
+    wWorker* mWorker;	// 当前worker进程
 
     wStatus mStatus;
 };

@@ -24,8 +24,9 @@
 
 namespace hnet {
 
-wServer::wServer(wConfig* config) : mMaster(NULL), mWorker(NULL), mConfig(config), mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleOk(true),
-mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), mAcceptHeld(false), mAcceptDisabled(0) {
+wServer::wServer(wConfig* config) : mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleOk(true), mEpollFD(kFDUnknown), mTimeout(10),
+mTask(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config) {
+	assert(mConfig != NULL);
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
@@ -36,6 +37,7 @@ wServer::~wServer() {
 }
 
 const wStatus& wServer::PrepareStart(const std::string& ipaddr, uint16_t port, std::string protocol) {
+	// 创建非阻塞listen socket
     if (!AddListener(ipaddr, port, protocol).Ok()) {
 		return mStatus;
     }
@@ -68,6 +70,7 @@ const wStatus& wServer::SingleStart(bool daemon) {
 }
 
 const wStatus& wServer::WorkerStart(bool daemon) {
+	// 初始化epoll，并监听listen socket、channel socket事件
     if (!InitEpoll().Ok()) {
 		return mStatus;
     } else if (!Listener2Epoll(true).Ok()) {
@@ -81,6 +84,7 @@ const wStatus& wServer::WorkerStart(bool daemon) {
     	if (!(mStatus = wEnv::Default()->NewSem(NULL, &mAcceptSem)).Ok()) {
     		return mStatus;
     	}
+    	// 清除epoll中listen socket监听事件，由各worker争抢惊群锁
     	if (!RemoveListener(false).Ok()) {
     		return mStatus;
     	}
@@ -144,6 +148,7 @@ const wStatus& wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
 
 const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {
+		// 争抢锁
 		if (!(mStatus = mAcceptSem->TryWait()).Ok()) {
 			return mStatus;
 		}
@@ -287,7 +292,7 @@ const wStatus& wServer::Broadcast(const google::protobuf::Message* msg) {
     return mStatus;
 }
 
-const wStatus& wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const std::vector<uint32_t>* blacksolt) {
+const wStatus& wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const std::vector<uint32_t>* blackslot) {
 	ssize_t ret;
 	char buf[kPackageSize];
 	if (solt == kMaxProcess) {
@@ -295,7 +300,7 @@ const wStatus& wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const st
 		for (uint32_t i = 0; i < kMaxProcess; i++) {
 			if (mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
 				continue;
-			} else if (blacksolt != NULL && std::find(blacksolt->begin(), blacksolt->end(), i) != blacksolt->end()) {
+			} else if (blackslot != NULL && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
 				continue;
 			}
 
@@ -317,7 +322,7 @@ const wStatus& wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const st
     return mStatus;
 }
 
-const wStatus& wServer::NotifyWorker(const google::protobuf::Message* msg, uint32_t solt, const std::vector<uint32_t>* blacksolt) {
+const wStatus& wServer::NotifyWorker(const google::protobuf::Message* msg, uint32_t solt, const std::vector<uint32_t>* blackslot) {
 	ssize_t ret;
 	char buf[kPackageSize];
 	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
@@ -325,7 +330,7 @@ const wStatus& wServer::NotifyWorker(const google::protobuf::Message* msg, uint3
 		for (uint32_t i = 0; i < kMaxProcess; i++) {
 			if (mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
 				continue;
-			} else if (blacksolt != NULL && std::find(blacksolt->begin(), blacksolt->end(), i) != blacksolt->end()) {
+			} else if (blackslot != NULL && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
 				continue;
 			}
 

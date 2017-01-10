@@ -21,6 +21,7 @@ const char     	kWorkerTitle[] = " - worker process";
 
 class wMaster;
 class wServer;
+class wChannelSocket;
 
 class wWorker : public wNoncopyable {
 public:
@@ -35,14 +36,15 @@ public:
 		return mStatus;
 	}
 
-	const wStatus& Prepare();
+	const wStatus& PrepareStart();
 	const wStatus& Start();
 
 	inline pid_t& Pid() { return mPid;}
-	inline wMaster* Master() { return mMaster;}
+	inline uint32_t& Slot() { return mSlot;}
+
+	inline int& ChannelFD(uint8_t i) { return (*mChannel)[i];}
     inline wChannelSocket* Channel() { return mChannel;}
-    inline int& ChannelFD(uint8_t i) { return (*mChannel)[i];}
-    inline uint32_t& Slot() { return mSlot;}
+    inline wMaster* Master() { return mMaster;}
 
 protected:
 	friend class wMaster;
@@ -63,6 +65,7 @@ protected:
 
 	uint32_t mSlot;	// 进程表中索引
 	wChannelSocket* mChannel;	// worker进程channel
+
 	wStatus mStatus;
 };
 

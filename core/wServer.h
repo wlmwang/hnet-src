@@ -19,6 +19,7 @@
 #include "wSocket.h"
 #include "wTimer.h"
 #include "wConfig.h"
+#include "wMaster.h"
 
 namespace hnet {
 
@@ -52,8 +53,8 @@ public:
     const wStatus& Broadcast(const google::protobuf::Message* msg);
 
     // 广播消息至worker进程   blacksolt为黑名单
-    const wStatus& NotifyWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blacksolt = NULL);
-    const wStatus& NotifyWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blacksolt = NULL);
+    const wStatus& NotifyWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
+    const wStatus& NotifyWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
 
     // 异步发送消息
     const wStatus& Send(wTask *task, char *cmd, size_t len);
@@ -84,13 +85,15 @@ public:
     virtual void ProcessExit() { }
 
     template<typename T = wConfig*>
-    inline T& Config() { return reinterpret_cast<T&>(mConfig);}
+    inline T Config() { return reinterpret_cast<T>(mConfig);}
 
+    // master
     template<typename T = wMaster*>
-    inline T& Master() { return reinterpret_cast<T&>(mMaster);}
+    inline T Master() { return reinterpret_cast<T>(mMaster);}
 
+    // 当前worker进程
     template<typename T = wWorker*>
-    inline T& Worker() { return reinterpret_cast<T&>(mWorker);}
+    inline T Worker() { return mMaster->Worker<T>();}
 
 protected:
     friend class wMaster;
@@ -127,10 +130,6 @@ protected:
 
     static void ScheduleRun(void* argv);
 
-    wStatus mStatus;
-    wMaster* mMaster;	// 引用进程表
-    wWorker* mWorker;	// 当前worker进程
-    wConfig* mConfig;
     bool mExiting;
 
     // 服务器当前时间 微妙
@@ -161,6 +160,11 @@ protected:
     bool mUseAcceptTurn;
     bool mAcceptHeld;
     int64_t mAcceptDisabled;
+
+    wMaster* mMaster;	// 引用进程表
+    wConfig* mConfig;
+
+    wStatus mStatus;
 };
 
 }	// namespace hnet

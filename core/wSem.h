@@ -80,7 +80,8 @@ public:
 
 	virtual const wStatus& TryWait() {
         if (sem_trywait(&mSemId) == -1) {
-            return mStatus = wStatus::IOError("wPosixSem::TryWait, sem_trywait() failed", error::Strerror(errno));	// EAGAIN
+        	// 未能获取锁
+            return mStatus = wStatus::IOError("wPosixSem::TryWait, sem_trywait() failed", error::Strerror(errno), false);
         }
         return mStatus.Clear();
     }

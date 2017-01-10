@@ -15,6 +15,7 @@ namespace hnet {
 
 wMultiClient::wMultiClient(wConfig* config, wServer* server) : mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleOk(true),
 mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mConfig(config), mServer(server) {
+	assert(mConfig != NULL);
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
@@ -45,6 +46,7 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
         return mStatus;
     }
 
+    // 连接server
     int64_t ret;
     if (!(mStatus = socket->Connect(&ret, ipaddr, port)).Ok()) {
         SAFE_DELETE(socket);
@@ -81,11 +83,14 @@ const wStatus& wMultiClient::ReConnect(wTask* task) {
         return mStatus;
     }
 
+    // 连接server
     int64_t ret;
     if (!(mStatus = socket->Connect(&ret, socket->Host(), socket->Port())).Ok()) {
         return mStatus;
     }
     socket->SS() = kSsConnected;
+
+    // 重置task缓冲
     task->ResetBuffer();
     return AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, false);
 }
@@ -274,10 +279,10 @@ const wStatus& wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) 
     if (epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt) == -1) {
         return mStatus = wStatus::IOError("wMultiClient::AddTask, epoll_ctl() failed", error::Strerror(errno));
     }
-    // 方便进程通信
-    mTask->Server() = mServer;
     // 方便异步发送
     mTask->SetClient(this);
+    // 方便worker进程间通信
+    mTask->Server() = mServer;
     if (addpool) {
         AddToTaskPool(task);
     }

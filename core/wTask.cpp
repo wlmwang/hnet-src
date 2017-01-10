@@ -404,8 +404,8 @@ const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, ui
 
 const wStatus& wTask::SyncWorker(char cmd[], size_t len) {
 	if (mServer && mServer->Worker()) {
-		std::vector<uint32_t> blacksolt(1, mServer->Worker()->Slot());
-		mStatus = mServer->NotifyWorker(cmd, len, kMaxProcess, &blacksolt);
+		std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
+		mStatus = mServer->NotifyWorker(cmd, len, kMaxProcess, &blackslot);
 	} else {
 		mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
 	}
@@ -414,8 +414,8 @@ const wStatus& wTask::SyncWorker(char cmd[], size_t len) {
 
 const wStatus& wTask::SyncWorker(const google::protobuf::Message* msg) {
 	if (mServer && mServer->Worker()) {
-		std::vector<uint32_t> blacksolt(1, mServer->Worker()->Slot());
-		mStatus = mServer->NotifyWorker(msg, kMaxProcess, &blacksolt);
+		std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
+		mStatus = mServer->NotifyWorker(msg, kMaxProcess, &blackslot);
 	} else {
 		mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
 	}
@@ -436,7 +436,13 @@ const wStatus& wTask::Handlemsg(char cmd[], uint32_t len) {
 		} else {
 			struct Request_t request(cmd, len);
 			if (mEventCmd(basecmd->GetId(), &request) == false) {
-				mStatus = wStatus::Corruption("wTask::Handlemsg, command invalid request", "no method find");
+				std::string id = "id:";
+				logging::AppendNumberTo(&id, static_cast<uint64_t>(basecmd->GetId()));
+				id += ", cmd:";
+				logging::AppendNumberTo(&id, static_cast<uint64_t>(basecmd->GetCmd()));
+				id += ", para:";
+				logging::AppendNumberTo(&id, static_cast<uint64_t>(basecmd->GetPara()));
+				mStatus = wStatus::Corruption("wTask::Handlemsg, command invalid request, no method find", id);
 			}
 		}
 	} else if (sp == kMpProtobuf) {
@@ -444,7 +450,7 @@ const wStatus& wTask::Handlemsg(char cmd[], uint32_t len) {
 		std::string name(cmd + sizeof(uint16_t), l);
 		struct Request_t request(cmd + sizeof(uint16_t) + l, len - sizeof(uint16_t) - l);
 		if (mEventPb(name, &request) == false) {
-			mStatus = wStatus::Corruption("wTask::Handlemsg, protobuf invalid request", "no method find");
+			mStatus = wStatus::Corruption("wTask::Handlemsg, protobuf invalid request, no method find", name);
 		}
 	} else {
 		mStatus = wStatus::Corruption("wTask::Handlemsg, invalid message protocol", logging::NumberToString(sp));

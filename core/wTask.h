@@ -112,6 +112,17 @@ public:
     template<typename T = wMultiClient*>
     inline T& Client() { return reinterpret_cast<T&>(mClient);}
 
+    template<typename T = wConfig*>
+    inline T Config() {
+    	T config = NULL;
+    	if (mSCType == 0 && mServer != NULL) {
+    		config = mServer->Config<T>();
+    	} else if (mSCType == 1 && mClient != NULL) {
+    		config = mClient->Config<T>();
+    	}
+    	return config;
+    }
+
     inline wSocket *Socket() { return mSocket;}
     
     inline size_t SendLen() { return mSendLen;}
@@ -135,6 +146,7 @@ protected:
 
     int32_t mType;
     wSocket *mSocket;
+
     uint8_t mHeartbeat;
 
     char mTempBuff[kPackageSize];    // 同步发送、接受消息缓冲
@@ -152,7 +164,7 @@ protected:
     wServer* mServer;
     wMultiClient* mClient;
 
-    // 0为服务器，1为客户端
+    // 0为server，1为client
     uint8_t mSCType;
 
     wStatus mStatus;
