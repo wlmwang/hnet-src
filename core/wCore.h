@@ -83,9 +83,9 @@ const uint32_t  kMsgQueueLen = 1048576;
 // 100M单个归档日志大小
 const off_t		kMaxLoggerSize = 104857600;
 
-// 512k客户端task消息缓冲大小
-const uint32_t  kPackageSize = 131072;
-const uint32_t  kMaxPackageSize = 131068;
+// 64k客户端task消息缓冲大小
+const uint32_t  kPackageSize = 65536;
+const uint32_t  kMaxPackageSize = 65532;
 const uint32_t  kMinPackageSize = 3;
 
 const uint32_t  kPageSize = 4096;

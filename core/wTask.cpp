@@ -41,20 +41,31 @@ const wStatus& wTask::TaskRecv(ssize_t *size) {
 	} else if (mRecvLen < kPackageSize && mRecvRead != mRecvBuff && mRecvWrite == buffend) {
 		mRecvWrite = mRecvBuff;
 	}
+	*size = 0;
 
     // len >= 0 正向剩余
     // len < 0 分段，中间剩余
     ssize_t len =  static_cast<ssize_t>(mRecvWrite - mRecvRead);
-    size_t leftlen = len>=0? static_cast<size_t>(buffend - mRecvWrite): static_cast<size_t>(abs(len));
+    size_t leftlen = len >= 0? static_cast<size_t>(buffend - mRecvWrite): static_cast<size_t>(abs(len));
 
-    // socket接受数据
-    *size = 0;
-    if (leftlen != 0 && mRecvLen < kPackageSize) {
-        if (!(mStatus = mSocket->RecvBytes(mRecvWrite, leftlen, size)).Ok() || *size < 0) {
-            return mStatus;
-        }
-        mRecvLen += *size;
-        mRecvWrite += *size;
+    if (mRecvLen < kPackageSize) {
+    	if (len >= 0 && leftlen <= 4*sizeof(uint32_t)) {
+    		// 队列太过靠后，重新调整
+    		memmove(mRecvBuff, mRecvRead, len);
+    		mRecvRead = mRecvBuff;
+    		mRecvWrite= mRecvBuff + len;
+    		len =  static_cast<ssize_t>(mRecvWrite - mRecvRead);
+    		leftlen = len>=0? static_cast<size_t>(buffend - mRecvWrite): static_cast<size_t>(abs(len));
+    	}
+
+    	if (leftlen > 0) {
+        	// socket接受数据
+        	if (!(mStatus = mSocket->RecvBytes(mRecvWrite, leftlen, size)).Ok() || *size < 0) {
+                return mStatus;
+            }
+            mRecvLen += *size;
+            mRecvWrite += *size;
+    	}
     }
 
     // 消息解析
@@ -130,7 +141,6 @@ const wStatus& wTask::TaskRecv(ssize_t *size) {
             }
         }
     }
-    
     return mStatus;
 }
 
