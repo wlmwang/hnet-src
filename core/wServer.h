@@ -65,6 +65,7 @@ public:
 
     // 新建客户端
     virtual const wStatus& NewTcpTask(wSocket* sock, wTask** ptr);
+    virtual const wStatus& NewUdpTask(wSocket* sock, wTask** ptr);
     virtual const wStatus& NewUnixTask(wSocket* sock, wTask** ptr);
     virtual const wStatus& NewChannelTask(wSocket* sock, wTask** ptr);
     

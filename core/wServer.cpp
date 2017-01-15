@@ -16,9 +16,11 @@
 #include "wMaster.h"
 #include "wWorker.h"
 #include "wTcpSocket.h"
+#include "wUdpSocket.h"
 #include "wUnixSocket.h"
 #include "wChannelSocket.h"
 #include "wTcpTask.h"
+#include "wUdpTask.h"
 #include "wUnixTask.h"
 #include "wChannelTask.h"
 
@@ -130,6 +132,14 @@ const wStatus& wServer::NewTcpTask(wSocket* sock, wTask** ptr) {
     return mStatus.Clear();
 }
 
+const wStatus& wServer::NewUdpTask(wSocket* sock, wTask** ptr) {
+    SAFE_NEW(wUdpTask(sock, Shard(sock)), *ptr);
+    if (*ptr == NULL) {
+		return mStatus = wStatus::IOError("wServer::NewUdpTask", "new failed");
+    }
+    return mStatus.Clear();
+}
+
 const wStatus& wServer::NewUnixTask(wSocket* sock, wTask** ptr) {
     SAFE_NEW(wUnixTask(sock, Shard(sock)), *ptr);
     if (*ptr == NULL) {
@@ -173,6 +183,7 @@ const wStatus& wServer::Recv() {
 		} else if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
 			RemoveTask(task);
 		} else if (task->Socket()->ST() == kStListen && task->Socket()->SS() == kSsListened) {
+			// 套接口准备好了接受新连接
 			if (evt[i].events & EPOLLIN) {
 				AcceptConn(task);
 			} else {
@@ -180,9 +191,12 @@ const wStatus& wServer::Recv() {
 			}
 		} else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
 			if (evt[i].events & EPOLLIN) {
-				// 套接口准备好了读取操作
-				if (!(mStatus = task->TaskRecv(&size)).Ok()) {
+				// 套接口准备好了读取操作（udp无需删除task）
+				if (!(mStatus = task->TaskRecv(&size)).Ok() && task->Socket()->SP() != kSpUdp) {
 					RemoveTask(task);
+				}
+				if (task->Socket()->SP() == kSpUdp) {
+					ResetBuffer();
 				}
 			} else if (evt[i].events & EPOLLOUT) {
 				// 清除写事件
@@ -190,10 +204,13 @@ const wStatus& wServer::Recv() {
 					AddTask(task, EPOLLIN, EPOLL_CTL_MOD, false);
 				} else {
 					// 套接口准备好了写入操作
-					// 写入失败，半连接，对端读关闭
-					if (!(mStatus = task->TaskSend(&size)).Ok()) {
+					// 写入失败，半连接，对端读关闭（udp无需删除task）
+					if (!(mStatus = task->TaskSend(&size)).Ok() && task->Socket()->SP() != kSpUdp) {
 						RemoveTask(task);
 					}
+				}
+				if (task->Socket()->SP() == kSpUdp) {
+					ResetBuffer();
 				}
 			}
 		}
@@ -366,10 +383,13 @@ const wStatus& wServer::Send(wTask *task, const google::protobuf::Message* msg) 
 
 const wStatus& wServer::AddListener(const std::string& ipaddr, uint16_t port, std::string protocol) {
     wSocket *socket;
-    if (protocol == "TCP") {
-		SAFE_NEW(wTcpSocket(kStListen), socket);
-    } else if(protocol == "UNIX") {
-		SAFE_NEW(wUnixSocket(kStListen), socket);
+    if (protocol == "UDP") {
+    	// udp无 listen socket
+		SAFE_NEW(wUdpSocket(kStConnect), socket);
+    } else if(protocol == "TCP") {
+    	SAFE_NEW(wTcpSocket(kStListen), socket);
+    } else if (protocol == "UNIX") {
+    	SAFE_NEW(wUnixSocket(kStListen), socket);
     } else {
     	socket = NULL;
     }
@@ -383,7 +403,12 @@ const wStatus& wServer::AddListener(const std::string& ipaddr, uint16_t port, st
 		    SAFE_DELETE(socket);
 		    return mStatus;
 		}
-		socket->SS() = kSsListened;
+		if (socket->SP() == kSpUdp) {
+			// udp无listen socket
+			socket->SS() = kSsConnected;
+		} else {
+			socket->SS() = kSsListened;
+		}
 		mListenSock.push_back(socket);
     } else {
 		return mStatus = wStatus::IOError("wServer::AddListener", "new failed");
@@ -420,6 +445,9 @@ const wStatus& wServer::Listener2Epoll(bool addpool) {
     	switch ((*it)->SP()) {
 		case kSpTcp:
 		    NewTcpTask(*it, &task);
+		    break;
+		case kSpUdp:
+		    NewUdpTask(*it, &task);
 		    break;
 		case kSpUnix:
 		    NewUnixTask(*it, &task);
