@@ -25,13 +25,13 @@ wMaster::wMaster(const std::string& title, wServer* server) : mPid(getpid()), mT
 	} else {
 		mPidPath = soft::GetPidPath();
 	}
-	mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
-	// TODO bug
-	mWorkerNum = 1;//mNcpu;
 	memset(mWorkerPool, 0, sizeof(mWorkerPool));
 
-	// 便于server引用master中进程表
-	mServer->mMaster = this;
+	mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
+	// TODO BUG
+	//mWorkerNum = mNcpu;
+	mWorkerNum = 1;
+	mServer->mMaster = this;	// 便于server引用master中进程表
 }
 
 wMaster::~wMaster() {
