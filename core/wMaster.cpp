@@ -25,7 +25,9 @@ wMaster::wMaster(const std::string& title, wServer* server) : mPid(getpid()), mT
 	} else {
 		mPidPath = soft::GetPidPath();
 	}
-	mWorkerNum = mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
+	mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
+	// TODO bug
+	mWorkerNum = 1;//mNcpu;
 	memset(mWorkerPool, 0, sizeof(mWorkerPool));
 
 	// 便于server引用master中进程表

@@ -92,8 +92,7 @@ const uint32_t  kPageSize = 4096;
 const bool      kLittleEndian = true;
 
 // 惊群锁开关
-// TODO bug
-const bool		kAcceptTurn = false;
+const bool		kAcceptTurn = true;
 
 // 心跳开关
 const bool		kHeartbeatTurn = true;
