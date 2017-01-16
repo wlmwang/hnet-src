@@ -171,10 +171,8 @@ const wStatus& wServer::Recv() {
 	if (ret == -1) {
 		mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", error::Strerror(errno));
 	}
-	wTask* task;
-	ssize_t size;
 	for (int i = 0 ; i < ret ; i++) {
-		task = reinterpret_cast<wTask *>(evt[i].data.ptr);
+		wTask* task = reinterpret_cast<wTask *>(evt[i].data.ptr);
 		// 加锁
 		int type = task->Type();
 		mTaskPoolMutex[type].Lock();
@@ -192,6 +190,7 @@ const wStatus& wServer::Recv() {
 		} else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
 			if (evt[i].events & EPOLLIN) {
 				// 套接口准备好了读取操作（udp无需删除task）
+				ssize_t size;
 				if (!(mStatus = task->TaskRecv(&size)).Ok() && task->Socket()->SP() != kSpUdp) {
 					RemoveTask(task);
 				}
@@ -202,6 +201,7 @@ const wStatus& wServer::Recv() {
 				} else {
 					// 套接口准备好了写入操作
 					// 写入失败，半连接，对端读关闭（udp无需删除task）
+					ssize_t size;
 					if (!(mStatus = task->TaskSend(&size)).Ok() && task->Socket()->SP() != kSpUdp) {
 						RemoveTask(task);
 					}
