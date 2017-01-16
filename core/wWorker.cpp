@@ -38,7 +38,8 @@ const wStatus& wWorker::PrepareStart() {
         rlmt.rlim_cur = static_cast<rlim_t>(mRlimitCore);
         rlmt.rlim_max = static_cast<rlim_t>(mRlimitCore);
         if (setrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
-        	return mStatus = wStatus::IOError("wWorker::PrepareStart, setrlimit(RLIMIT_NOFILE) failed", error::Strerror(errno));
+        	wStatus::IOError("wWorker::PrepareStart, setrlimit(RLIMIT_NOFILE) failed", error::Strerror(errno));
+        	//return mStatus = wStatus::IOError("wWorker::PrepareStart, setrlimit(RLIMIT_NOFILE) failed", error::Strerror(errno));
         }
     }
 	
