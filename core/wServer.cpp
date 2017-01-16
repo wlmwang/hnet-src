@@ -492,7 +492,7 @@ const wStatus& wServer::Channel2Epoll(bool addpool) {
 
 const wStatus& wServer::AddTask(wTask* task, int ev, int op, bool addpool) {
     struct epoll_event evt;
-    evt.events = ev | EPOLLERR | EPOLLHUP | EPOLLET;
+    evt.events = ev | EPOLLERR | EPOLLHUP /*| EPOLLET*/;
     evt.data.fd = task->Socket()->FD();
     evt.data.ptr = task;
     if (epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt) == -1) {
