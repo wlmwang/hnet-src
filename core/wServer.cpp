@@ -195,9 +195,6 @@ const wStatus& wServer::Recv() {
 				if (!(mStatus = task->TaskRecv(&size)).Ok() && task->Socket()->SP() != kSpUdp) {
 					RemoveTask(task);
 				}
-				if (task->Socket()->SP() == kSpUdp) {
-					task->ResetBuffer();
-				}
 			} else if (evt[i].events & EPOLLOUT) {
 				// 清除写事件
 				if (task->SendLen() == 0) {
@@ -208,9 +205,6 @@ const wStatus& wServer::Recv() {
 					if (!(mStatus = task->TaskSend(&size)).Ok() && task->Socket()->SP() != kSpUdp) {
 						RemoveTask(task);
 					}
-				}
-				if (task->Socket()->SP() == kSpUdp) {
-					task->ResetBuffer();
 				}
 			}
 		}

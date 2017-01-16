@@ -246,6 +246,29 @@ const wStatus& wMultiClient::Send(wTask *task, const google::protobuf::Message* 
     return mStatus;
 }
 
+const wStatus& wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) {
+    struct epoll_event evt;
+    evt.events = ev | EPOLLERR | EPOLLHUP | EPOLLET;
+    evt.data.fd = task->Socket()->FD();
+    evt.data.ptr = task;
+    if (epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt) == -1) {
+        return mStatus = wStatus::IOError("wMultiClient::AddTask, epoll_ctl() failed", error::Strerror(errno));
+    }
+    // 方便异步发送
+    mTask->SetClient(this);
+    // 方便worker进程间通信
+    mTask->Server() = mServer;
+    if (addpool) {
+        AddToTaskPool(task);
+    }
+    return mStatus;
+}
+
+const wStatus& wMultiClient::AddToTaskPool(wTask* task) {
+    mTaskPool[task->Type()].push_back(task);
+    return mStatus;
+}
+
 const wStatus& wMultiClient::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter, bool delpool) {
     struct epoll_event evt;
     evt.data.fd = task->Socket()->FD();
@@ -269,29 +292,6 @@ std::vector<wTask*>::iterator wMultiClient::RemoveTaskPool(wTask* task) {
         it = mTaskPool[type].erase(it);
     }
     return it;
-}
-
-const wStatus& wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) {
-    struct epoll_event evt;
-    evt.events = ev | EPOLLERR | EPOLLHUP | EPOLLET;
-    evt.data.fd = task->Socket()->FD();
-    evt.data.ptr = task;
-    if (epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt) == -1) {
-        return mStatus = wStatus::IOError("wMultiClient::AddTask, epoll_ctl() failed", error::Strerror(errno));
-    }
-    // 方便异步发送
-    mTask->SetClient(this);
-    // 方便worker进程间通信
-    mTask->Server() = mServer;
-    if (addpool) {
-        AddToTaskPool(task);
-    }
-    return mStatus;
-}
-
-const wStatus& wMultiClient::AddToTaskPool(wTask* task) {
-    mTaskPool[task->Type()].push_back(task);
-    return mStatus;
 }
 
 const wStatus& wMultiClient::CleanTask() {
