@@ -196,7 +196,7 @@ const wStatus& wServer::Recv() {
 					RemoveTask(task);
 				}
 				if (task->Socket()->SP() == kSpUdp) {
-					ResetBuffer();
+					task->ResetBuffer();
 				}
 			} else if (evt[i].events & EPOLLOUT) {
 				// 清除写事件
@@ -210,7 +210,7 @@ const wStatus& wServer::Recv() {
 					}
 				}
 				if (task->Socket()->SP() == kSpUdp) {
-					ResetBuffer();
+					task->ResetBuffer();
 				}
 			}
 		}

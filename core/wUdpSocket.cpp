@@ -44,9 +44,9 @@ const wStatus& wUdpSocket::Listen(const std::string& host, uint16_t port) {
 const wStatus& wUdpSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     if (mClientHost.size() == 0 || mClientPort == 0) {
     	mRecvTm = misc::GetTimeofday();
-        struct sockaddr *client_addr;
-        struct socklen_t client_len;
-        *size = recvfrom(mFD, reinterpret_cast<void*>(buf), len, 0, client_addr, &client_len);
+        struct sockaddr_in socketAddr;
+        socklen_t addrLen;
+        *size = recvfrom(mFD, reinterpret_cast<void*>(buf), len, 0, reinterpret_cast<struct sockaddr *>(&socketAddr), &addrLen);
         if (*size == 0) {
             mStatus = wStatus::IOError("wUdpSocket::RecvBytes, client was closed", "");
         } else if (*size == -1 && (errno == EINTR || errno == EAGAIN)) {
@@ -54,8 +54,8 @@ const wStatus& wUdpSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
         } else if (*size == -1) {
             mStatus = wStatus::IOError("wUdpSocket::RecvBytes, recvfrom failed", error::Strerror(errno));
         }
-        mClientHost = inet_ntoa(client_addr.sin_addr);
-        mClientPort = client_addr.sin_port;
+        mClientHost = inet_ntoa(socketAddr.sin_addr);
+        mClientPort = socketAddr.sin_port;
     }
     return mStatus;
 }
