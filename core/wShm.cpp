@@ -106,9 +106,9 @@ const wStatus& wPosixShm::AllocShm(char* ptr, size_t size) {
 
 const wStatus& wPosixShm::Destroy() {
 	// 只有最后一个进程 shmctl(IPC_RMID) 有效
-    if (shmdt(mShmhead->mStart) == -1) {
+    if (mShmhead && shmdt(mShmhead->mStart) == -1) {
     	return mStatus = wStatus::IOError("wPosixShm::Destroy, shmdt() failed", error::Strerror(errno));
-    } else if (shmctl(mShmId, IPC_RMID, NULL) == -1) {
+    } else if (mShmId > 0 && shmctl(mShmId, IPC_RMID, NULL) == -1) {
     	return mStatus = wStatus::IOError("wPosixShm::Destroy, shmctl(IPC_RMID) failed", error::Strerror(errno));
     }
     return mStatus.Clear();

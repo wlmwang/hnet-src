@@ -309,13 +309,13 @@ const wStatus& wTask::AsyncSend(const google::protobuf::Message* msg) {
 }
 
 const wStatus& wTask::SyncRecv(char cmd[], ssize_t *size, uint32_t timeout) {
-	// 包长度 + 数据协议 + 消息协议
+	// 包长度 + 数据协议 + 消息协议头
 	size_t headlen = sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t);
 	size_t recvheadlen = 0, recvbodylen = 0;
 	for (uint64_t step = 1, usc = 1, timeline = timeout * 1000000; usc <= timeline; step <<= 1, usc += step) {
 		// 头信息
 		if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen, headlen - recvheadlen, size)).Ok()) {
-        	break;
+			return mStatus;
         } else if (*size > 0) {
         	recvheadlen += *size;
         }
@@ -364,13 +364,15 @@ const wStatus& wTask::SyncRecv(char cmd[], ssize_t *size, uint32_t timeout) {
 }
 
 const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t timeout) {
+	// 包长度 + 数据协议 + 消息协议头
 	size_t headlen = sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t);
 	size_t recvheadlen = 0, recvbodylen = 0;
 	for (uint64_t step = 1, usc = 1, timeline = timeout * 1000000; usc <= timeline; step <<= 1, usc += step) {
 		// 头信息
         if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen, headlen - recvheadlen, size)).Ok()) {
             return mStatus;
-        } else if (*size > 0) {
+        }
+        if (*size > 0) {
         	recvheadlen += *size;
         }
         if (recvheadlen != headlen) {
@@ -391,7 +393,8 @@ const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, ui
         for (step = 1; usc <= timeline; step <<= 1, usc += step) {
             if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen + recvbodylen, reallen - recvbodylen, size)).Ok()) {
                 return mStatus;
-            } else if (*size > 0) {
+            }
+            if (*size > 0) {
             	recvbodylen += *size;
             }
             if (recvbodylen == reallen) {
