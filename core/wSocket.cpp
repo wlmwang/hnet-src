@@ -46,8 +46,7 @@ const wStatus& wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
         } else if (errno == EINTR) {
             // 操作被信号中断，中断后唤醒继续处理
             // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
-            //continue;
-            break;
+            continue;
         } else {
             mStatus = wStatus::IOError("wSocket::RecvBytes, recv failed", error::Strerror(errno));
             break;
@@ -72,8 +71,7 @@ const wStatus& wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
         } else if (errno == EINTR) {
             // 操作被信号中断，中断后唤醒继续处理
             // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
-            // continue;
-            break;
+            continue;
         } else {
             mStatus = wStatus::IOError("wSocket::SendBytes, send failed", error::Strerror(errno));
             break;

@@ -26,7 +26,7 @@
 
 namespace hnet {
 
-wServer::wServer(wConfig* config) : mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleOk(true), mEpollFD(kFDUnknown), mTimeout(10),
+wServer::wServer(wConfig* config) : mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleTurn(true), mScheduleOk(true), mEpollFD(kFDUnknown), mTimeout(10),
 mTask(NULL), mAcceptFL(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config) {
 	assert(mConfig != NULL);
     mLatestTm = misc::GetTimeofday();
@@ -173,9 +173,11 @@ const wStatus& wServer::Recv() {
 	}
 	for (int i = 0 ; i < ret ; i++) {
 		wTask* task = reinterpret_cast<wTask *>(evt[i].data.ptr);
-		// 加锁
 		int type = task->Type();
-		mTaskPoolMutex[type].Lock();
+		if (mScheduleTurn) {
+			// 加锁
+			mTaskPoolMutex[type].Lock();
+		}
 		if (task->Socket()->FD() == kFDUnknown) {
 			RemoveTask(task);
 		} else if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
@@ -208,8 +210,10 @@ const wStatus& wServer::Recv() {
 				}
 			}
 		}
-		// 解锁
-		mTaskPoolMutex[type].Unlock();
+		if (mScheduleTurn) {
+			// 解锁
+			mTaskPoolMutex[type].Unlock();
+		}
 	}
 
 	if (mUseAcceptTurn == true && mAcceptHeld == true) {
@@ -563,18 +567,24 @@ const wStatus& wServer::CleanTaskPool(std::vector<wTask*> pool) {
 }
 
 void wServer::CheckTick() {
-	if (mScheduleMutex.TryLock() == 0) {
-		mTick = misc::GetTimeofday() - mLatestTm;
-		if (mTick >= 10*1000) {
-		    mLatestTm += mTick;
-		    // 添加任务到线程池中
+	mTick = misc::GetTimeofday() - mLatestTm;
+	if (mTick < 10*1000) {
+		return;
+	}
+	mLatestTm += mTick;
+
+	if (mScheduleTurn) {
+		// 任务开关
+		if (mScheduleMutex.TryLock() == 0) {
 		    if (mScheduleOk == true) {
 		    	mScheduleOk = false;
 		    	wEnv::Default()->Schedule(wServer::ScheduleRun, this);
 		    }
+		    mScheduleMutex.Unlock();
 		}
+	} else {
+		CheckHeartBeat();
 	}
-	mScheduleMutex.Unlock();
 }
 
 void wServer::ScheduleRun(void* argv) {

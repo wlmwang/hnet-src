@@ -82,10 +82,10 @@ const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16
 	struct sockaddr_in stSockAddr;
 	memset(&stSockAddr, 0, sizeof(sockaddr_in));
 	stSockAddr.sin_family = AF_INET;
-	stSockAddr.sin_port = htons((unsigned short)port);
+	stSockAddr.sin_port = htons(static_cast<unsigned short>(port));
 	stSockAddr.sin_addr.s_addr = inet_addr(host.c_str());
 
-	*ret = static_cast<int64_t>(::connect(mFD, reinterpret_cast<const struct sockaddr *>(&stSockAddr), sizeof(stSockAddr)));
+	*ret = static_cast<int64_t>(connect(mFD, reinterpret_cast<const struct sockaddr *>(&stSockAddr), sizeof(stSockAddr)));
 	if (*ret == -1 && timeout > 0) {
 		if (errno == EINPROGRESS) {
 			// 建立启动但是尚未完成
@@ -187,8 +187,8 @@ const wStatus& wTcpSocket::SetSendTimeout(float timeout) {
 
 const wStatus& wTcpSocket::SetRecvTimeout(float timeout) {
 	struct timeval tv;
-	tv.tv_sec = (int)timeout>=0 ? (int)timeout : 0;
-	tv.tv_usec = (int)((timeout - (int)timeout) * 1000000);
+	tv.tv_sec = static_cast<int>(timeout) >= 0? static_cast<int>(timeout): 0;
+	tv.tv_usec = static_cast<int>((timeout - static_cast<int>(timeout)) * 1000000);
 	if (tv.tv_usec < 0 || tv.tv_usec >= 1000000 || (tv.tv_sec == 0 && tv.tv_usec == 0)) {
 		tv.tv_sec = 30;
 		tv.tv_usec = 0;

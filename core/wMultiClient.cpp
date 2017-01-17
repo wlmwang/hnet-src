@@ -13,7 +13,7 @@
 
 namespace hnet {
 
-wMultiClient::wMultiClient(wConfig* config, wServer* server) : mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleOk(true),
+wMultiClient::wMultiClient(wConfig* config, wServer* server) : mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleTurn(true), mScheduleOk(true),
 mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mConfig(config), mServer(server) {
 	assert(mConfig != NULL);
     mLatestTm = misc::GetTimeofday();
@@ -152,9 +152,11 @@ const wStatus& wMultiClient::Recv() {
 
     for (int i = 0 ; i < ret ; i++) {
     	wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
-        // 加锁
         int type = task->Type();
-        mTaskPoolMutex[type].Lock();
+        if (mScheduleTurn) {
+        	// 加锁
+        	mTaskPoolMutex[type].Lock();
+        }
         if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
         	task->Socket()->SS() = kSsUnconnect;
         } else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
@@ -178,8 +180,10 @@ const wStatus& wMultiClient::Recv() {
                 }
             }
         }
-		// 解锁
-		mTaskPoolMutex[type].Unlock();
+        if (mScheduleTurn) {
+    		// 解锁
+    		mTaskPoolMutex[type].Unlock();
+        }
     }
     return mStatus;
 }
@@ -316,18 +320,24 @@ const wStatus& wMultiClient::CleanTaskPool(std::vector<wTask*> pool) {
 }
 
 void wMultiClient::CheckTick() {
-	if (mScheduleMutex.TryLock() == 0) {
-		mTick = misc::GetTimeofday() - mLatestTm;
-		if (mTick >= 10*1000) {
-		    mLatestTm += mTick;
-		    // 添加任务到线程池中
+	mTick = misc::GetTimeofday() - mLatestTm;
+	if (mTick < 10*1000) {
+		return;
+	}
+	mLatestTm += mTick;
+
+	if (mScheduleTurn) {
+		// 任务开关
+		if (mScheduleMutex.TryLock() == 0) {
 		    if (mScheduleOk == true) {
 		    	mScheduleOk = false;
-				wEnv::Default()->Schedule(wMultiClient::ScheduleRun, this);
+		    	wEnv::Default()->Schedule(wMultiClient::ScheduleRun, this);
 		    }
+		    mScheduleMutex.Unlock();
 		}
+	} else {
+		CheckHeartBeat();
 	}
-	mScheduleMutex.Unlock();
 }
 
 void wMultiClient::ScheduleRun(void* argv) {
