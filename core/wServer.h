@@ -28,9 +28,10 @@ const int kServerNumShard = 1 << kServerNumShardBits;
 
 class wConfig;
 class wTask;
-class wSem;
 class wMaster;
 class wWorker;
+class wSem;
+class wFileLock;
 
 // 服务基础类
 class wServer : private wNoncopyable {
@@ -157,6 +158,7 @@ protected:
     wMutex mTaskPoolMutex[kServerNumShard];
 
     // 惊群锁
+    wFileLock* mAcceptFL;
     wSem *mAcceptSem;
     bool mUseAcceptTurn;
     bool mAcceptHeld;

@@ -102,7 +102,7 @@ public:
         } else if (LockOrUnlock(fd, true) == -1) {
             close(fd);
             mLocks.Remove(fname);
-            return mStatus = wStatus::IOError("lock " + fname, error::Strerror(errno));
+            return mStatus = wStatus::IOError("lock " + fname, error::Strerror(errno), false);
         } else {
             wPosixFileLock* my_lock;
             SAFE_NEW(wPosixFileLock(), my_lock);

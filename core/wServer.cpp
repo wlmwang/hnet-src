@@ -27,7 +27,7 @@
 namespace hnet {
 
 wServer::wServer(wConfig* config) : mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleOk(true), mEpollFD(kFDUnknown), mTimeout(10),
-mTask(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config) {
+mTask(NULL), mAcceptFL(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config) {
 	assert(mConfig != NULL);
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
@@ -83,7 +83,7 @@ const wStatus& wServer::WorkerStart(bool daemon) {
 
     // 惊群锁
     if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
-    	if (!(mStatus = wEnv::Default()->NewSem(NULL, &mAcceptSem)).Ok()) {
+    	if (kAcceptStuff == 0 && !(mStatus = wEnv::Default()->NewSem(NULL, &mAcceptSem)).Ok()) {
     		return mStatus;
     	}
     	// 清除epoll中listen socket监听事件，由各worker争抢惊群锁
@@ -102,9 +102,9 @@ const wStatus& wServer::WorkerStart(bool daemon) {
 		    exit(0);
     	}
 		Recv();
-		HandleSignal();
 		Run();
 		CheckTick();
+		HandleSignal();
     }
     return mStatus;
 }
@@ -159,7 +159,7 @@ const wStatus& wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
 const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {
 		// 争抢锁
-		if ((mStatus = mAcceptSem->TryWait()).Ok()) {
+		if ((kAcceptStuff == 0 && mAcceptSem->TryWait().Ok()) || (kAcceptStuff == 1 && wEnv::Default()->LockFile(kAcceptMutex, &mAcceptFL).Ok())) {
 			Listener2Epoll(false);
 			mAcceptHeld = true;
 		}
@@ -196,7 +196,7 @@ const wStatus& wServer::Recv() {
 				}
 			} else if (evt[i].events & EPOLLOUT) {
 				// 清除写事件
-				if (task->SendLen() == 0) {
+				if (task->SendLen() <= 0) {
 					AddTask(task, EPOLLIN, EPOLL_CTL_MOD, false);
 				} else {
 					// 套接口准备好了写入操作
@@ -215,7 +215,12 @@ const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == true) {
 		RemoveListener(false);
 		mAcceptHeld = false;
-		mAcceptSem->Post();
+		// 释放锁
+		if (kAcceptStuff == 0) {
+			mAcceptSem->Post();
+		} else if (kAcceptStuff == 1) {
+			wEnv::Default()->UnlockFile(mAcceptFL);
+		}
 	}
     return mStatus;
 }
