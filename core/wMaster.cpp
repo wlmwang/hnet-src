@@ -28,9 +28,7 @@ wMaster::wMaster(const std::string& title, wServer* server) : mPid(getpid()), mT
 	memset(mWorkerPool, 0, sizeof(mWorkerPool));
 
 	mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
-	// TODO 多进程有BUG
-	//mWorkerNum = mNcpu;
-	mWorkerNum = 1;
+	mWorkerNum = mNcpu;
 	mServer->mMaster = this;	// 便于server引用master中进程表
 }
 
