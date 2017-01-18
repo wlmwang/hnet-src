@@ -8,8 +8,13 @@
 #include <poll.h>
 #include "wUnixSocket.h"
 #include "wMisc.h"
+#include "wEnv.h"
 
 namespace hnet {
+
+wUnixSocket::~wUnixSocket() {
+	wEnv::Default()->DeleteFile(mHost);
+}
 
 const wStatus& wUnixSocket::Open() {
 	if ((mFD = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
@@ -23,7 +28,6 @@ const wStatus& wUnixSocket::Bind(const std::string& host, uint16_t port) {
 	memset(&socketAddr, 0, sizeof(socketAddr));
 	socketAddr.sun_family = AF_UNIX;
 	strncpy(socketAddr.sun_path, host.c_str(), sizeof(socketAddr.sun_path) - 1);
-
 	if (bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr)) == -1) {
 		return mStatus = wStatus::IOError("wUnixSocket::Bind bind failed", error::Strerror(errno));
 	}
@@ -32,24 +36,23 @@ const wStatus& wUnixSocket::Bind(const std::string& host, uint16_t port) {
 
 const wStatus& wUnixSocket::Listen(const std::string& host, uint16_t port) {
 	mHost = host;
-	
-	if (!Bind(mHost).Ok()) {
+	mPort = port;
+	if (!Bind(mHost, mPort).Ok()) {
 		return mStatus;
 	}
 
 	if (listen(mFD, kListenBacklog) < 0) {
 		return mStatus = wStatus::IOError("wUnixSocket::Listen listen failed", error::Strerror(errno));
 	}
-	
 	return SetFL();
 }
 
 const wStatus& wUnixSocket::Connect(int64_t *ret, const std::string& host, uint16_t port, float timeout) {
-	mHost = host;
-
-	std::string tmpsock = "unix_";
-	logging::AppendNumberTo(&tmpsock, static_cast<uint64_t>(getpid()));
-	tmpsock += ".sock";
+	// 客户端host、port
+	mPort = 0;
+	mHost = "hnet_unix_";
+	logging::AppendNumberTo(&mHost, static_cast<uint64_t>(getpid()));
+	mHost += ".sock";
 	if (!Bind(mHost).Ok()) {
 		*ret = static_cast<int64_t>(-1);
 		return mStatus;
@@ -66,8 +69,7 @@ const wStatus& wUnixSocket::Connect(int64_t *ret, const std::string& host, uint1
 	struct sockaddr_un socketAddr;
 	memset(&socketAddr, 0, sizeof(socketAddr));
 	socketAddr.sun_family = AF_UNIX;
-	strncpy(socketAddr.sun_path, mHost.c_str(), sizeof(socketAddr.sun_path) - 1);
-
+	strncpy(socketAddr.sun_path, host.c_str(), sizeof(socketAddr.sun_path) - 1);
 	*ret = static_cast<int64_t>(connect(mFD, reinterpret_cast<const struct sockaddr *>(&socketAddr), sizeof(socketAddr)));
 	if (*ret == -1 && timeout > 0) {
 		// 建立启动但是尚未完成
@@ -102,7 +104,6 @@ const wStatus& wUnixSocket::Connect(int64_t *ret, const std::string& host, uint1
 			return mStatus = wStatus::IOError("wUnixSocket::Connect connect directly failed", error::Strerror(errno));
 		}
 	}
-	
 	return mStatus.Clear();
 }
 
@@ -129,7 +130,6 @@ const wStatus& wUnixSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, soc
 			break;
 		}
 	}
-	
 	return mStatus;
 }
 

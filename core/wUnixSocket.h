@@ -18,6 +18,7 @@ namespace hnet {
 class wUnixSocket : public wSocket {
 public:
 	wUnixSocket(SockType type = kStListen, SockProto proto = kSpUnix, SockFlag flag = kSfRvsd) : wSocket(type, proto, flag) { }
+	virtual ~wUnixSocket();
 	
 	virtual const wStatus& Open();
 	virtual const wStatus& Listen(const std::string& host, uint16_t port = 0);	  // host为sock路径

@@ -41,7 +41,7 @@ public:
     virtual const wStatus& NewWritableFile(const std::string& fname, wWritableFile** result) = 0;
 
     // 返回日志对象
-    virtual const wStatus& NewLogger(const std::string& fname, wLogger** result, off_t maxsize = 32*1024*1024) = 0;
+    virtual const wStatus& NewLogger(const std::string& fname, wLogger** result, off_t maxsize = kMaxLoggerSize) = 0;
 
     // 返回信号量对象，进程间同步
     virtual const wStatus& NewSem(const std::string *devshm, wSem** result) = 0;

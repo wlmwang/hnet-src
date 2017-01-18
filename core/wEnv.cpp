@@ -127,7 +127,7 @@ public:
     }
 
     // 日志对象
-    virtual const wStatus& NewLogger(const std::string& fname, wLogger** result, off_t maxsize = 32*1024*1024) {
+    virtual const wStatus& NewLogger(const std::string& fname, wLogger** result, off_t maxsize = kMaxLoggerSize) {
     	SAFE_NEW(wPosixLogger(fname, &wPosixEnv::getpid, maxsize), *result);
 		if (*result == NULL) {
 			return mStatus = wStatus::IOError(fname, error::Strerror(errno));
@@ -156,24 +156,24 @@ public:
     }
 
     virtual const wStatus& GetRealPath(const std::string& fname, std::string* result) {
-    	char dirPath[256];
-        if (realpath(fname.c_str(), dirPath) == NULL) {
+    	char dir_path[256];
+        if (realpath(fname.c_str(), dir_path) == NULL) {
         	return mStatus = wStatus::IOError(fname, error::Strerror(errno));
         }
-        *result = dirPath;
+        *result = dir_path;
         return mStatus.Clear();
     }
 
     virtual const wStatus& DeleteFile(const std::string& fname) {
         if (unlink(fname.c_str()) != 0) {
-            return  mStatus = wStatus::IOError(fname, error::Strerror(errno));
+            return  mStatus = wStatus::IOError(fname, error::Strerror(errno), false);
         }
         return mStatus.Clear();
     }
 
     virtual const wStatus& CreateDir(const std::string& name) {
         if (mkdir(name.c_str(), 0755) != 0) {
-            return mStatus = wStatus::IOError(name, error::Strerror(errno));
+            return mStatus = wStatus::IOError(name, error::Strerror(errno), false);
         }
         return mStatus.Clear();
     }

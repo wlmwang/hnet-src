@@ -36,14 +36,10 @@ const wStatus& wTcpSocket::Open() {
 }
 
 const wStatus& wTcpSocket::Bind(const std::string& host, uint16_t port) {
-	mHost = host;
-	mPort = port;
-
 	struct sockaddr_in socketAddr;
 	socketAddr.sin_family = AF_INET;
-	socketAddr.sin_port = htons((short)mPort);
-	socketAddr.sin_addr.s_addr = inet_addr(mHost.c_str());
-
+	socketAddr.sin_port = htons(static_cast<short int>(port));
+	socketAddr.sin_addr.s_addr = inet_addr(host.c_str());
 	if (bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Bind bind failed", error::Strerror(errno));
 	}
@@ -51,10 +47,11 @@ const wStatus& wTcpSocket::Bind(const std::string& host, uint16_t port) {
 }
 
 const wStatus& wTcpSocket::Listen(const std::string& host, uint16_t port) {
+	mHost = host;
+	mPort = port;
 	if (!Bind(host, port).Ok()) {
 		return mStatus;
 	}
-
 	// 设置发送缓冲大小4M
 	socklen_t optVal = 0x400000;
 	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void *>(&optVal), sizeof(socklen_t)) == -1) {
@@ -70,7 +67,6 @@ const wStatus& wTcpSocket::Listen(const std::string& host, uint16_t port) {
 const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16_t port, float timeout) {
 	mHost = host;
 	mPort = port;
-	
 	// 超时设置
 	if (timeout > 0) {
 		if (!SetFL().Ok()) {
@@ -84,7 +80,6 @@ const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16
 	stSockAddr.sin_family = AF_INET;
 	stSockAddr.sin_port = htons(static_cast<unsigned short>(port));
 	stSockAddr.sin_addr.s_addr = inet_addr(host.c_str());
-
 	*ret = static_cast<int64_t>(connect(mFD, reinterpret_cast<const struct sockaddr *>(&stSockAddr), sizeof(stSockAddr)));
 	if (*ret == -1 && timeout > 0) {
 		if (errno == EINPROGRESS) {
@@ -125,7 +120,6 @@ const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16
 		*ret = -1;
 		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDBUF failed", error::Strerror(errno));
 	}
-	
 	return mStatus.Clear();
 }
 

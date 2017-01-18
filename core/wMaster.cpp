@@ -49,6 +49,12 @@ const wStatus& wMaster::PrepareStart() {
     	return mStatus;
     }
 
+    // worker数量
+    uint32_t worker = 0;
+    if (mServer->Config()->GetConf("worker", &worker) && worker > 0) {
+    	mWorkerNum = worker;
+    }
+
     // 进程标题
     if (!(mStatus = mServer->Config()->Setproctitle(kMasterTitle, mTitle.c_str())).Ok()) {
     	return mStatus;

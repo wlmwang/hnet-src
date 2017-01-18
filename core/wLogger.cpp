@@ -12,12 +12,20 @@
 
 namespace hnet {
 
+wPosixLogger::wPosixLogger(const std::string& fname, uint64_t (*getpid)(), off_t maxsize) : mMaxsize(maxsize), mGetpid(getpid) {
+	char dir_path[256];
+	if (realpath(fname.c_str(), dir_path) == NULL) { }
+	mFname = dir_path;
+	mFile = OpenCreatLog(mFname, "a+");
+}
+
 void wPosixLogger::ArchiveLog() {
 	wEnv* env = wEnv::Default();
 	uint64_t filesize = 0;
 	if (env->GetFileSize(mFname, &filesize).Ok() && filesize >= static_cast<uint64_t>(mMaxsize)) {
 		// 日志大小操作限制
 		CloseLog(mFile);
+
 		std::string realpath, dir;
 		if (env->GetRealPath(mFname, &realpath).Ok()) {
 			// 获取目录名
@@ -27,8 +35,7 @@ void wPosixLogger::ArchiveLog() {
 			} else {
 				dir = realpath;
 			}
-			// 文件列表
-			std::vector<std::string> children;
+			std::vector<std::string> children;	// 文件列表
 			if (env->GetChildren(dir, &children).Ok() && children.size() > 0) {
 				// 获取日志最大id
 				uint64_t maxid = 0;

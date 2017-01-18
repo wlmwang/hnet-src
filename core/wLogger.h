@@ -27,7 +27,7 @@
 
 namespace hnet {
 
-const uint8_t kLoggerNum = 64;
+const uint8_t kLoggerNum = 16;
 
 // 文件名：error.log(\.[0-9]+)?
 
@@ -45,9 +45,7 @@ public:
 // 日志实现类
 class wPosixLogger : public wLogger {
 public:
-	wPosixLogger(const std::string& fname, uint64_t (*getpid)(), off_t maxsize = kMaxLoggerSize) : mFname(fname), mMaxsize(maxsize), mGetpid(getpid) {
-		mFile = OpenCreatLog(mFname, "a+");
-	}
+	wPosixLogger(const std::string& fname, uint64_t (*getpid)(), off_t maxsize = kMaxLoggerSize);
 
 	virtual ~wPosixLogger() {
 		CloseLog(mFile);

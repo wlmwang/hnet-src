@@ -112,6 +112,21 @@ const wStatus& wConfig::GetOption(int argc, const char *argv[]) {
                 }
                 return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-l\" requires log path address");
 
+            case 'n':
+                if (*p) {
+                	int i = atoi(p);
+                	SetIntConf("worker", i);
+                	goto next;
+                }
+
+                p = argv[++i]; // 多一个空格
+                if (*p) {
+                	int i = atoi(p);
+                	SetIntConf("worker", i);
+                	goto next;
+                }
+                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-n\" requires worker number");
+
             default:
                 return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "invalid option");
             }

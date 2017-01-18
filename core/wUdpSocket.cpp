@@ -20,14 +20,10 @@ const wStatus& wUdpSocket::Open() {
 }
 
 const wStatus& wUdpSocket::Bind(const std::string& host, uint16_t port) {
-	mHost = host;
-	mPort = port;
-
 	struct sockaddr_in socketAddr;
 	socketAddr.sin_family = AF_INET;
-	socketAddr.sin_port = htons((short)mPort);
-	socketAddr.sin_addr.s_addr = inet_addr(mHost.c_str());
-
+	socketAddr.sin_port = htons(static_cast<short int>(port));
+	socketAddr.sin_addr.s_addr = inet_addr(host.c_str());
 	if (bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr)) == -1) {
 		return mStatus = wStatus::IOError("wUdpSocket::Bind bind failed", error::Strerror(errno));
 	}
@@ -35,6 +31,8 @@ const wStatus& wUdpSocket::Bind(const std::string& host, uint16_t port) {
 }
 
 const wStatus& wUdpSocket::Listen(const std::string& host, uint16_t port) {
+	mHost = host;
+	mPort = port;
 	if (!Bind(mHost, port).Ok()) {
 		return mStatus;
 	}
