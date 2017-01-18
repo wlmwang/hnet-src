@@ -67,6 +67,8 @@ const wStatus& wMaster::PrepareStart() {
     } else {
     	mStatus = mServer->PrepareStart(host, port, protocol);
     }
+
+    srand(time(0));
     return mStatus;
 }
 

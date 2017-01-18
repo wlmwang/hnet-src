@@ -9,6 +9,7 @@
 
 #include <map>
 #include <vector>
+#include <algorithm>
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
