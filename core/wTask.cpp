@@ -267,26 +267,6 @@ const wStatus& wTask::Send2Buf(const google::protobuf::Message* msg) {
     return mStatus.Clear();
 }
 
-const wStatus& wTask::SyncSend(char cmd[], size_t len, ssize_t *size) {
-	// 消息体总长度
-	len += sizeof(uint8_t);
-    if (len < kMinPackageSize || len > kMaxPackageSize) {
-        return mStatus = wStatus::Corruption("wTask::SyncSend, command message length error", "out range");
-    }
-    Assertbuf(mTempBuff, cmd, len - sizeof(uint8_t));
-    return mStatus = mSocket->SendBytes(mTempBuff, len + sizeof(uint32_t), size);
-}
-
-const wStatus& wTask::SyncSend(const google::protobuf::Message* msg, ssize_t *size) {
-	// 消息体总长度
-	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
-	if (len < kMinPackageSize || len > kMaxPackageSize) {
-        return mStatus = wStatus::Corruption("wTask::SyncSend, google::protobuf::Message length error", "out range");
-    }
-	Assertbuf(mTempBuff, msg);
-    return mStatus = mSocket->SendBytes(mTempBuff, len + sizeof(uint32_t), size);
-}
-
 const wStatus& wTask::AsyncSend(char cmd[], size_t len) {
 	if (mSCType == 0 && mServer != NULL) {
 		mStatus = mServer->Send(this, cmd, len);
@@ -307,6 +287,26 @@ const wStatus& wTask::AsyncSend(const google::protobuf::Message* msg) {
 		mStatus = wStatus::Corruption("wTask::AsyncSend, failed", "mServer or mClient is null");
 	}
 	return mStatus;
+}
+
+const wStatus& wTask::SyncSend(char cmd[], size_t len, ssize_t *size) {
+	// 消息体总长度
+	len += sizeof(uint8_t);
+    if (len < kMinPackageSize || len > kMaxPackageSize) {
+        return mStatus = wStatus::Corruption("wTask::SyncSend, command message length error", "out range");
+    }
+    Assertbuf(mTempBuff, cmd, len - sizeof(uint8_t));
+    return mStatus = mSocket->SendBytes(mTempBuff, len + sizeof(uint32_t), size);
+}
+
+const wStatus& wTask::SyncSend(const google::protobuf::Message* msg, ssize_t *size) {
+	// 消息体总长度
+	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
+	if (len < kMinPackageSize || len > kMaxPackageSize) {
+        return mStatus = wStatus::Corruption("wTask::SyncSend, google::protobuf::Message length error", "out range");
+    }
+	Assertbuf(mTempBuff, msg);
+    return mStatus = mSocket->SendBytes(mTempBuff, len + sizeof(uint32_t), size);
 }
 
 const wStatus& wTask::SyncRecv(char cmd[], ssize_t *size, uint32_t timeout) {
