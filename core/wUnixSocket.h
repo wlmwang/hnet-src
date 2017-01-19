@@ -14,10 +14,13 @@
 
 namespace hnet {
 
+const char kUnixSockPrefix[] = "/tmp/hnet_";
+
 // UNIX Domain Socket基础类
 class wUnixSocket : public wSocket {
 public:
 	wUnixSocket(SockType type = kStListen, SockProto proto = kSpUnix, SockFlag flag = kSfRvsd) : wSocket(type, proto, flag) { }
+
 	virtual ~wUnixSocket();
 	
 	virtual const wStatus& Open();

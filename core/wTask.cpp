@@ -14,6 +14,7 @@
 namespace hnet {
 
 wTask::wTask(wSocket* socket, int32_t type) : mType(type), mSocket(socket), mHeartbeat(0), mServer(NULL), mClient(NULL), mSCType(-1) {
+	srand(misc::GetTimeofday());
 	ResetBuffer();
 }
 

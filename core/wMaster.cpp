@@ -19,6 +19,7 @@ namespace hnet {
 
 wMaster::wMaster(const std::string& title, wServer* server) : mPid(getpid()), mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0), mLive(1), mServer(server), mWorker(NULL) {
 	assert(mServer != NULL);
+	srand(misc::GetTimeofday());
     std::string pid_path;
 	if (mServer->Config()->GetConf("pid_path", &pid_path) && pid_path.size() > 0) {
 		mPidPath = pid_path;
@@ -67,8 +68,6 @@ const wStatus& wMaster::PrepareStart() {
     } else {
     	mStatus = mServer->PrepareStart(host, port, protocol);
     }
-
-    srand(time(0));
     return mStatus;
 }
 
