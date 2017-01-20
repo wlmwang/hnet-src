@@ -252,7 +252,7 @@ const wStatus& wMultiClient::Send(wTask *task, const google::protobuf::Message* 
 
 const wStatus& wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) {
     struct epoll_event evt;
-    evt.events = ev | EPOLLERR | EPOLLHUP | EPOLLET;
+    evt.events = ev | EPOLLERR | EPOLLHUP;
     evt.data.fd = task->Socket()->FD();
     evt.data.ptr = task;
     if (epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt) == -1) {
