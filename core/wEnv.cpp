@@ -240,10 +240,11 @@ public:
     virtual void StartThread(void (*function)(void* arg), void* arg);
 
 private:
-    void PthreadCall(const char* label, int errNumber) {
-        if (errNumber != 0) {
-            fprintf(stderr, "pthread %s: %s\n", label, error::Strerror(errNumber).c_str());
-            abort();
+    void PthreadCall(const char* label, int err) {
+        if (err != 0) {
+        	std::string str = "wEnv::PthreadCall, pthread ";
+        	wStatus::Corruption(str + label, error::Strerror(err));
+        	exit(-1);
         }
     }
 

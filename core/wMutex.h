@@ -14,12 +14,13 @@
 
 namespace hnet {
 
-static int PthreadCall(const char* label, int errNumber) {
-    if (errNumber != 0) {
-        fprintf(stderr, "pthread %s: %s\n", label, error::Strerror(errNumber).c_str());
-        abort();
+static int PthreadCall(const char* label, int err) {
+    if (err != 0) {
+    	std::string str = "wMutex.PthreadCall, pthread ";
+    	wStatus::Corruption(str + label, error::Strerror(err));
+    	exit(-1);
     }
-    return errNumber;
+    return err;
 }
 
 class wCond;
