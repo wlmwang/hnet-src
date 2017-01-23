@@ -26,7 +26,7 @@
 
 namespace hnet {
 
-wServer::wServer(wConfig* config) : mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleTurn(true), mScheduleOk(true), mEpollFD(kFDUnknown), mTimeout(10),
+wServer::wServer(wConfig* config) : mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleTurn(kScheduleTurn), mScheduleOk(true), mEpollFD(kFDUnknown), mTimeout(10),
 mTask(NULL), mAcceptFL(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config) {
 	assert(mConfig != NULL);
     mLatestTm = misc::GetTimeofday();

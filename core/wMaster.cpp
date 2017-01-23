@@ -150,7 +150,7 @@ const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
 		open.set_fd(mWorkerPool[mSlot]->ChannelFD(0));
         std::vector<uint32_t> blackslot(1, mSlot);
         mServer->NotifyWorker(&open, kMaxProcess, &blackslot);
-		usleep(500);
+		usleep(100);
 	}
 	return mStatus.Clear();
 }

@@ -143,6 +143,7 @@ protected:
     // 心跳定时器
     wTimer mHeartbeatTimer;
 
+    // 心跳线程分离
     bool mScheduleTurn;
     bool mScheduleOk;
     wMutex mScheduleMutex;

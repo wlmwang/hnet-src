@@ -91,14 +91,16 @@ const uint32_t  kMinPackageSize = 3;
 const uint32_t  kPageSize = 4096;
 const bool      kLittleEndian = true;
 
+// 心跳线程与主线程分离开关
+const bool		kScheduleTurn = true;
+// 心跳开关
+const bool		kHeartbeatTurn = true;
+
 // 惊群锁开关
 const bool		kAcceptTurn = true;
 // 目前惊群锁实现可使用以下两种 0:semaphore（信号量，需系统支持，性能较好） 1:file（记录锁。稳定，性能有所下降）
 const int8_t	kAcceptStuff = 0;
 const char		kAcceptMutex[] = "accept.lock";
-
-// 心跳开关
-const bool		kHeartbeatTurn = true;
 
 // 消息协议
 const int8_t	kMpCommand = 1;

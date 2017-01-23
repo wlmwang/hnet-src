@@ -50,11 +50,10 @@ const wStatus& wUnixSocket::Listen(const std::string& host, uint16_t port) {
 const wStatus& wUnixSocket::Connect(int64_t *ret, const std::string& host, uint16_t port, float timeout) {
 	// 客户端host、port
 	mPort = 0;
-	mHost = kUnixSockPrefix;
-	logging::AppendNumberTo(&mHost, static_cast<uint64_t>(time(0)));
-	mHost += "_";
-	logging::AppendNumberTo(&mHost, static_cast<uint64_t>(rand()));
-	mHost += ".sock";
+	char filename[PATH_MAX];
+	snprintf(filename, PATH_MAX, "%s%d%s", kUnixSockPrefix, static_cast<int>(getpid()), ".sock");
+	mHost = filename;
+
 	if (!Bind(mHost).Ok()) {
 		*ret = static_cast<int64_t>(-1);
 		return mStatus;
