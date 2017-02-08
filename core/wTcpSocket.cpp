@@ -135,8 +135,7 @@ const wStatus& wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, sock
 			mStatus.Clear();
 			break;
 		} else if (errno == EAGAIN) {
-			mStatus = wStatus::IOError("wTcpSocket::Accept accept() failed", "", false);
-			break;
+			continue;
 		} else if (errno == EINTR) {
 		    // 操作被信号中断，中断后唤醒继续处理
 		    // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
@@ -153,6 +152,8 @@ const wStatus& wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, sock
 		if (setsockopt(static_cast<int>(*fd), SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void*>(&optVal), sizeof(socklen_t)) == -1) {
 			mStatus = wStatus::IOError("wTcpSocket::Accept setsockopt() SO_SNDBUF failed", error::Strerror(errno));
 		}
+	} else {
+		mStatus = wStatus::IOError("wTcpSocket::Accept accept() failed", "");
 	}
 	return mStatus;
 }

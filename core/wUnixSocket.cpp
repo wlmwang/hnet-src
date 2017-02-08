@@ -105,7 +105,7 @@ const wStatus& wUnixSocket::Connect(int64_t *ret, const std::string& host, uint1
 			return mStatus = wStatus::IOError("wUnixSocket::Connect connect directly failed", error::Strerror(errno));
 		}
 	}
-	return mStatus.Clear();
+	return mStatus;
 }
 
 const wStatus& wUnixSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *addrsize) {
@@ -120,8 +120,7 @@ const wStatus& wUnixSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, soc
 			mStatus.Clear();
 			break;
 		} else if (errno == EAGAIN) {
-			mStatus.Clear();
-			break;
+			continue;
 		} else if (errno == EINTR) {
             // 操作被信号中断，中断后唤醒继续处理
             // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
@@ -130,6 +129,10 @@ const wStatus& wUnixSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, soc
 			mStatus = wStatus::IOError("wUnixSocket::Accept, accept failed", error::Strerror(errno));
 			break;
 		}
+	}
+
+	if (!mStatus.Ok() || *fd <= 0) {
+		mStatus = wStatus::IOError("wUnixSocket::Accept accept() failed", "");
 	}
 	return mStatus;
 }

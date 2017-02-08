@@ -234,7 +234,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_un sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);
-		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok() || fd == kFDUnknown) {
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
 		    return mStatus;
 		}
 
@@ -253,7 +253,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_in sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);	
-		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok() || fd == kFDUnknown) {
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
 		    return mStatus;
 		}
 
