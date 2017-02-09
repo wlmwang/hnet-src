@@ -252,26 +252,33 @@ int FastUnixSec2Tm(time_t unix_sec, struct tm* tm, int time_zone) {
     return 0;
 }
 
-wStatus InitDaemon(std::string lock_path, const char *prefix) {
-    // 获取主目录
-    char dirPath[256] = {0};
-    if (prefix == NULL) {
-        if (getcwd(dirPath, sizeof(dirPath)) == NULL) {
-        	char err[kMaxErrorLen];
-        	::strerror_r(errno, err, kMaxErrorLen);
-            return wStatus::Corruption("misc::InitDaemon, getcwd failed", err);
-        }
-    } else {
-        memcpy(dirPath, prefix, strlen(prefix) + 1);
-    }
-
-    if (chdir(dirPath) == -1) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-        return wStatus::Corruption("misc::InitDaemon, chdir failed", err);
+int SetBinPath(std::string bin_path, std::string self) {
+	// 获取bin目录
+	char dir_path[256] = {'\0'};
+	if (bin_path.size() == 0) {
+		int len = readlink(self.c_str(), dir_path, 256);
+		if (len < 0 || len >= 256) {
+			memcpy(dir_path, kBinPath, strlen(kBinPath) + 1);
+		} else {
+			for (int i = len; i >= 0; --i) {
+				if (dir_path[i] == '/') {
+					dir_path[i+1] = '\0';
+					break;
+				}
+			}
+		}
+	} else {
+		memcpy(dir_path, bin_path.c_str(), bin_path.size() + 1);
+	}
+	// 切换目录
+    if (chdir(dir_path) == -1) {
+        return -1;
     }
     umask(0);
+    return 0;
+}
 
+wStatus InitDaemon(std::string lock_path, const char *prefix) {
     // 独占式锁定文件，防止有相同程序的进程已经启动
     if (lock_path.size() <= 0) {
     	lock_path = soft::GetLockPath();

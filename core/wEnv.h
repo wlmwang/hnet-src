@@ -57,6 +57,8 @@ public:
     // 返回目录下所有文件、目录名
     virtual const wStatus& GetChildren(const std::string& dir, std::vector<std::string>* result, bool fullname = true) = 0;
 
+    virtual const wStatus& GetBinPath(std::string* result, std::string self = "/proc/self/exe") = 0;
+
     virtual const wStatus& GetRealPath(const std::string& fname, std::string* result) = 0;
 
     virtual const wStatus& DeleteFile(const std::string& fname) = 0;

@@ -98,6 +98,8 @@ std::string EscapeString(const wSlice& value);
 
 namespace misc {
 
+int SetBinPath(std::string bin_path = "", std::string self = "/proc/self/exe");
+
 // 创建守护进程
 wStatus InitDaemon(std::string lock_path, const char *prefix = NULL);
 
@@ -188,7 +190,6 @@ const std::string& SetLogPath(const std::string& path);
 // 工程相关全局变量
 extern uid_t	gDeamonUser;
 extern gid_t	gDeamonGroup;
-
 extern std::string	gSoftwareName;
 extern std::string	gSoftwareVer;
 extern std::string	gLockPath;

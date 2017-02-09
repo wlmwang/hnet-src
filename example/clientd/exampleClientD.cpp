@@ -81,6 +81,9 @@ int main(int argc, const char *argv[]) {
 		std::cout << "get configure:" << s.ToString() << std::endl;
 		return -1;
 	}
+	if (misc::SetBinPath() == -1) {
+		std::cout << "set bin path failed" << std::endl;
+	}
 
 	// 版本输出 && 守护进程创建
 	bool version, daemon;

@@ -155,8 +155,24 @@ public:
         return mStatus.Clear();
     }
 
+    virtual const wStatus& GetBinPath(std::string* result, std::string self = "/proc/self/exe") {
+    	char dir_path[256] = {'\0'};
+    	int len = readlink(self.c_str(), dir_path, 256);
+    	if (len < 0 || len >= 256) {
+    		return mStatus = wStatus::IOError(self, error::Strerror(errno));
+    	}
+		for (int i = len; i >= 0; --i) {
+			if (dir_path[i] == '/') {
+				dir_path[i+1] = '\0';
+				break;
+			}
+		}
+    	*result = dir_path;
+    	return mStatus.Clear();
+    }
+
     virtual const wStatus& GetRealPath(const std::string& fname, std::string* result) {
-    	char dir_path[256];
+    	char dir_path[256] = {'\0'};
         if (realpath(fname.c_str(), dir_path) == NULL) {
         	return mStatus = wStatus::IOError(fname, error::Strerror(errno));
         }
