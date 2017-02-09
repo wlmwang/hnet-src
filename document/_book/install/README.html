@@ -4,22 +4,24 @@
     <head>
         
         <meta charset="UTF-8">
-        <title>概要 | 概要</title>
+        <title>安装 | 概要</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <meta name="description" content="HNET是一个用C++语言开发基于Proactor模式、事件驱动、单线程、多进程、多协议的企业级网络框架，目前已在Linux（作者Linux版本为2.6*）平台中至少O3级别静默编译，并长时间稳定运行。">
+        <meta name="description" content="">
         <meta name="generator" content="GitBook 1.0.3">
         <meta name="HandheldFriendly" content="true"/>
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black">
-        <link rel="apple-touch-icon-precomposed" sizes="152x152" href="gitbook/images/apple-touch-icon-precomposed-152.png">
-        <link rel="shortcut icon" href="gitbook/images/favicon.ico" type="image/x-icon">
+        <link rel="apple-touch-icon-precomposed" sizes="152x152" href="../gitbook/images/apple-touch-icon-precomposed-152.png">
+        <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
         
     
     
     
-    <link rel="next" href="./features/README.html" />
+    <link rel="next" href="../example/README.html" />
     
+    
+    <link rel="prev" href="../features/README.html" />
     
 
         
@@ -27,11 +29,11 @@
     <body>
         
         
-<link rel="stylesheet" href="gitbook/style.css">
+<link rel="stylesheet" href="../gitbook/style.css">
 
 
         
-    <div class="book"  data-level="0" data-basepath="." data-revision="1486638831381">
+    <div class="book"  data-level="2" data-basepath=".." data-revision="1486638831381">
     
 
 <div class="book-summary">
@@ -49,10 +51,10 @@
         
     
         
-        <li class="chapter active" data-level="0" data-path="index.html">
+        <li class="chapter " data-level="0" data-path="index.html">
             
                 
-                    <a href="./index.html">
+                    <a href="../index.html">
                         <i class="fa fa-check"></i>
                         
                          概要
@@ -66,7 +68,7 @@
         <li class="chapter " data-level="1" data-path="features/README.html">
             
                 
-                    <a href="./features/README.html">
+                    <a href="../features/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>1.</b>
@@ -79,10 +81,10 @@
         </li>
     
         
-        <li class="chapter " data-level="2" data-path="install/README.html">
+        <li class="chapter active" data-level="2" data-path="install/README.html">
             
                 
-                    <a href="./install/README.html">
+                    <a href="../install/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>2.</b>
@@ -98,7 +100,7 @@
         <li class="chapter " data-level="3" data-path="example/README.html">
             
                 
-                    <a href="./example/README.html">
+                    <a href="../example/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>3.</b>
@@ -114,7 +116,7 @@
         <li class="chapter " data-level="4" data-path="instructions/README.html">
             
                 
-                    <a href="./instructions/README.html">
+                    <a href="../instructions/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>4.</b>
@@ -130,7 +132,7 @@
         <li class="chapter " data-level="5" data-path="architecture/README.html">
             
                 
-                    <a href="./architecture/README.html">
+                    <a href="../architecture/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>5.</b>
@@ -223,7 +225,7 @@
     <!-- Title -->
     <h1>
         <i class="fa fa-circle-o-notch fa-spin"></i>
-        <a href="./" >概要</a>
+        <a href="../" >概要</a>
     </h1>
 </div>
 
@@ -231,17 +233,68 @@
                 <div class="page-inner">
                 
                 
-                    <section class="normal" id="section-gitbook_712">
+                    <section class="normal" id="section-gitbook_717">
                     
-                        <h1 id="">概要</h1>
-<p>HNET是一个用C++语言开发基于Proactor模式、事件驱动、单线程、多进程、多协议的企业级网络框架，目前已在Linux（作者Linux版本为2.6*）平台中至少O3级别静默编译，并长时间稳定运行。</p>
-<p>HNET是一个框架，其主要侧重点为为用户提供较为规范化的继承体系、一致的编程模式和极简的接口方法。</p>
-<h1 id="">文档</h1>
-<pre><code>HNET网络框架初衷是为了公司另一基础产品（动态负载均衡-容错系统）而开发出的。经过不断优化和实战演变，到如今已可独立发布。
-
-注意：HNET的更多高级用法；完整综合应用，请查阅公司该基础产品：动态负载均衡-容错系统(HLBS)。
-</code></pre><p><a href="SUMMARY.html">目录</a></p>
-<p><a href="features/README.html">第一章：特性</a></p>
+                        <h1 id="">安装</h1>
+<pre><code>升级gcc-4.8.x
+安装protobuf
+编译libhnet.so libhnet.a
+</code></pre><ul>
+<li><p>环境最低要求</p>
+<ul>
+<li>Linux2.6.x（Linux2.4.x + epoll补丁）</li>
+<li>g++ (GCC) 4.8.x</li>
+</ul>
+</li>
+<li><p>升级gcc-4.8.2</p>
+<ul>
+<li>源码安装(CentOS)  #缺少编译环境请先安装老的gcc: yum -y install gcc gcc-c++<ul>
+<li>cd /usr/local/src</li>
+<li>wget <a href="http://ftp.gnu.org/gnu/gcc/gcc-4.8.2/gcc-4.8.2.tar.bz2" target="_blank">http://ftp.gnu.org/gnu/gcc/gcc-4.8.2/gcc-4.8.2.tar.bz2</a></li>
+<li>tar -jxvf gcc-4.8.2.tar.bz2</li>
+<li>cd gcc-4.8.2</li>
+<li>./contrib/download_prerequisites  #下载供编译需求依赖项</li>
+<li>cd ..</li>
+<li>mkdir gcc-build-4.8.2     #建立一个目录供编译出的文件存放</li>
+<li>cd gcc-build-4.8.2</li>
+<li>../gcc-4.8.2/configure --enable-checking=release --enable-languages=c,c++ --disable-multilib      #生成Makefile文件</li>
+<li>make -j4      #极其耗时。-j4选项是make对多核处理器的优化</li>
+<li><code>此步骤可能会有glibc出错信息。 sudo yum -y install glibc-devel.i686 glibc-devel</code></li>
+<li>make check</li>
+<li>sudo make install</li>
+<li>gcc -v #可能要reboot重启生效</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>安装protobuf</p>
+<ul>
+<li>源码安装(下载源码<a href="https://github.com/google/protobuf" target="_blank">https://github.com/google/protobuf</a>)<ul>
+<li>tar -zxvf protobuf-cpp-3.0.0.tar.gz</li>
+<li>cd protobuf-3.0.0</li>
+<li>./configure</li>
+<li>make</li>
+<li>make check</li>
+<li>make install</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>安装libhnet.so</p>
+<ul>
+<li>解压hnet.tar.gz到任一目录中，以 /usr/local/hnet 为例。<ul>
+<li>cd /usr/local</li>
+<li>tar -zxvf hnet.tar.gz</li>
+<li>cd hnet/core</li>
+<li>make</li>
+<li>make install</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><a href="../SUMMARY.html">目录</a></p>
+<p><a href="../example/README.html">第三章：示例</a></p>
 
                     
                     </section>
@@ -252,21 +305,23 @@
         </div>
 
         
+        <a href="../features/README.html" class="navigation navigation-prev " aria-label="Previous page: 特性"><i class="fa fa-angle-left"></i></a>
         
-        <a href="./features/README.html" class="navigation navigation-next navigation-unique" aria-label="Next page: 特性"><i class="fa fa-angle-right"></i></a>
+        
+        <a href="../example/README.html" class="navigation navigation-next " aria-label="Next page: 示例"><i class="fa fa-angle-right"></i></a>
         
     </div>
 </div>
 
         
-<script src="gitbook/app.js"></script>
+<script src="../gitbook/app.js"></script>
 
     
     <script src="https://cdn.mathjax.org/mathjax/2.4-latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
 
     
-    <script src="gitbook/plugins/gitbook-plugin-mathjax/plugin.js"></script>
+    <script src="../gitbook/plugins/gitbook-plugin-mathjax/plugin.js"></script>
     
 
 <script>

@@ -4,22 +4,24 @@
     <head>
         
         <meta charset="UTF-8">
-        <title>概要 | 概要</title>
+        <title>示例 | 概要</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <meta name="description" content="HNET是一个用C++语言开发基于Proactor模式、事件驱动、单线程、多进程、多协议的企业级网络框架，目前已在Linux（作者Linux版本为2.6*）平台中至少O3级别静默编译，并长时间稳定运行。">
+        <meta name="description" content="">
         <meta name="generator" content="GitBook 1.0.3">
         <meta name="HandheldFriendly" content="true"/>
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black">
-        <link rel="apple-touch-icon-precomposed" sizes="152x152" href="gitbook/images/apple-touch-icon-precomposed-152.png">
-        <link rel="shortcut icon" href="gitbook/images/favicon.ico" type="image/x-icon">
+        <link rel="apple-touch-icon-precomposed" sizes="152x152" href="../gitbook/images/apple-touch-icon-precomposed-152.png">
+        <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
         
     
     
     
-    <link rel="next" href="./features/README.html" />
+    <link rel="next" href="../instructions/README.html" />
     
+    
+    <link rel="prev" href="../install/README.html" />
     
 
         
@@ -27,11 +29,11 @@
     <body>
         
         
-<link rel="stylesheet" href="gitbook/style.css">
+<link rel="stylesheet" href="../gitbook/style.css">
 
 
         
-    <div class="book"  data-level="0" data-basepath="." data-revision="1486638831381">
+    <div class="book"  data-level="3" data-basepath=".." data-revision="1486638831381">
     
 
 <div class="book-summary">
@@ -49,10 +51,10 @@
         
     
         
-        <li class="chapter active" data-level="0" data-path="index.html">
+        <li class="chapter " data-level="0" data-path="index.html">
             
                 
-                    <a href="./index.html">
+                    <a href="../index.html">
                         <i class="fa fa-check"></i>
                         
                          概要
@@ -66,7 +68,7 @@
         <li class="chapter " data-level="1" data-path="features/README.html">
             
                 
-                    <a href="./features/README.html">
+                    <a href="../features/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>1.</b>
@@ -82,7 +84,7 @@
         <li class="chapter " data-level="2" data-path="install/README.html">
             
                 
-                    <a href="./install/README.html">
+                    <a href="../install/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>2.</b>
@@ -95,10 +97,10 @@
         </li>
     
         
-        <li class="chapter " data-level="3" data-path="example/README.html">
+        <li class="chapter active" data-level="3" data-path="example/README.html">
             
                 
-                    <a href="./example/README.html">
+                    <a href="../example/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>3.</b>
@@ -114,7 +116,7 @@
         <li class="chapter " data-level="4" data-path="instructions/README.html">
             
                 
-                    <a href="./instructions/README.html">
+                    <a href="../instructions/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>4.</b>
@@ -130,7 +132,7 @@
         <li class="chapter " data-level="5" data-path="architecture/README.html">
             
                 
-                    <a href="./architecture/README.html">
+                    <a href="../architecture/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>5.</b>
@@ -223,7 +225,7 @@
     <!-- Title -->
     <h1>
         <i class="fa fa-circle-o-notch fa-spin"></i>
-        <a href="./" >概要</a>
+        <a href="../" >概要</a>
     </h1>
 </div>
 
@@ -231,17 +233,130 @@
                 <div class="page-inner">
                 
                 
-                    <section class="normal" id="section-gitbook_712">
+                    <section class="normal" id="section-gitbook_715">
                     
-                        <h1 id="">概要</h1>
-<p>HNET是一个用C++语言开发基于Proactor模式、事件驱动、单线程、多进程、多协议的企业级网络框架，目前已在Linux（作者Linux版本为2.6*）平台中至少O3级别静默编译，并长时间稳定运行。</p>
-<p>HNET是一个框架，其主要侧重点为为用户提供较为规范化的继承体系、一致的编程模式和极简的接口方法。</p>
-<h1 id="">文档</h1>
-<pre><code>HNET网络框架初衷是为了公司另一基础产品（动态负载均衡-容错系统）而开发出的。经过不断优化和实战演变，到如今已可独立发布。
-
-注意：HNET的更多高级用法；完整综合应用，请查阅公司该基础产品：动态负载均衡-容错系统(HLBS)。
-</code></pre><p><a href="SUMMARY.html">目录</a></p>
-<p><a href="features/README.html">第一章：特性</a></p>
+                        <h1 id="">示例</h1>
+<ul>
+<li><p>安装</p>
+<ul>
+<li><p>安装examplesvrd</p>
+<ul>
+<li>cd /usr/local/hnet/example/server</li>
+<li>make</li>
+</ul>
+</li>
+<li><p>安装exampleclient</p>
+<ul>
+<li>cd /usr/local/hnet/example/client</li>
+<li>make</li>
+</ul>
+</li>
+<li><p>安装exampleclientd</p>
+<ul>
+<li>cd /usr/local/hnet/example/clientd</li>
+<li>make</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>运行</p>
+<ul>
+<li><p>服务器</p>
+<ul>
+<li>cd /usr/local/hnet/example/server</li>
+<li>./examplesvrd -h127.0.0.1 -p10025 -d</li>
+</ul>
+</li>
+<li><p>客户端（单次）</p>
+<ul>
+<li>cd /usr/local/hnet/example/client</li>
+<li>./exampleclient -h 127.0.0.7 -p 10025</li>
+</ul>
+</li>
+<li><p>客户端（守护）</p>
+<ul>
+<li>cd /usr/local/hnet/example/clientd</li>
+<li>./exampleclientd -h127.0.0.7 -p 10025</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>命令</p>
+<ul>
+<li><p>重启</p>
+<ul>
+<li>./examplesvrd -s restart</li>
+</ul>
+</li>
+<li><p>停止</p>
+<ul>
+<li>./examplesvrd -s stop</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="">代码详解</h1>
+<pre><code>注意： 三个示例从不同方向分别展示了HNET框架一般用法。请逐行仔细阅读！
+</code></pre><ul>
+<li><p>message/example.proto</p>
+<ul>
+<li>通信双发的数据结构<ul>
+<li>请求：example.ExampleEchoReq</li>
+<li>响应：example.ExampleEchoRes</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>example/server/exampleServer.cpp</p>
+<ul>
+<li><p>Task客户端</p>
+<ul>
+<li><p>ExampleChannelTask继承之wChannelTask，为Worker进程间同步类。构造函数中的On(&quot;example.ExampleEchoReq&quot;, &amp;ExampleChannelTask::ExampleEchoReq, this);为事件注册。意为：当Worker进程接受到example.ExampleEchoReq（protobuf）消息的回调函数为ExampleChannelTask::ExampleEchoReq方法。</p>
+</li>
+<li><p>ExampleTcpTask继承之wTcpTask，为TCP客户端类。任何一个TCP客户端都将一一对应到ExampleTcpTask上。该构造函数中有两个事件注册方法On。这里使用了HNET多播功能：都为example.ExampleEchoReq的响应方法被注册时，系统会按顺序的依次调用。即当服务器接受到客户端发送example.ExampleEchoReq请求时，依次调用ExampleTcpTask::ExampleEchoReq、ExampleTcpTask::ExampleEchoChannel方法。</p>
+</li>
+</ul>
+</li>
+<li><p>服务器</p>
+<ul>
+<li>ExampleServer继承之wServer，为服务器类。其中有两个虚函数：
+  ExampleServer::NewTcpTask：当任一客户端连接到服务器时，服务器将调用该方法产生一个wTcpTask对象来跟踪该连接。写法固定。
+  ExampleServer::NewChannelTask：服务器启动时，每产生一个Worker进程时，服务器将调用该方法产生一个wChannelTask对象来跟踪该进程。写法固定。（以单进程方式运行服务器时，该方法无用，也不用去实现）</li>
+</ul>
+</li>
+<li><p>main</p>
+<ul>
+<li>写法较为有代表性。值得注意的时，wConfig、wMaster用户均可再继承来实现更为定制化配置命令以及启动方式。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>example/client/exampleClient.cpp</p>
+<ul>
+<li>单次客户端<ul>
+<li>请看注释</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>example/clientd/exampleClientD.cpp</p>
+<ul>
+<li><p>守护客户端</p>
+<ul>
+<li><p>ExampleTask方法说明如上。</p>
+</li>
+<li><p>ExampleClient继承之wMultiClient，为TCP客户端类。该类主要应用在需要与服务器长期交互的地方，所以一般都会以线程方式运行，正如mian中所示。当然该类自带断线重连机制。
+  ExampleClient::NewTcpTask方法说明如上。即客户端连接服务器成功，会调用该方法产生一个wTcpTask对象来跟踪该连接。
+  ExampleClient::PrepareRun为ExampleClient作为线程启动后调用的第一个调用的方法，此时可以做连接服务器工作，成功连接返回后，即进入客户端与服务器事件循环中。</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><a href="../SUMMARY.html">目录</a></p>
+<p><a href="../instructions/README.html">第四章：详细</a></p>
 
                     
                     </section>
@@ -252,21 +367,23 @@
         </div>
 
         
+        <a href="../install/README.html" class="navigation navigation-prev " aria-label="Previous page: 安装"><i class="fa fa-angle-left"></i></a>
         
-        <a href="./features/README.html" class="navigation navigation-next navigation-unique" aria-label="Next page: 特性"><i class="fa fa-angle-right"></i></a>
+        
+        <a href="../instructions/README.html" class="navigation navigation-next " aria-label="Next page: 详细"><i class="fa fa-angle-right"></i></a>
         
     </div>
 </div>
 
         
-<script src="gitbook/app.js"></script>
+<script src="../gitbook/app.js"></script>
 
     
     <script src="https://cdn.mathjax.org/mathjax/2.4-latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
 
     
-    <script src="gitbook/plugins/gitbook-plugin-mathjax/plugin.js"></script>
+    <script src="../gitbook/plugins/gitbook-plugin-mathjax/plugin.js"></script>
     
 
 <script>

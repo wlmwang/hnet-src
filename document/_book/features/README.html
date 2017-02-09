@@ -4,22 +4,24 @@
     <head>
         
         <meta charset="UTF-8">
-        <title>概要 | 概要</title>
+        <title>特性 | 概要</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <meta name="description" content="HNET是一个用C++语言开发基于Proactor模式、事件驱动、单线程、多进程、多协议的企业级网络框架，目前已在Linux（作者Linux版本为2.6*）平台中至少O3级别静默编译，并长时间稳定运行。">
+        <meta name="description" content="">
         <meta name="generator" content="GitBook 1.0.3">
         <meta name="HandheldFriendly" content="true"/>
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black">
-        <link rel="apple-touch-icon-precomposed" sizes="152x152" href="gitbook/images/apple-touch-icon-precomposed-152.png">
-        <link rel="shortcut icon" href="gitbook/images/favicon.ico" type="image/x-icon">
+        <link rel="apple-touch-icon-precomposed" sizes="152x152" href="../gitbook/images/apple-touch-icon-precomposed-152.png">
+        <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
         
     
     
     
-    <link rel="next" href="./features/README.html" />
+    <link rel="next" href="../install/README.html" />
     
+    
+    <link rel="prev" href="../index.html" />
     
 
         
@@ -27,11 +29,11 @@
     <body>
         
         
-<link rel="stylesheet" href="gitbook/style.css">
+<link rel="stylesheet" href="../gitbook/style.css">
 
 
         
-    <div class="book"  data-level="0" data-basepath="." data-revision="1486638831381">
+    <div class="book"  data-level="1" data-basepath=".." data-revision="1486638831381">
     
 
 <div class="book-summary">
@@ -49,10 +51,10 @@
         
     
         
-        <li class="chapter active" data-level="0" data-path="index.html">
+        <li class="chapter " data-level="0" data-path="index.html">
             
                 
-                    <a href="./index.html">
+                    <a href="../index.html">
                         <i class="fa fa-check"></i>
                         
                          概要
@@ -63,10 +65,10 @@
         </li>
     
         
-        <li class="chapter " data-level="1" data-path="features/README.html">
+        <li class="chapter active" data-level="1" data-path="features/README.html">
             
                 
-                    <a href="./features/README.html">
+                    <a href="../features/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>1.</b>
@@ -82,7 +84,7 @@
         <li class="chapter " data-level="2" data-path="install/README.html">
             
                 
-                    <a href="./install/README.html">
+                    <a href="../install/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>2.</b>
@@ -98,7 +100,7 @@
         <li class="chapter " data-level="3" data-path="example/README.html">
             
                 
-                    <a href="./example/README.html">
+                    <a href="../example/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>3.</b>
@@ -114,7 +116,7 @@
         <li class="chapter " data-level="4" data-path="instructions/README.html">
             
                 
-                    <a href="./instructions/README.html">
+                    <a href="../instructions/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>4.</b>
@@ -130,7 +132,7 @@
         <li class="chapter " data-level="5" data-path="architecture/README.html">
             
                 
-                    <a href="./architecture/README.html">
+                    <a href="../architecture/README.html">
                         <i class="fa fa-check"></i>
                         
                             <b>5.</b>
@@ -223,7 +225,7 @@
     <!-- Title -->
     <h1>
         <i class="fa fa-circle-o-notch fa-spin"></i>
-        <a href="./" >概要</a>
+        <a href="../" >概要</a>
     </h1>
 </div>
 
@@ -231,17 +233,39 @@
                 <div class="page-inner">
                 
                 
-                    <section class="normal" id="section-gitbook_712">
+                    <section class="normal" id="section-gitbook_714">
                     
-                        <h1 id="">概要</h1>
-<p>HNET是一个用C++语言开发基于Proactor模式、事件驱动、单线程、多进程、多协议的企业级网络框架，目前已在Linux（作者Linux版本为2.6*）平台中至少O3级别静默编译，并长时间稳定运行。</p>
-<p>HNET是一个框架，其主要侧重点为为用户提供较为规范化的继承体系、一致的编程模式和极简的接口方法。</p>
-<h1 id="">文档</h1>
-<pre><code>HNET网络框架初衷是为了公司另一基础产品（动态负载均衡-容错系统）而开发出的。经过不断优化和实战演变，到如今已可独立发布。
-
-注意：HNET的更多高级用法；完整综合应用，请查阅公司该基础产品：动态负载均衡-容错系统(HLBS)。
-</code></pre><p><a href="SUMMARY.html">目录</a></p>
-<p><a href="features/README.html">第一章：特性</a></p>
+                        <h1 id="">特性</h1>
+<ul>
+<li><p>作为一个基于Proactor模式、事件驱动、单线程的网络框架，HNET在&quot;用户态&quot;层实现了Proactor收发机制，提供了方便且一致的事件注册、事件触发接口（即使是不同协议）。底层则采用了目前较为流行且高效的I/O复用库epoll。。</p>
+</li>
+<li><p>作为一个多协议的网络框架。HNET中有以下两层含义：</p>
+<ul>
+<li><p>网络协议：目前系统已支持TCP SOCKET、UNIX DOMAIN SOCKET。可方便添加诸如HTTP、WebSocket等协议。构建时仅需传递相应的协议即可。</p>
+</li>
+<li><p>数据协议：目前系统已支持自定义协议（C/C++中表现为结构体，系统中心跳机制使用（可关闭））、Protocol Buffer协议（<a href="https://github.com/google/protobuf" target="_blank">https://github.com/google/protobuf</a> ，系统中channel机制使用）。当然与客户端交互，建议使用protobuf，特别是不同语言间！</p>
+</li>
+</ul>
+</li>
+<li><p>作为一个多进程的网络框架，HNET使用Master-Worker进程模式：</p>
+<ul>
+<li><p>Master为管理进程。用来管理所有Worker进程和侦听所有注册信号，实现系统中Worker进程意外退出后重启；管理员的开启、停止和重启等命令。</p>
+</li>
+<li><p>Worker为工作进程。用来侦听、接受和处理用户请求，是服务器的关键进程。默认情况下，Worker的数量为主机CPU的两倍。</p>
+<ul>
+<li>另外值得注意的是：Worker进程间的同步也很重要！系统采用channel(socket pair)方式同步。为了一致性，HNET将该特性按照客户端编程规范实现。实战时你将意识到这有多么重要、方便！如多个Worker进程存在全局共享资源需同步情况。（作者也是摸索了很多其他交互方式结果均不满意（有兴趣同学可翻看github提交记录，了解其他交互方式））</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>作为一个企业级框架，HNET可方便架构出一个高性能、高可用、易扩展的服务端器。并且由于HNET是在实战的项目基础上演变而来的，所以不管是性能、容错、扩展还是其他功能HNET是都经得起考验的。HNET几乎在所有的关键点上都提供了接口（虚方法），给使用者足够的定制化自由，且HNET追求编码、架构的高度一致化：多协议中（网络协议、数据协议）的事件注册和传播、事件触发时传递参数、进程间通信与客户端服务器间通信、甚至是函数返回等都有所体现。</p>
+</li>
+<li><p>随库发布的还有单、多客户端基类，可直接使用。</p>
+</li>
+</ul>
+<pre><code>HNET在架构上借鉴了少许NGINX特性（熟悉NGINX的开发人员，有助于理解HNET），但两者毕竟从出发点就相去甚远，从而让两者不管从代码，开放的接口还是提供的服务等都存在巨大差异。
+</code></pre><p><a href="../SUMMARY.html">目录</a></p>
+<p><a href="../install/README.html">第二章：安装</a></p>
 
                     
                     </section>
@@ -252,21 +276,23 @@
         </div>
 
         
+        <a href="../index.html" class="navigation navigation-prev " aria-label="Previous page: 概要"><i class="fa fa-angle-left"></i></a>
         
-        <a href="./features/README.html" class="navigation navigation-next navigation-unique" aria-label="Next page: 特性"><i class="fa fa-angle-right"></i></a>
+        
+        <a href="../install/README.html" class="navigation navigation-next " aria-label="Next page: 安装"><i class="fa fa-angle-right"></i></a>
         
     </div>
 </div>
 
         
-<script src="gitbook/app.js"></script>
+<script src="../gitbook/app.js"></script>
 
     
     <script src="https://cdn.mathjax.org/mathjax/2.4-latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
 
     
-    <script src="gitbook/plugins/gitbook-plugin-mathjax/plugin.js"></script>
+    <script src="../gitbook/plugins/gitbook-plugin-mathjax/plugin.js"></script>
     
 
 <script>
