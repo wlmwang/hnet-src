@@ -3,6 +3,7 @@
 ```
 升级gcc-4.8.x
 安装protobuf
+安装tinyxml（确认要使用xml时安装）
 安装hnet
 ```
 
@@ -30,21 +31,28 @@
         * sudo make install
         * gcc -v #可能要reboot重启生效
 
-* 安装protobuf
+* 安装protobuf（默认路径 /usr/local/lib   /usr/local/include/google）
 
-    * 源码安装(下载源码https://github.com/google/protobuf)
-        * tar -zxvf protobuf-cpp-3.0.0.tar.gz
-        * cd protobuf-3.0.0
+    * 源码安装(hnet/vendor目录附带有2.4.1版本。官方https://github.com/google/protobuf)
+        * tar -zxvf protobuf-2.4.1.tar.gz
+        * cd protobuf-2.4.1
         * ./configure
         * make
         * make check
         * make install
-        * echo "/usr/local/lib" > /etc/ld.so.conf.d/protobuf.conf
+        * echo "/usr/local/lib" > /etc/ld.so.conf.d/protobuf.conf #如已在搜索路径无需此步
+        * ldconfig
+
+* 安装tinyxml（默认路径  /usr/local/lib   /usr/local/include/tinyxml）
+    * 源码安装（hnet/vendor目录附带有源码）
+        * make
+        * make install
+        * echo "/usr/local/lib" > /etc/ld.so.conf.d/tinyxml.conf #如已在搜索路径无需此步
         * ldconfig
 
 * 安装hnet
 
-    * 解压hnet.tar.gz到任一目录中，以/usr/local/src为例。
+    * 解压hnet.tar.gz到任一目录中，以/usr/local/src为例
         * cd /usr/local/src
         * tar -zxvf hnet.tar.gz
         * cd hnet/core
@@ -52,6 +60,7 @@
         * ```此步骤可能会有protobuf出错信息。请使用本机安装的protoc重新编译wChannel.proto文件   protoc -I./ --cpp_out=./ ./wChannel.proto```
 
         * make install
+        * echo "/usr/local/lib" > /etc/ld.so.conf.d/hnet.conf #如已在搜索路径无需此步
         * ldconfig
 
 

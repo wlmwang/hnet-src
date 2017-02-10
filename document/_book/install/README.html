@@ -33,7 +33,7 @@
 
 
         
-    <div class="book"  data-level="2" data-basepath=".." data-revision="1486696048271">
+    <div class="book"  data-level="2" data-basepath=".." data-revision="1486698680348">
     
 
 <div class="book-summary">
@@ -233,11 +233,12 @@
                 <div class="page-inner">
                 
                 
-                    <section class="normal" id="section-gitbook_6">
+                    <section class="normal" id="section-gitbook_641">
                     
                         <h1 id="">安装</h1>
 <pre><code>升级gcc-4.8.x
 安装protobuf
+安装tinyxml（确认要使用xml时安装）
 安装hnet
 </code></pre><ul>
 <li><p>环境最低要求</p>
@@ -270,16 +271,27 @@
 </li>
 </ul>
 </li>
-<li><p>安装protobuf</p>
+<li><p>安装protobuf（默认路径 /usr/local/lib   /usr/local/include/google）</p>
 <ul>
-<li>源码安装(下载源码<a href="https://github.com/google/protobuf" target="_blank">https://github.com/google/protobuf</a>)<ul>
-<li>tar -zxvf protobuf-cpp-3.0.0.tar.gz</li>
-<li>cd protobuf-3.0.0</li>
+<li>源码安装(hnet/vendor目录附带有2.4.1版本。官方<a href="https://github.com/google/protobuf" target="_blank">https://github.com/google/protobuf</a>)<ul>
+<li>tar -zxvf protobuf-2.4.1.tar.gz</li>
+<li>cd protobuf-2.4.1</li>
 <li>./configure</li>
 <li>make</li>
 <li>make check</li>
 <li>make install</li>
-<li>echo &quot;/usr/local/lib&quot; &gt; /etc/ld.so.conf.d/protobuf.conf</li>
+<li>echo &quot;/usr/local/lib&quot; &gt; /etc/ld.so.conf.d/protobuf.conf #如已在搜索路径无需此步</li>
+<li>ldconfig</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>安装tinyxml（默认路径  /usr/local/lib   /usr/local/include/tinyxml）</p>
+<ul>
+<li>源码安装（hnet/vendor目录附带有源码）<ul>
+<li>make</li>
+<li>make install</li>
+<li>echo &quot;/usr/local/lib&quot; &gt; /etc/ld.so.conf.d/tinyxml.conf #如已在搜索路径无需此步</li>
 <li>ldconfig</li>
 </ul>
 </li>
@@ -287,7 +299,7 @@
 </li>
 <li><p>安装hnet</p>
 <ul>
-<li><p>解压hnet.tar.gz到任一目录中，以/usr/local/src为例。</p>
+<li><p>解压hnet.tar.gz到任一目录中，以/usr/local/src为例</p>
 <ul>
 <li>cd /usr/local/src</li>
 <li>tar -zxvf hnet.tar.gz</li>
@@ -297,6 +309,7 @@
 </li>
 <li><p>make install</p>
 </li>
+<li>echo &quot;/usr/local/lib&quot; &gt; /etc/ld.so.conf.d/hnet.conf #如已在搜索路径无需此步</li>
 <li>ldconfig</li>
 </ul>
 </li>
