@@ -3,7 +3,7 @@
 ```
 升级gcc-4.8.x
 安装protobuf
-编译libhnet.so libhnet.a
+安装hnet
 ```
 
 * 环境最低要求
@@ -25,6 +25,7 @@
         * ../gcc-4.8.2/configure --enable-checking=release --enable-languages=c,c++ --disable-multilib      #生成Makefile文件
         * make -j4      #极其耗时。-j4选项是make对多核处理器的优化
         * ```此步骤可能会有glibc出错信息。 sudo yum -y install glibc-devel.i686 glibc-devel```
+
         * make check
         * sudo make install
         * gcc -v #可能要reboot重启生效
@@ -38,6 +39,8 @@
         * make
         * make check
         * make install
+        * echo "/usr/local/lib" > /etc/ld.so.conf.d/protobuf.conf
+        * ldconfig
 
 * 安装hnet
 
@@ -46,7 +49,10 @@
         * tar -zxvf hnet.tar.gz
         * cd hnet/core
         * make
+        * ```此步骤可能会有protobuf出错信息。请使用本机安装的protoc重新编译wChannel.proto文件   protoc -I./ --cpp_out=./ ./wChannel.proto```
+
         * make install
+        * ldconfig
 
 
 [目录](../SUMMARY.md)

@@ -33,7 +33,7 @@
 
 
         
-    <div class="book"  data-level="2" data-basepath=".." data-revision="1486693960040">
+    <div class="book"  data-level="2" data-basepath=".." data-revision="1486696048271">
     
 
 <div class="book-summary">
@@ -233,12 +233,12 @@
                 <div class="page-inner">
                 
                 
-                    <section class="normal" id="section-gitbook_1156">
+                    <section class="normal" id="section-gitbook_6">
                     
                         <h1 id="">安装</h1>
 <pre><code>升级gcc-4.8.x
 安装protobuf
-编译libhnet.so libhnet.a
+安装hnet
 </code></pre><ul>
 <li><p>环境最低要求</p>
 <ul>
@@ -248,7 +248,8 @@
 </li>
 <li><p>升级gcc-4.8.2</p>
 <ul>
-<li>源码安装(CentOS)  #缺少编译环境请先安装老的gcc: yum -y install gcc gcc-c++<ul>
+<li><p>源码安装(CentOS)  #缺少编译环境请先安装老的gcc: yum -y install gcc gcc-c++</p>
+<ul>
 <li>cd /usr/local/src</li>
 <li>wget <a href="http://ftp.gnu.org/gnu/gcc/gcc-4.8.2/gcc-4.8.2.tar.bz2" target="_blank">http://ftp.gnu.org/gnu/gcc/gcc-4.8.2/gcc-4.8.2.tar.bz2</a></li>
 <li>tar -jxvf gcc-4.8.2.tar.bz2</li>
@@ -259,8 +260,10 @@
 <li>cd gcc-build-4.8.2</li>
 <li>../gcc-4.8.2/configure --enable-checking=release --enable-languages=c,c++ --disable-multilib      #生成Makefile文件</li>
 <li>make -j4      #极其耗时。-j4选项是make对多核处理器的优化</li>
-<li><code>此步骤可能会有glibc出错信息。 sudo yum -y install glibc-devel.i686 glibc-devel</code></li>
-<li>make check</li>
+<li><p><code>此步骤可能会有glibc出错信息。 sudo yum -y install glibc-devel.i686 glibc-devel</code></p>
+</li>
+<li><p>make check</p>
+</li>
 <li>sudo make install</li>
 <li>gcc -v #可能要reboot重启生效</li>
 </ul>
@@ -276,18 +279,25 @@
 <li>make</li>
 <li>make check</li>
 <li>make install</li>
+<li>echo &quot;/usr/local/lib&quot; &gt; /etc/ld.so.conf.d/protobuf.conf</li>
+<li>ldconfig</li>
 </ul>
 </li>
 </ul>
 </li>
 <li><p>安装hnet</p>
 <ul>
-<li>解压hnet.tar.gz到任一目录中，以/usr/local/src为例。<ul>
+<li><p>解压hnet.tar.gz到任一目录中，以/usr/local/src为例。</p>
+<ul>
 <li>cd /usr/local/src</li>
 <li>tar -zxvf hnet.tar.gz</li>
 <li>cd hnet/core</li>
 <li>make</li>
-<li>make install</li>
+<li><p><code>此步骤可能会有protobuf出错信息。请使用本机安装的protoc重新编译wChannel.proto文件   protoc -I./ --cpp_out=./ ./wChannel.proto</code></p>
+</li>
+<li><p>make install</p>
+</li>
+<li>ldconfig</li>
 </ul>
 </li>
 </ul>
