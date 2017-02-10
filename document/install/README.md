@@ -39,10 +39,10 @@
         * make check
         * make install
 
-* 安装libhnet.so
+* 安装hnet
 
-    * 解压hnet.tar.gz到任一目录中，以 /usr/local/hnet 为例。
-        * cd /usr/local
+    * 解压hnet.tar.gz到任一目录中，以/usr/local/src为例。
+        * cd /usr/local/src
         * tar -zxvf hnet.tar.gz
         * cd hnet/core
         * make

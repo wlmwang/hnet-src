@@ -15,23 +15,20 @@
 
 * 运行
     * 服务器
-        * cd /usr/local/hnet/example/server
-        * ./examplesvrd -h127.0.0.1 -p10025 -d
+        * /usr/local/hnet/example/server/examplesvrd -h127.0.0.1 -p10025 -d
 
     * 客户端（单次）
-        * cd /usr/local/hnet/example/client
-        * ./exampleclient -h 127.0.0.7 -p 10025
+        * /usr/local/hnet/example/client/exampleclient -h 127.0.0.7 -p 10025
 
     * 客户端（守护）
-        * cd /usr/local/hnet/example/clientd
-        * ./exampleclientd -h127.0.0.7 -p 10025
+        * /usr/local/hnet/example/clientd/exampleclientd -h127.0.0.7 -p 10025
 
 * 命令
     * 重启
-        * ./examplesvrd -s restart
+        * /usr/local/hnet/example/server/examplesvrd -s restart
 
     * 停止
-        * ./examplesvrd -s stop
+        * /usr/local/hnet/example/server/examplesvrd -s stop
 
 # 代码详解
 
