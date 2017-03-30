@@ -119,7 +119,7 @@ const uid_t     kDeamonUser = 0;
 const gid_t     kDeamonGroup = 0;
 
 const char      kSoftwareName[]   = "HNET";
-const char      kSoftwareVer[]    = "0.0.7";
+const char      kSoftwareVer[]    = "0.0.8";
 
 const char		kBinPath[] = "./";
 const char      kLockPath[] = "hnet.lock";

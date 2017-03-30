@@ -19,7 +19,7 @@ CFLAGS	:= -Wall -O3 -std=c++11 -D_USE_LOGGER_ -D_DEBUG_
 
 # 第三方库
 DIR_LIB		:=	./
-LIBFLAGS	:= -L${DIR_LIB} -lpthread -lprotobuf
+LIBFLAGS	:= -L${DIR_LIB}
 
 # 主目录
 DIR_SRC		:= ./
@@ -40,7 +40,9 @@ LD_OBJ	:= $(patsubst %.cpp, ${DIR_LD}/%.o, $(notdir ${CPP_SRC})) $(patsubst %.cc
 # 目标文件
 LIBNAME	:= libhnet
 AR_LIB	:= ${LIBNAME}.a
-LD_LIB	:= ${LIBNAME}.so
+LN_LIB	:= ${LIBNAME}.so
+LD_LIB	:= ${LIBNAME}.so.0.0.8
+SN_LIB	:= ${LIBNAME}.so.0
 
 # 安装目录
 INS_LIB	:= /usr/local/lib
@@ -56,7 +58,7 @@ $(AR_LIB):$(AR_OBJ)
 	
 $(LD_LIB):$(LD_OBJ)
 	-rm -f $@
-	$(LD) $(LDFLAGS) -o $@ $^ $(CFLAGS) $(LIBFLAGS)
+	$(LD) $(LDFLAGS) -Wl,-soname,$(SN_LIB) -o $@ $^ $(CFLAGS) $(LIBFLAGS)
 
 # 编译ar
 $(DIR_AR)/%.o:$(DIR_SRC)/%.cpp
@@ -78,13 +80,15 @@ $(DIR_LD)/%.o:$(DIR_SRC)/%.cc
 
 clean:
 	@echo "Clean and Rebuild"
-	-rm -rf $(DIR_AR) $(DIR_LD) $(AR_LIB) $(LD_LIB)
+	-rm -rf $(DIR_AR) $(DIR_LD) $(AR_LIB) $(LN_LIB) $(LD_LIB) $(SN_LIB)
 	-mkdir $(DIR_AR) $(DIR_LD)
 	
 install:
 	@echo "Install LIB and HEADER"
 	-rm -rf $(INS_INC)
 	-mkdir $(INS_INC)
-	-cp -f $(DIR_SRC)/*.h $(INS_INC)
+	-cp -f $(DIR_SRC)/*.h 	$(INS_INC)
 	-cp -f $(DIR_SRC)/*.inl $(INS_INC)
-	-cp -f ${LIBNAME}.* $(INS_LIB)
+	-/sbin/ldconfig -n .
+	-cp -f ${LIBNAME}.*		$(INS_LIB)
+	-ln -fs $(INS_LIB)/$(LN_LIB) $(INS_LIB)/$(LD_LIB)
