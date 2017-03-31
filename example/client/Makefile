@@ -18,7 +18,7 @@ LDFLAGS	:= -Wl,-dy #-Wl,-Bdynamic
 # 第三方库
 DIR_INC		:= /usr/local/include/hnet
 DIR_LIB		:= /usr/local/lib
-LIBFLAGS	:= -L${DIR_LIB} $(ARFLAGS) -lhnet $(LDFLAGS) -lpthread -lprotobuf
+LIBFLAGS	:= -L${DIR_LIB} $(ARFLAGS) -lhnet -lprotobuf $(LDFLAGS) -lpthread
 
 # 主目录,message,command目录
 DIR_SRC		:= ./

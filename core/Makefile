@@ -87,8 +87,8 @@ install:
 	@echo "Install LIB and HEADER"
 	-rm -rf $(INS_INC)
 	-mkdir $(INS_INC)
-	-cp -f $(DIR_SRC)/*.h 	$(INS_INC)
+	-cp -f $(DIR_SRC)/*.h $(INS_INC)
 	-cp -f $(DIR_SRC)/*.inl $(INS_INC)
 	-/sbin/ldconfig -n .
-	-cp -f ${LIBNAME}.*		$(INS_LIB)
+	-cp -f ${LIBNAME}.*	$(INS_LIB)
 	-ln -fs $(INS_LIB)/$(LN_LIB) $(INS_LIB)/$(LD_LIB)
