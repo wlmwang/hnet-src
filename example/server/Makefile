@@ -16,9 +16,9 @@ ARFLAGS	:= -Wl,-dn #-Wl,-Bstatic
 LDFLAGS	:= -Wl,-dy #-Wl,-Bdynamic
 
 # 第三方库
-DIR_INC		:= /usr/local/include/hnet
-DIR_LIB		:= /usr/local/lib
-LIBFLAGS	:= -L${DIR_LIB} $(ARFLAGS) -lhnet -lprotobuf $(LDFLAGS) -lpthread
+DIR_INC		:= -I/usr/local/include/hnet
+DIR_LIB		:= -L/usr/local/lib
+LIBFLAGS	:= ${DIR_LIB} $(ARFLAGS) -lhnet -lprotobuf $(LDFLAGS) -lpthread
 
 # 主目录,message,command目录
 DIR_SRC		:= ./
@@ -26,7 +26,7 @@ DIR_MSG		:= ../../message/
 DIR_CMD		:= ../../command/
 
 # 头文件
-INCFLAGS	:= -I${DIR_INC} -I${DIR_SRC} -I${DIR_MSG} -I${DIR_CMD}
+INCFLAGS	:= ${DIR_INC} -I${DIR_SRC} -I${DIR_MSG} -I${DIR_CMD}
 
 # 源文件
 CPP_SRC	:= $(wildcard ${DIR_SRC}*.cpp)
