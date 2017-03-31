@@ -124,7 +124,7 @@ const char      kSoftwareVer[]    = "0.0.8";
 const char		kBinPath[] = "./";
 const char      kLockPath[] = "hnet.lock";
 const char      kPidPath[] = "hnet.pid";
-const char      kLogPath[] = "hnet.log";
+const char      kLogPath[] = "/tmp/hnet.log";
 
 }   // namespace hnet
 
