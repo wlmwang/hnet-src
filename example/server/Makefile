@@ -17,7 +17,7 @@ LDFLAGS	:= #-static
 # 第三方库
 DIR_INC		:= /usr/local/include/hnet
 DIR_LIB		:= /usr/local/lib
-LIBFLAGS	:= -L${DIR_LIB} -lpthread -lprotobuf -lhnet
+LIBFLAGS	:= -L${DIR_LIB} -lhnet -lpthread -lprotobuf
 
 # 主目录,message,command目录
 DIR_SRC		:= ./
