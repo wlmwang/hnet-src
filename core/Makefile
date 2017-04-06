@@ -13,13 +13,13 @@
 CC		:= g++
 AR		:= ar
 LD		:= g++
-ARFLAGS := -rc
-LDFLAGS := -shared -fpic -pipe -fno-ident
-CFLAGS	:= -Wall -O3 -std=c++11 -D_USE_LOGGER_ -D_DEBUG_
+ARFLAGS :=
+LDFLAGS := -fpic -pipe -fno-ident
+CFLAGS	:= -Wall -O3 -std=c++11 -D_USE_LOGGER_ #-D_DEBUG_
 
 # 第三方库
-DIR_LIB		:=	./
-LIBFLAGS	:= -L${DIR_LIB}
+ARLIBFLAGS 	:=
+LDLIBFLAGS 	:= -L/usr/local/lib -lprotobuf -lpthread
 
 # 主目录
 DIR_SRC		:= ./
@@ -54,29 +54,29 @@ all: $(AR_LIB) $(LD_LIB)
 
 $(AR_LIB):$(AR_OBJ)
 	-rm -f $@
-	${AR} ${ARFLAGS} $@ $^
+	${AR} -rcs $@ $^
 	
 $(LD_LIB):$(LD_OBJ)
 	-rm -f $@
-	$(LD) $(LDFLAGS) -Wl,-soname,$(SN_LIB) -o $@ $^ $(CFLAGS) $(LIBFLAGS)
+	$(LD) -shared -Wl,-soname,$(SN_LIB) -o $@ $^ $(CFLAGS) $(LDLIBFLAGS)
 
 # 编译ar
 $(DIR_AR)/%.o:$(DIR_SRC)/%.cpp
 	@echo "Compiling $@"
-	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ $(ARFLAGS)
 
 $(DIR_AR)/%.o:$(DIR_SRC)/%.cc
 	@echo "Compiling $@"
-	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ $(ARFLAGS)
 
 # 编译ld
 $(DIR_LD)/%.o:$(DIR_SRC)/%.cpp
 	@echo "Compiling $@"
-	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ -fpic -pipe -fno-ident
+	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ $(LDFLAGS)
 
 $(DIR_LD)/%.o:$(DIR_SRC)/%.cc
 	@echo "Compiling $@"
-	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ -fpic -pipe -fno-ident
+	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ $(LDFLAGS)
 
 clean:
 	@echo "Clean and Rebuild"
