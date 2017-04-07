@@ -89,6 +89,6 @@ install:
 	-mkdir $(INS_INC)
 	-cp -f $(DIR_SRC)/*.h $(INS_INC)
 	-cp -f $(DIR_SRC)/*.inl $(INS_INC)
-	-/sbin/ldconfig -n .
 	-cp -f ${LIBNAME}.*	$(INS_LIB)
-	-ln -fs $(INS_LIB)/$(LN_LIB) $(INS_LIB)/$(LD_LIB)
+	-ldconfig
+	-ln -fs $(LD_LIB) $(INS_LIB)/$(LN_LIB)
