@@ -119,12 +119,12 @@ const uid_t     kDeamonUser = 0;
 const gid_t     kDeamonGroup = 0;
 
 const char      kSoftwareName[]   = "HNET";
-const char      kSoftwareVer[]    = "0.0.9";
+const char      kSoftwareVer[]    = "0.0.10";
 
 const char		kBinPath[] = "./";
 const char      kLockPath[] = "hnet.lock";
 const char      kPidPath[] = "hnet.pid";
-const char      kLogPath[] = "/tmp/hnet.log";
+const char      kLogPath[] = "hnet.log";
 
 }   // namespace hnet
 

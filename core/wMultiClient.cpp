@@ -159,12 +159,14 @@ const wStatus& wMultiClient::Recv() {
         }
         if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
         	task->Socket()->SS() = kSsUnconnect;
+            RemoveTask(task, NULL, false);
         } else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
             if (evt[i].events & EPOLLIN) {
                 // 套接口准备好了读取操作
             	ssize_t size;
             	if (!(mStatus = task->TaskRecv(&size)).Ok()) {
                 	task->Socket()->SS() = kSsUnconnect;
+                    RemoveTask(task, NULL, false);
                 }
             } else if (evt[i].events & EPOLLOUT) {
                 // 清除写事件
@@ -176,6 +178,7 @@ const wStatus& wMultiClient::Recv() {
                 	ssize_t size;
                 	if (!(mStatus = task->TaskSend(&size)).Ok()) {
                     	task->Socket()->SS() = kSsUnconnect;
+                        RemoveTask(task, NULL, false);
                     }
                 }
             }
