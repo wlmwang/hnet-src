@@ -25,12 +25,15 @@
         * cd gcc-build-4.8.2
         * ../gcc-4.8.2/configure --enable-checking=release --enable-languages=c,c++ --disable-multilib      #生成Makefile文件
         * make -j4      #极其耗时。-j4选项是make对多核处理器的优化
-        * ```此步骤可能会有glibc出错信息。 sudo yum -y install glibc-devel.i686 glibc-devel```
+        * ```此步骤可能会有glibc出错信息。 yum -y install glibc-devel.i686 glibc-devel```
 
         * make check
-        * sudo make install
+        * make install
         * gcc -v #可能要reboot重启生效
-
+		* cp stage1-x86_64-unknown-linux-gnu/libstdc++-v3/src/.libs/libstdc++.so.6.0.18 /usr/lib64 	#替换libstdc++运行库
+		* ldconfig
+		* strings /usr/lib64/libstdc++.so.6 | grep GLIBC
+		
 * 安装protobuf（默认路径 /usr/local/lib   /usr/local/include/google）
 
     * 源码安装(hnet/vendor目录附带有2.4.1版本。官方https://github.com/google/protobuf)
