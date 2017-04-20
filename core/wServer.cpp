@@ -297,6 +297,7 @@ const wStatus& wServer::Broadcast(char *cmd, int len) {
     return mStatus;
 }
 
+#ifdef _USE_PROTOBUF_
 const wStatus& wServer::Broadcast(const google::protobuf::Message* msg) {
     for (int i = 0; i < kServerNumShard; i++) {
 	    if (mTaskPool[i].size() > 0) {
@@ -310,6 +311,7 @@ const wStatus& wServer::Broadcast(const google::protobuf::Message* msg) {
     }
     return mStatus;
 }
+#endif
 
 const wStatus& wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const std::vector<uint32_t>* blackslot) {
 	ssize_t ret;
@@ -341,6 +343,7 @@ const wStatus& wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const st
     return mStatus;
 }
 
+#ifdef _USE_PROTOBUF_
 const wStatus& wServer::NotifyWorker(const google::protobuf::Message* msg, uint32_t solt, const std::vector<uint32_t>* blackslot) {
 	ssize_t ret;
 	char buf[kPackageSize];
@@ -369,6 +372,7 @@ const wStatus& wServer::NotifyWorker(const google::protobuf::Message* msg, uint3
 	}
     return mStatus;
 }
+#endif
 
 const wStatus& wServer::Send(wTask *task, char *cmd, size_t len) {
 	if ((mStatus = task->Send2Buf(cmd, len)).Ok()) {
@@ -377,12 +381,14 @@ const wStatus& wServer::Send(wTask *task, char *cmd, size_t len) {
     return mStatus;
 }
 
+#ifdef _USE_PROTOBUF_
 const wStatus& wServer::Send(wTask *task, const google::protobuf::Message* msg) {
 	if ((mStatus = task->Send2Buf(msg)).Ok()) {
 	    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
 	}
     return mStatus;
 }
+#endif
 
 const wStatus& wServer::AddListener(const std::string& ipaddr, uint16_t port, std::string protocol) {
     wSocket *socket;

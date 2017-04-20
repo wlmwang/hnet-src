@@ -7,7 +7,10 @@
 #ifndef _W_MULTI_CLIENT_H_
 #define _W_MULTI_CLIENT_H_
 
+#ifdef _USE_PROTOBUF_
 #include <google/protobuf/message.h>
+#endif
+
 #include <algorithm>
 #include <vector>
 #include <sys/epoll.h>
@@ -48,9 +51,14 @@ public:
     // 异步广播消息
     // 当 type== kNumShard 广播所有类型下的所有客户端
     const wStatus& Broadcast(char *cmd, size_t len, int type = kClientNumShard);
+#ifdef _USE_PROTOBUF_
     const wStatus& Broadcast(const google::protobuf::Message* msg, int type = kClientNumShard);
+#endif
+
     const wStatus& Send(wTask *task, char *cmd, size_t len);
+#ifdef _USE_PROTOBUF_
     const wStatus& Send(wTask *task, const google::protobuf::Message* msg);
+#endif
 
     const wStatus& PrepareStart();
     const wStatus& Start();

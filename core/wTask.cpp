@@ -178,6 +178,7 @@ const wStatus& wTask::TaskSend(ssize_t *size) {
     return mStatus;
 }
 
+#ifdef _USE_PROTOBUF_
 // 整理protobuf消息至buf
 void wTask::Assertbuf(char buf[], const google::protobuf::Message* msg) {
 	// 类名 && 长度
@@ -197,6 +198,7 @@ void wTask::Assertbuf(char buf[], const google::protobuf::Message* msg) {
     // 消息体
 	msg->SerializeToArray(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + nameLen, msg->ByteSize());
 }
+#endif
 
 // 整理wCommand消息至buf
 void wTask::Assertbuf(char buf[], const char cmd[], size_t len) {
@@ -238,6 +240,7 @@ const wStatus& wTask::Send2Buf(char cmd[], size_t len) {
     return mStatus.Clear();
 }
 
+#ifdef _USE_PROTOBUF_
 const wStatus& wTask::Send2Buf(const google::protobuf::Message* msg) {
 	// 消息体总长度
 	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
@@ -266,6 +269,7 @@ const wStatus& wTask::Send2Buf(const google::protobuf::Message* msg) {
     mSendLen += sizeof(uint32_t) + len;
     return mStatus.Clear();
 }
+#endif
 
 const wStatus& wTask::AsyncSend(char cmd[], size_t len) {
 	if (mSCType == 0 && mServer != NULL) {
@@ -278,6 +282,7 @@ const wStatus& wTask::AsyncSend(char cmd[], size_t len) {
 	return mStatus;
 }
 
+#ifdef _USE_PROTOBUF_
 const wStatus& wTask::AsyncSend(const google::protobuf::Message* msg) {
 	if (mSCType == 0 && mServer != NULL) {
 		mStatus = mServer->Send(this, msg);
@@ -288,6 +293,7 @@ const wStatus& wTask::AsyncSend(const google::protobuf::Message* msg) {
 	}
 	return mStatus;
 }
+#endif
 
 const wStatus& wTask::SyncSend(char cmd[], size_t len, ssize_t *size) {
 	// 消息体总长度
@@ -299,6 +305,7 @@ const wStatus& wTask::SyncSend(char cmd[], size_t len, ssize_t *size) {
     return mStatus = mSocket->SendBytes(mTempBuff, len + sizeof(uint32_t), size);
 }
 
+#ifdef _USE_PROTOBUF_
 const wStatus& wTask::SyncSend(const google::protobuf::Message* msg, ssize_t *size) {
 	// 消息体总长度
 	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
@@ -308,6 +315,7 @@ const wStatus& wTask::SyncSend(const google::protobuf::Message* msg, ssize_t *si
 	Assertbuf(mTempBuff, msg);
     return mStatus = mSocket->SendBytes(mTempBuff, len + sizeof(uint32_t), size);
 }
+#endif
 
 const wStatus& wTask::SyncRecv(char cmd[], ssize_t *size, uint32_t timeout) {
 	// 包长度 + 数据协议 + 消息协议头
@@ -364,6 +372,7 @@ const wStatus& wTask::SyncRecv(char cmd[], ssize_t *size, uint32_t timeout) {
     return mStatus.Clear();
 }
 
+#ifdef _USE_PROTOBUF_
 const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t timeout) {
 	// 包长度 + 数据协议 + 消息协议头
 	size_t headlen = sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t);
@@ -419,6 +428,7 @@ const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, ui
     msg->ParseFromArray(mTempBuff + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + n, msglen - sizeof(uint8_t) - sizeof(uint16_t) - n);
     return mStatus.Clear();
 }
+#endif
 
 const wStatus& wTask::SyncWorker(char cmd[], size_t len) {
 	if (mServer && mServer->Worker()) {
@@ -430,6 +440,7 @@ const wStatus& wTask::SyncWorker(char cmd[], size_t len) {
 	return mStatus;
 }
 
+#ifdef _USE_PROTOBUF_
 const wStatus& wTask::SyncWorker(const google::protobuf::Message* msg) {
 	if (mServer && mServer->Worker()) {
 		std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
@@ -439,6 +450,7 @@ const wStatus& wTask::SyncWorker(const google::protobuf::Message* msg) {
 	}
 	return mStatus;
 }
+#endif
 
 const wStatus& wTask::Handlemsg(char cmd[], uint32_t len) {
 	// 数据协议

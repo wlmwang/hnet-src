@@ -8,7 +8,12 @@
 #include "wStatus.h"
 #include "wConfig.h"
 #include "wSingleClient.h"
+
+#ifdef _USE_PROTOBUF_
 #include "example.pb.h"
+#else
+#include "exampleCmd.h"
+#endif
 
 using namespace hnet;
 
@@ -64,22 +69,40 @@ int main(int argc, const char *argv[]) {
     ssize_t size;
 
     // 同步方式发送example::ExampleEchoReq请求
+#ifdef _USE_PROTOBUF_
     example::ExampleEchoReq req;
     req.set_cmd("hello hnet~");
 	s = client->SyncSend(&req, &size);
+#else
+	ExampleReqEcho_t req;
+	memcpy(req.mCmd, "hello hnet~", sizeof("hello hnet~"));
+	s = client->SyncSend(reinterpret_cast<char*>(&req), sizeof(req), &size);
+#endif
 	if (!s.Ok()) {
 		std::cout << "client send failed" << s.ToString() << std::endl;
 		return -1;
 	}
 
 	// 同步接受服务器返回
+#ifdef _USE_PROTOBUF_
 	example::ExampleEchoRes res;
 	s = client->SyncRecv(&res, &size);
+
 	if (!s.Ok()) {
 		std::cout << "client receive failed" << s.ToString() << std::endl;
 		return -1;
 	}
 	std::cout << res.cmd() << "|" << res.ret() << std::endl;
+#else
+	char* buf[512];
+	s = client->SyncRecv(buf, sizeof(buf), &size);
 
+	if (!s.Ok()) {
+		std::cout << "client receive failed" << s.ToString() << std::endl;
+		return -1;
+	}
+	ExampleResEcho_t* res = reinterpret_cast<ExampleResEcho_t*>(buf);
+	std::cout << res->mCmd << "|" << res->mRet << std::endl;
+#endif
 	return 0;
 }

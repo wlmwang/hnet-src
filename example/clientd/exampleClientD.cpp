@@ -9,28 +9,47 @@
 #include "wMisc.h"
 #include "wTcpTask.h"
 #include "wMultiClient.h"
+
+#ifdef _USE_PROTOBUF_
 #include "example.pb.h"
+#else
+#include "exampleCmd.h"
+#endif
 
 using namespace hnet;
 
 class ExampleTask : public wTcpTask {
 public:
 	ExampleTask(wSocket *socket, int32_t type) : wTcpTask(socket, type) {
+#ifdef _USE_PROTOBUF_
 		On("example.ExampleEchoRes", &ExampleTask::ExampleEchoRes, this);
+#else
+		On(CMD_EXAMPLE_RES, EXAMPLE_RES_ECHO, &ExampleTask::ExampleEchoRes, this);
+#endif
 	}
 	int ExampleEchoRes(struct Request_t *request);
 };
 
 int ExampleTask::ExampleEchoRes(struct Request_t *request) {
+#ifdef _USE_PROTOBUF_
 	example::ExampleEchoRes res;
 	res.ParseFromArray(request->mBuf, request->mLen);
-
 	std::cout << res.cmd() << "|" << res.ret() << std::endl;
+#else
+	ExampleResEcho_t* res = reinterpret_cast<ExampleResEcho_t*>(request->mBuf);
+	std::cout << res->mCmd << "|" << res->mRet << std::endl;
+#endif
 
 	// 循环请求
+#ifdef _USE_PROTOBUF_
 	example::ExampleEchoReq req;
 	req.set_cmd("hello hnet~");
 	AsyncSend(&req);
+#else
+	ExampleReqEcho_t req;
+	memcpy(req.mCmd, "hello hnet~", sizeof("hello hnet~"));
+	AsyncSend(reinterpret_cast<char*>(&req), sizeof(req));
+#endif
 	return 0;
 }
 
@@ -119,10 +138,15 @@ int main(int argc, const char *argv[]) {
 		client->StartThread();
 
 		// 广播发送example::ExampleEchoReq请求到所有连接的服务器
+#ifdef _USE_PROTOBUF_
 		example::ExampleEchoReq req;
 		req.set_cmd("hello hnet~");
 		client->Broadcast(&req, 1);
-
+#else
+		ExampleReqEcho_t req;
+		memcpy(req.mCmd, "hello hnet~", sizeof("hello hnet~"));
+		client->Broadcast(reinterpret_cast<char*>(&req), sizeof(req), 1);
+#endif
 		// 等待连接结束
 		client->JoinThread();
 		std::cout << "thread end" << std::endl;

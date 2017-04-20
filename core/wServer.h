@@ -7,7 +7,10 @@
 #ifndef _W_SERVER_H_
 #define _W_SERVER_H_
 
+#ifdef _USE_PROTOBUF_
 #include <google/protobuf/message.h>
+#endif
+
 #include <algorithm>
 #include <vector>
 #include <sys/epoll.h>
@@ -51,15 +54,21 @@ public:
     
     // 异步广播消息
     const wStatus& Broadcast(char *cmd, int len);
+#ifdef _USE_PROTOBUF_
     const wStatus& Broadcast(const google::protobuf::Message* msg);
+#endif
 
     // 广播消息至worker进程   blacksolt为黑名单
     const wStatus& NotifyWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
+#ifdef _USE_PROTOBUF_
     const wStatus& NotifyWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
+#endif
 
     // 异步发送消息
     const wStatus& Send(wTask *task, char *cmd, size_t len);
+#ifdef _USE_PROTOBUF_
     const wStatus& Send(wTask *task, const google::protobuf::Message* msg);
+#endif
 
     // 检查时钟周期tick
     void CheckTick();

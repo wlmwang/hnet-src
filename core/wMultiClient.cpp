@@ -210,6 +210,7 @@ const wStatus& wMultiClient::Broadcast(char *cmd, size_t len, int type) {
     return mStatus;
 }
 
+#ifdef _USE_PROTOBUF_
 const wStatus& wMultiClient::Broadcast(const google::protobuf::Message* msg, int type) {
     if (type == kClientNumShard) {
         for (int i = 0; i < kClientNumShard; i++) {
@@ -228,6 +229,7 @@ const wStatus& wMultiClient::Broadcast(const google::protobuf::Message* msg, int
     }
     return mStatus;
 }
+#endif
 
 const wStatus& wMultiClient::Send(wTask *task, char *cmd, size_t len) {
     if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected
@@ -241,6 +243,7 @@ const wStatus& wMultiClient::Send(wTask *task, char *cmd, size_t len) {
     return mStatus;
 }
 
+#ifdef _USE_PROTOBUF_
 const wStatus& wMultiClient::Send(wTask *task, const google::protobuf::Message* msg) {
     if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected 
         && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
@@ -252,6 +255,7 @@ const wStatus& wMultiClient::Send(wTask *task, const google::protobuf::Message* 
     }
     return mStatus;
 }
+#endif
 
 const wStatus& wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) {
     struct epoll_event evt;

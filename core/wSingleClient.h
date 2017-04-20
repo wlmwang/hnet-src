@@ -7,7 +7,10 @@
 #ifndef _W_SINGLE_CLIENT_H_
 #define _W_SINGLE_CLIENT_H_
 
+#ifdef _USE_PROTOBUF_
 #include <google/protobuf/message.h>
+#endif
+
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
@@ -26,18 +29,20 @@ public:
     inline const wStatus& SyncSend(char cmd[], size_t len, ssize_t *size) {
     	return mStatus = mTask->SyncSend(cmd, len, size);
     }
-
+#ifdef _USE_PROTOBUF_
     inline const wStatus& SyncSend(const google::protobuf::Message* msg, ssize_t *size) {
     	return mStatus = mTask->SyncSend(msg, size);
     }
+#endif
 
     inline const wStatus& SyncRecv(char cmd[], ssize_t *size, uint32_t timeout = 30) {
     	return mStatus = mTask->SyncRecv(cmd, size, timeout);
     }
-
+#ifdef _USE_PROTOBUF_
     inline const wStatus& SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t timeout = 30) {
     	return mStatus = mTask->SyncRecv(msg, size, timeout);
     }
+#endif
 
 protected:
     wTask* mTask;

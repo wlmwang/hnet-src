@@ -7,7 +7,10 @@
 #ifndef _W_TASK_H_
 #define _W_TASK_H_
 
+#ifdef _USE_PROTOBUF_
 #include <google/protobuf/message.h>
+#endif
+
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
@@ -57,18 +60,24 @@ public:
     // 异步发送：将待发送客户端消息写入buf，等待TaskSend发送
     // wStatus返回不为空，则task被关闭
     const wStatus& Send2Buf(char cmd[], size_t len);
+#ifdef _USE_PROTOBUF_
     const wStatus& Send2Buf(const google::protobuf::Message* msg);
+#endif
 
     // 同步发送确切长度消息
     // wStatus返回不为空，则task被关闭
     // size = -1 对端发生错误|稍后重试|对端关闭
     // size >= 0 发送字符
     const wStatus& SyncSend(char cmd[], size_t len, ssize_t *size);
+#ifdef _USE_PROTOBUF_
     const wStatus& SyncSend(const google::protobuf::Message* msg, ssize_t *size);
+#endif
 
     // SyncSend的异步发送版本
     const wStatus& AsyncSend(char cmd[], size_t len);
+#ifdef _USE_PROTOBUF_
     const wStatus& AsyncSend(const google::protobuf::Message* msg);
+#endif
 
     // 同步接受一条合法的、非心跳消息
     // 调用者：保证此sock未加入epoll中，否则出现事件竞争！另外也要确保buf有足够长的空间接受自此同步消息
@@ -77,14 +86,20 @@ public:
     // size = 0  对端关闭
     // size > 0  接受字符
     const wStatus& SyncRecv(char cmd[], ssize_t *size, uint32_t timeout = 30);
+#ifdef _USE_PROTOBUF_
     const wStatus& SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t timeout = 30);
+#endif
 
     // 广播其他worker进程
     const wStatus& SyncWorker(char cmd[], size_t len);
+#ifdef _USE_PROTOBUF_
     const wStatus& SyncWorker(const google::protobuf::Message* msg);
+#endif
 
     static void Assertbuf(char buf[], const char cmd[], size_t len);
+#ifdef _USE_PROTOBUF_
     static void Assertbuf(char buf[], const google::protobuf::Message* msg);
+#endif
 
     const wStatus& HeartbeatSend();
 

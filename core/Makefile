@@ -15,7 +15,7 @@ AR		:= ar
 LD		:= g++
 ARFLAGS :=
 LDFLAGS := -fpic -pipe -fno-ident
-CFLAGS	:= -Wall -O3 -std=c++11 #-D_USE_LOGGER_ -D_DEBUG_
+CFLAGS	:= -Wall -O3 -std=c++11 #-D_DEBUG_ -D_USE_LOGGER_ -D_USE_PROTOBUF_
 
 # 第三方库
 ARLIBFLAGS 	:=
@@ -41,7 +41,7 @@ LD_OBJ	:= $(patsubst %.cpp, ${DIR_LD}/%.o, $(notdir ${CPP_SRC})) $(patsubst %.cc
 LIBNAME	:= libhnet
 AR_LIB	:= ${LIBNAME}.a
 LN_LIB	:= ${LIBNAME}.so
-LD_LIB	:= ${LIBNAME}.so.0.0.10
+LD_LIB	:= ${LIBNAME}.so.0.0.11
 SN_LIB	:= ${LIBNAME}.so.0
 
 # 安装目录

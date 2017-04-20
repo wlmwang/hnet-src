@@ -11,7 +11,7 @@
 #
 
 CC		:= g++
-CFLAGS	:= -Wall -O3 -std=c++11 -D_USE_LOGGER_ -D_DEBUG_
+CFLAGS	:= -Wall -O3 -std=c++11 -D_DEBUG_ -D_USE_LOGGER_ #-D_USE_PROTOBUF_
 ARFLAGS	:= -Wl,-dn #-Wl,-Bstatic
 LDFLAGS	:= -Wl,-dy #-Wl,-Bdynamic
 
