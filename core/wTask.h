@@ -7,16 +7,16 @@
 #ifndef _W_TASK_H_
 #define _W_TASK_H_
 
-#ifdef _USE_PROTOBUF_
-#include <google/protobuf/message.h>
-#endif
-
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
 #include "wEvent.h"
 #include "wServer.h"
 #include "wMultiClient.h"
+
+#ifdef _USE_PROTOBUF_
+#include <google/protobuf/message.h>
+#endif
 
 namespace hnet {
 

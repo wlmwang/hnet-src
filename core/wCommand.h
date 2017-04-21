@@ -11,6 +11,8 @@
 
 namespace hnet {
 
+#pragma pack(1)
+
 const uint8_t kCmdNull = 0;
 const uint8_t kParaNull = 0;
 
@@ -22,8 +24,6 @@ inline uint16_t CmdId(uint8_t cmd, uint8_t para) {
         return (static_cast<uint16_t>(cmd) << 8) | (static_cast<uint16_t>(para));
     }
 }
-
-#pragma pack(1)
 
 struct wNull_t {
     wNull_t(const uint8_t cmd, const uint8_t para): mCmd(cmd), mPara(para) { }
@@ -49,6 +49,13 @@ struct wNull_t {
 
 struct wCommand : public wNull_t {
     wCommand(const uint8_t cmd = kCmdNull, const uint8_t para = kParaNull): wNull_t(cmd, para) { }
+
+    inline void ParseFromArray(char* buf, uint32_t len) {
+        const wCommand* cmd = reinterpret_cast<wCommand*>(buf);
+        if (GetId() == cmd->GetId()) {
+            memcpy(this, buf, len);
+        }
+    }
 };
 
 #pragma pack()

@@ -7,14 +7,14 @@
 #ifndef _W_SINGLE_CLIENT_H_
 #define _W_SINGLE_CLIENT_H_
 
-#ifdef _USE_PROTOBUF_
-#include <google/protobuf/message.h>
-#endif
-
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
 #include "wTask.h"
+
+#ifdef _USE_PROTOBUF_
+#include <google/protobuf/message.h>
+#endif
 
 namespace hnet {
 

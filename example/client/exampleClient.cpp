@@ -71,13 +71,17 @@ int main(int argc, const char *argv[]) {
     // 同步方式发送example::ExampleEchoReq请求
 #ifdef _USE_PROTOBUF_
     example::ExampleEchoReq req;
+#else
+	example::ExampleReqEcho_t req;
+#endif
     req.set_cmd("hello hnet~");
+
+#ifdef _USE_PROTOBUF_
 	s = client->SyncSend(&req, &size);
 #else
-	ExampleReqEcho_t req;
-	memcpy(req.mCmd, "hello hnet~", sizeof("hello hnet~"));
 	s = client->SyncSend(reinterpret_cast<char*>(&req), sizeof(req), &size);
 #endif
+
 	if (!s.Ok()) {
 		std::cout << "client send failed" << s.ToString() << std::endl;
 		return -1;
@@ -92,17 +96,18 @@ int main(int argc, const char *argv[]) {
 		std::cout << "client receive failed" << s.ToString() << std::endl;
 		return -1;
 	}
-	std::cout << res.cmd() << "|" << res.ret() << std::endl;
 #else
-	char* buf[512];
-	s = client->SyncRecv(buf, sizeof(buf), &size);
+	char buf[512];
+	s = client->SyncRecv(buf, &size);
 
 	if (!s.Ok()) {
 		std::cout << "client receive failed" << s.ToString() << std::endl;
 		return -1;
 	}
-	ExampleResEcho_t* res = reinterpret_cast<ExampleResEcho_t*>(buf);
-	std::cout << res->mCmd << "|" << res->mRet << std::endl;
+	example::ExampleResEcho_t res;
+	res.ParseFromArray(buf, size);
 #endif
+	std::cout << res.cmd() << "|" << res.ret() << std::endl;
+
 	return 0;
 }

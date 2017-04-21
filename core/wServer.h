@@ -7,10 +7,6 @@
 #ifndef _W_SERVER_H_
 #define _W_SERVER_H_
 
-#ifdef _USE_PROTOBUF_
-#include <google/protobuf/message.h>
-#endif
-
 #include <algorithm>
 #include <vector>
 #include <sys/epoll.h>
@@ -23,6 +19,10 @@
 #include "wTimer.h"
 #include "wConfig.h"
 #include "wMaster.h"
+
+#ifdef _USE_PROTOBUF_
+#include <google/protobuf/message.h>
+#endif
 
 namespace hnet {
 

@@ -7,10 +7,6 @@
 #ifndef _W_MULTI_CLIENT_H_
 #define _W_MULTI_CLIENT_H_
 
-#ifdef _USE_PROTOBUF_
-#include <google/protobuf/message.h>
-#endif
-
 #include <algorithm>
 #include <vector>
 #include <sys/epoll.h>
@@ -24,6 +20,10 @@
 #include "wThread.h"
 #include "wConfig.h"
 #include "wServer.h"
+
+#ifdef _USE_PROTOBUF_
+#include <google/protobuf/message.h>
+#endif
 
 namespace hnet {
 

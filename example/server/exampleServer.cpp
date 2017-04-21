@@ -28,7 +28,7 @@ public:
 #ifdef _USE_PROTOBUF_
 		On("example.ExampleEchoReq", &ExampleChannelTask::ExampleEchoReq, this);
 #else
-		On(CMD_EXAMPLE_REQ, EXAMPLE_REQ_ECHO, &ExampleChannelTask::ExampleEchoReq, this);
+		On(example::CMD_EXAMPLE_REQ, example::EXAMPLE_REQ_ECHO, &ExampleChannelTask::ExampleEchoReq, this);
 #endif
 	}
 	int ExampleEchoReq(struct Request_t *request);
@@ -37,12 +37,11 @@ public:
 int ExampleChannelTask::ExampleEchoReq(struct Request_t *request) {
 #ifdef _USE_PROTOBUF_
 	example::ExampleEchoReq req;
+#else
+	example::ExampleReqEcho_t req;
+#endif
 	req.ParseFromArray(request->mBuf, request->mLen);
 	std::cout << "channel receive:" << req.cmd() << "|" << getpid() << std::endl;
-#else
-	ExampleReqEcho_t* req = reinterpret_cast<ExampleReqEcho_t*>(request->mBuf);
-	std::cout << "channel receive:" << req->mCmd << "|" << getpid() << std::endl;
-#endif
 	return 0;
 }
 
@@ -55,8 +54,8 @@ public:
 		On("example.ExampleEchoReq", &ExampleTcpTask::ExampleEchoReq, this);
 		On("example.ExampleEchoReq", &ExampleTcpTask::ExampleEchoChannel, this);
 #else
-		On(CMD_EXAMPLE_REQ, EXAMPLE_REQ_ECHO, &ExampleTcpTask::ExampleEchoReq, this);
-		On(CMD_EXAMPLE_REQ, EXAMPLE_REQ_ECHO, &ExampleTcpTask::ExampleEchoChannel, this);		
+		On(example::CMD_EXAMPLE_REQ, example::EXAMPLE_REQ_ECHO, &ExampleTcpTask::ExampleEchoReq, this);
+		On(example::CMD_EXAMPLE_REQ, example::EXAMPLE_REQ_ECHO, &ExampleTcpTask::ExampleEchoChannel, this);		
 #endif
 	}
 	int ExampleEchoReq(struct Request_t *request);
@@ -66,24 +65,25 @@ public:
 int ExampleTcpTask::ExampleEchoReq(struct Request_t *request) {
 #ifdef _USE_PROTOBUF_
 	example::ExampleEchoReq req;
+#else
+	example::ExampleReqEcho_t req;
+#endif
 	req.ParseFromArray(request->mBuf, request->mLen);
 	std::cout << "tcp receive 1:" << req.cmd() << std::endl;
-#else
-	ExampleReqEcho_t* req = reinterpret_cast<ExampleReqEcho_t*>(request->mBuf);
-	std::cout << "tcp receive 1:" << req->mCmd << std::endl;
-#endif
 
 	// 响应客户端
 #ifdef _USE_PROTOBUF_
 	example::ExampleEchoRes res;
+#else
+	example::ExampleResEcho_t res;
+#endif
+
 	res.set_ret(1);
 	res.set_cmd("return:" + req.cmd());
+
+#ifdef _USE_PROTOBUF_
 	AsyncSend(&res);
 #else
-	ExampleResEcho_t res;
-	res.mRet = 1;
-	memcpy(res.mCmd, "return:", sizeof("return:"));
-	memcpy(res.mCmd + sizeof("return:"), req->mCmd, req->mLen);
 	AsyncSend(reinterpret_cast<char*>(&res), sizeof(res));
 #endif
 	return 0;
@@ -92,14 +92,17 @@ int ExampleTcpTask::ExampleEchoReq(struct Request_t *request) {
 int ExampleTcpTask::ExampleEchoChannel(struct Request_t *request) {
 #ifdef _USE_PROTOBUF_
 	example::ExampleEchoReq req;
+#else
+	example::ExampleReqEcho_t req;
+#endif
+
 	req.ParseFromArray(request->mBuf, request->mLen);
 	std::cout << "tcp receive 2:" << req.cmd() << std::endl;
+
+#ifdef _USE_PROTOBUF_
 	// 发送给其他worker进程
 	SyncWorker(&req);
 #else
-	ExampleReqEcho_t* req = reinterpret_cast<ExampleReqEcho_t*>(request->mBuf);
-	std::cout << "tcp receive 2:" << req->mCmd << std::endl;
-	// 发送给其他worker进程
 	SyncWorker(request->mBuf, request->mLen);
 #endif
 	return 0;

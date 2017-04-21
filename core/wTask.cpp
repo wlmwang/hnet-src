@@ -476,12 +476,16 @@ const wStatus& wTask::Handlemsg(char cmd[], uint32_t len) {
 			}
 		}
 	} else if (sp == kMpProtobuf) {
+#ifdef _USE_PROTOBUF_
 		uint16_t l = coding::DecodeFixed16(cmd);
 		std::string name(cmd + sizeof(uint16_t), l);
 		struct Request_t request(cmd + sizeof(uint16_t) + l, len - sizeof(uint16_t) - l);
 		if (mEventPb(name, &request) == false) {
 			mStatus = wStatus::Corruption("wTask::Handlemsg, protobuf invalid request, no method find", name);
 		}
+#else
+        mStatus = wStatus::Corruption("wTask::Handlemsg, protobuf invalid request", "no protobuf support");
+#endif
 	} else {
 		mStatus = wStatus::Corruption("wTask::Handlemsg, invalid message protocol", logging::NumberToString(sp));
 	}

@@ -12,7 +12,9 @@
 
 namespace hnet {
 
-const uint8_t CMD_CHANNEL_REQ = 1;
+#pragma pack(1)
+
+const uint8_t CMD_CHANNEL_REQ = 0;
 struct wChannelReqCmd_s : public hnet::wCommand {
     int32_t mPid;
     wChannelReqCmd_s(uint8_t para) : wCommand(CMD_CHANNEL_REQ, para), mPid(-1) { }
@@ -23,13 +25,9 @@ struct wChannelReqCmd_s : public hnet::wCommand {
     inline int32_t pid() {
         return mPid;
     }
-    inline void ParseFromArray(char* buf, uint32_t len) {
-        wChannelReqCmd_s* w = reinterpret_cast<wChannelReqCmd_s*>(buf);
-        set_pid(w->pid());
-    }
 };
 
-const uint8_t CHANNEL_REQ_OPEN = 0;
+const uint8_t CHANNEL_REQ_OPEN = 10;
 struct wChannelReqOpen_t : public wChannelReqCmd_s {
     int32_t mSlot;
     int32_t mFd;
@@ -47,16 +45,9 @@ struct wChannelReqOpen_t : public wChannelReqCmd_s {
     inline int32_t fd() {
         return mFd;
     }
-    inline void ParseFromArray(char* buf, uint32_t len) {
-        wChannelReqCmd_s::ParseFromArray(buf, len);
-
-        wChannelReqOpen_t* w = reinterpret_cast<wChannelReqOpen_t*>(buf);
-        set_slot(w->slot());
-        set_fd(w->fd());
-    }
 };
 
-const uint8_t CHANNEL_REQ_CLOSE = 1;
+const uint8_t CHANNEL_REQ_CLOSE = 11;
 struct wChannelReqClose_t : public wChannelReqCmd_s {
     int32_t mSlot;
     wChannelReqClose_t() : wChannelReqCmd_s(CHANNEL_REQ_CLOSE), mSlot(-1) { }
@@ -67,23 +58,19 @@ struct wChannelReqClose_t : public wChannelReqCmd_s {
     inline int32_t slot() {
         return mSlot;
     }
-    inline void ParseFromArray(char* buf, uint32_t len) {
-        wChannelReqCmd_s::ParseFromArray(buf, len);
-
-        wChannelReqClose_t* w = reinterpret_cast<wChannelReqClose_t*>(buf);
-        set_slot(w->slot());
-    }
 };
 
-const uint8_t CHANNEL_REQ_QUIT = 2;
+const uint8_t CHANNEL_REQ_QUIT = 12;
 struct wChannelReqQuit_t : public wChannelReqCmd_s {
     wChannelReqQuit_t() : wChannelReqCmd_s(CHANNEL_REQ_QUIT) { }
 };
 
-const uint8_t CHANNEL_REQ_TERMINATE = 3;
+const uint8_t CHANNEL_REQ_TERMINATE = 13;
 struct wChannelReqTerminate_t : public wChannelReqCmd_s {
     wChannelReqTerminate_t() : wChannelReqCmd_s(CHANNEL_REQ_TERMINATE) { }
 };
+
+#pragma pack()
 
 }	// namespace hnet
 

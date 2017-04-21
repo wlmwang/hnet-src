@@ -84,11 +84,13 @@ const wStatus& wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) 
 
             // 文件描述符
             *(int32_t *) CMSG_DATA(&cmsg.cm) = open.fd();
-
 		} else {
 	        msg.msg_control = NULL;
 	        msg.msg_controllen = 0;
 		}
+#else
+        msg.msg_control = NULL;
+        msg.msg_controllen = 0;
 #endif
     } else if (sp == kMpCommand) {
 #ifndef _USE_PROTOBUF_
@@ -107,11 +109,13 @@ const wStatus& wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) 
 
             // 文件描述符
             *(int32_t *) CMSG_DATA(&cmsg.cm) = open.fd();
-
         } else {
             msg.msg_control = NULL;
             msg.msg_controllen = 0;
         }
+#else
+        msg.msg_control = NULL;
+        msg.msg_controllen = 0;
 #endif
     }
     

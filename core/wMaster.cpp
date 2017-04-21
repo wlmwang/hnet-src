@@ -471,15 +471,19 @@ void wMaster::SignalWorker(int signo) {
 		}
 		
         if (channel != NULL) {
+        	
 	        /* TODO: EAGAIN */
 #ifdef _USE_PROTOBUF_
-        	if (mServer->NotifyWorker(channel, i).Ok()) {
-#else
-        	if (mServer->NotifyWorker(reinterpret_cast<char*>(channel), sizeof(*channel), i).Ok()) {
-#endif
+	        if (mServer->NotifyWorker(channel, i).Ok()) {
         		mWorkerPool[i]->mExiting = 1;
 				continue;
-        	}
+	        }
+#else
+	        if (mServer->NotifyWorker(reinterpret_cast<char*>(channel), sizeof(*channel), i).Ok()) {
+        		mWorkerPool[i]->mExiting = 1;
+				continue;
+	        }
+#endif
 		}
 
         if (kill(mWorkerPool[i]->mPid, signo) == -1) {

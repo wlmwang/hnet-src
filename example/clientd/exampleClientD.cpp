@@ -24,7 +24,7 @@ public:
 #ifdef _USE_PROTOBUF_
 		On("example.ExampleEchoRes", &ExampleTask::ExampleEchoRes, this);
 #else
-		On(CMD_EXAMPLE_RES, EXAMPLE_RES_ECHO, &ExampleTask::ExampleEchoRes, this);
+		On(example::CMD_EXAMPLE_RES, example::EXAMPLE_RES_ECHO, &ExampleTask::ExampleEchoRes, this);
 #endif
 	}
 	int ExampleEchoRes(struct Request_t *request);
@@ -33,21 +33,23 @@ public:
 int ExampleTask::ExampleEchoRes(struct Request_t *request) {
 #ifdef _USE_PROTOBUF_
 	example::ExampleEchoRes res;
+#else
+	example::ExampleResEcho_t res;
+#endif
 	res.ParseFromArray(request->mBuf, request->mLen);
 	std::cout << res.cmd() << "|" << res.ret() << std::endl;
-#else
-	ExampleResEcho_t* res = reinterpret_cast<ExampleResEcho_t*>(request->mBuf);
-	std::cout << res->mCmd << "|" << res->mRet << std::endl;
-#endif
 
 	// 循环请求
 #ifdef _USE_PROTOBUF_
 	example::ExampleEchoReq req;
+#else
+	example::ExampleReqEcho_t req;
+#endif
 	req.set_cmd("hello hnet~");
+
+#ifdef _USE_PROTOBUF_
 	AsyncSend(&req);
 #else
-	ExampleReqEcho_t req;
-	memcpy(req.mCmd, "hello hnet~", sizeof("hello hnet~"));
 	AsyncSend(reinterpret_cast<char*>(&req), sizeof(req));
 #endif
 	return 0;
@@ -140,11 +142,14 @@ int main(int argc, const char *argv[]) {
 		// 广播发送example::ExampleEchoReq请求到所有连接的服务器
 #ifdef _USE_PROTOBUF_
 		example::ExampleEchoReq req;
+#else
+		example::ExampleReqEcho_t req;
+#endif
 		req.set_cmd("hello hnet~");
+		
+#ifdef _USE_PROTOBUF_
 		client->Broadcast(&req, 1);
 #else
-		ExampleReqEcho_t req;
-		memcpy(req.mCmd, "hello hnet~", sizeof("hello hnet~"));
 		client->Broadcast(reinterpret_cast<char*>(&req), sizeof(req), 1);
 #endif
 		// 等待连接结束
