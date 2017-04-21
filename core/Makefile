@@ -19,9 +19,9 @@ LDFLAGS := -fpic -pipe -fno-ident
 CFLAGS	:= -Wall -O3 -std=c++11 #-D_USE_PROTOBUF_ -D_USE_LOGGER_ -D_DEBUG_
 
 # 第三方库
-ARLIBFLAGS 	:=
-#LDLIBFLAGS 	:= -L/usr/local/lib -lprotobuf -lpthread
-LDLIBFLAGS 	:= -L/usr/local/lib -lpthread
+ARLIBFLAGS	:=
+#LDLIBFLAGS	:= -L/usr/local/lib -lprotobuf -lpthread
+LDLIBFLAGS	:= -L/usr/local/lib -lpthread
 
 # 主目录
 DIR_SRC		:= ./
