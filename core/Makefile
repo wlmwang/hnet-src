@@ -20,7 +20,8 @@ CFLAGS	:= -Wall -O3 -std=c++11 #-D_USE_PROTOBUF_ -D_USE_LOGGER_ -D_DEBUG_
 
 # 第三方库
 ARLIBFLAGS 	:=
-LDLIBFLAGS 	:= -L/usr/local/lib -lprotobuf -lpthread
+#LDLIBFLAGS 	:= -L/usr/local/lib -lprotobuf -lpthread
+LDLIBFLAGS 	:= -L/usr/local/lib -lpthread
 
 # 主目录
 DIR_SRC		:= ./
@@ -30,7 +31,8 @@ INCFLAGS	:= -I${DIR_SRC}
 
 # 源文件
 CPP_SRC	:= $(wildcard ${DIR_SRC}*.cpp)
-CC_SRC	:= $(wildcard ${DIR_SRC}*.cc)
+#CC_SRC	:= $(wildcard ${DIR_SRC}*.cc)
+CC_SRC	:= 
 
 # 编译文件
 DIR_AR	:= ./ar
