@@ -8,7 +8,7 @@
 # gcc 4.8+(gdb7.6+)
 # 如需protobuf组件，需预先编译vendor目录下的protobuf软件包
 # 如需tinyxml组件，需预先编译vendor目录下的tinyxml软件包
-# 所需的.so文件建议安装到ldconfig加载路径中(/usr/local/lib)
+# 所需的.so文件都将安装到路径/usr/local/lib中
 #
 
 CC		:= g++
@@ -20,8 +20,7 @@ CFLAGS	:= -Wall -O3 -std=c++11 #-D_USE_PROTOBUF_ -D_USE_LOGGER_ -D_DEBUG_
 
 # 第三方库
 ARLIBFLAGS	:=
-#LDLIBFLAGS	:= -L/usr/local/lib -lprotobuf -lpthread
-LDLIBFLAGS	:= -L/usr/local/lib -lpthread
+LDLIBFLAGS	:= -L/usr/local/lib -lpthread #-lprotobuf
 
 # 主目录
 DIR_SRC		:= ./
@@ -31,8 +30,7 @@ INCFLAGS	:= -I${DIR_SRC}
 
 # 源文件
 CPP_SRC	:= $(wildcard ${DIR_SRC}*.cpp)
-#CC_SRC	:= $(wildcard ${DIR_SRC}*.cc)
-CC_SRC	:= 
+CC_SRC	:= #$(wildcard ${DIR_SRC}*.cc)
 
 # 编译文件
 DIR_AR	:= ./ar
