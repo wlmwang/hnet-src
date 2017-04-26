@@ -339,7 +339,6 @@ const wStatus& wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const st
 			mStatus = wStatus::Corruption("wServer::NotifyWorker failed 1", "worker channel is null");
 		}
 	}
-
     return mStatus;
 }
 

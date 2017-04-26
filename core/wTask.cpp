@@ -154,7 +154,6 @@ const wStatus& wTask::TaskSend(ssize_t *size) {
         	mStatus.Clear();
             break;
         } else if (len > 0) {
-            // len == mSendLen
             if (!(mStatus = mSocket->SendBytes(mSendRead, mSendLen, size)).Ok() || *size < 0) {
                 break;
             }
@@ -235,7 +234,6 @@ const wStatus& wTask::Send2Buf(char cmd[], size_t len) {
     } else {
     	return mStatus = wStatus::Corruption("wTask::Send2Buf, message length error", "left buffer not enough");
     }
-
     mSendLen += sizeof(uint32_t) + len;
     return mStatus.Clear();
 }
@@ -268,6 +266,28 @@ const wStatus& wTask::Send2Buf(const google::protobuf::Message* msg) {
 
     mSendLen += sizeof(uint32_t) + len;
     return mStatus.Clear();
+}
+#endif
+
+const wStatus& wTask::SyncWorker(char cmd[], size_t len) {
+    if (mServer && mServer->Worker()) {
+        std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
+        mStatus = mServer->NotifyWorker(cmd, len, kMaxProcess, &blackslot);
+    } else {
+        mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
+    }
+    return mStatus;
+}
+
+#ifdef _USE_PROTOBUF_
+const wStatus& wTask::SyncWorker(const google::protobuf::Message* msg) {
+    if (mServer && mServer->Worker()) {
+        std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
+        mStatus = mServer->NotifyWorker(msg, kMaxProcess, &blackslot);
+    } else {
+        mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
+    }
+    return mStatus;
 }
 #endif
 
@@ -427,28 +447,6 @@ const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, ui
     uint16_t n = coding::DecodeFixed16(mTempBuff + sizeof(uint32_t) + sizeof(uint8_t));
     msg->ParseFromArray(mTempBuff + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + n, msglen - sizeof(uint8_t) - sizeof(uint16_t) - n);
     return mStatus.Clear();
-}
-#endif
-
-const wStatus& wTask::SyncWorker(char cmd[], size_t len) {
-	if (mServer && mServer->Worker()) {
-		std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
-		mStatus = mServer->NotifyWorker(cmd, len, kMaxProcess, &blackslot);
-	} else {
-		mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
-	}
-	return mStatus;
-}
-
-#ifdef _USE_PROTOBUF_
-const wStatus& wTask::SyncWorker(const google::protobuf::Message* msg) {
-	if (mServer && mServer->Worker()) {
-		std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
-		mStatus = mServer->NotifyWorker(msg, kMaxProcess, &blackslot);
-	} else {
-		mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
-	}
-	return mStatus;
 }
 #endif
 
