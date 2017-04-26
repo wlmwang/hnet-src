@@ -5,15 +5,20 @@
 ###############################
 
 #
-# gcc 4.8+(gdb7.6+)
-# 如需protobuf组件，需预先编译vendor目录下的protobuf软件包，并打开 -D_USE_PROTOBUF_ , -lprotobuf 编译参数
-# 所需的.so文件都将安装到路径/usr/local/lib中，安转后建议将 /usr/local/lib 加入ldconfig加载路径
+# 编译环境要求
+# GCC 4.8+ #调试要求gdb7.6+
+# Linux2.6+ 或 Linux2.4+附epoll补丁
+# 
+# 运行要求
+# GCC 4.4+
+# Linux2.6+ 或 Linux2.4+附epoll补丁
+# 如需protobuf组件，需预先编译vendor目录下的protobuf软件包，并打开 -D_USE_PROTOBUF_ 及 -lprotobuf 编译参数
 #
 
 CC		:= g++
 AR		:= ar
 LD		:= g++
-ARFLAGS :=
+ARFLAGS := -fpic -pipe -fno-ident  #便于其他***.so库 静态链接 ${LIBNAME}.a 库
 LDFLAGS := -fpic -pipe -fno-ident
 CFLAGS	:= -Wall -O3 -std=c++11 #-D_USE_PROTOBUF_ -D_USE_LOGGER_ -D_DEBUG_
 
@@ -29,7 +34,7 @@ INCFLAGS	:= -I${DIR_SRC}
 
 # 源文件
 CPP_SRC	:= $(wildcard ${DIR_SRC}*.cpp)
-CC_SRC	:= #$(wildcard ${DIR_SRC}*.cc)
+#CC_SRC	:= $(wildcard ${DIR_SRC}*.cc)
 
 # 编译文件
 DIR_AR	:= ./ar

@@ -7,6 +7,7 @@
 #include "wMaster.h"
 #include "wServer.h"
 #include "wEnv.h"
+#include "wLogger.h"
 #include "wSlice.h"
 #include "wMisc.h"
 #include "wSigSet.h"
@@ -573,15 +574,18 @@ void wMaster::WorkerExitStat() {
 		// 日志记录
 		std::string str = "wMaster::WorkerExitStat, child(" + logging::NumberToString(pid) + ") ";
         if (WTERMSIG(status)) {
-			wStatus::Corruption(str + "exited on signal", logging::NumberToString(WTERMSIG(status)));
+			str += "exited on signal";
+			LOG_DEBUG(soft::GetLogPath(), "%s : %s", str.c_str(), logging::NumberToString(WTERMSIG(status)).c_str());
         } else {
-			wStatus::Corruption(str + "exited with code", logging::NumberToString(WTERMSIG(status)));
+			str += "exited with code";
+			LOG_DEBUG(soft::GetLogPath(), "%s : %s", str.c_str(), logging::NumberToString(WTERMSIG(status)).c_str());
         }
 	
 		// 退出码为2时，退出后不重启
         if (WEXITSTATUS(status) == 2 && mWorkerPool[i]->mRespawn) {
         	mWorkerPool[i]->mRespawn = 0;
-        	wStatus::Corruption(str + "exited with fatal code, and cannot be respawned", logging::NumberToString(WTERMSIG(status)));
+        	str += "exited with fatal code, and cannot be respawned";
+        	LOG_DEBUG(soft::GetLogPath(), "%s : %s", str.c_str(), logging::NumberToString(WTERMSIG(status)).c_str());
         }
     }
 }

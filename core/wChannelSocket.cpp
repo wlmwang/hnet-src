@@ -132,12 +132,14 @@ const wStatus& wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) 
     msg.msg_flags = 0;
 
     *size = sendmsg(mChannel[0], &msg, 0);
-    if (*size >= 0) {
-        mStatus.Clear();
-    } else if (*size == -1 && (errno == EINTR || errno == EAGAIN)) {
-        mStatus.Clear();
-    } else {
-        mStatus = wStatus::IOError("wChannelSocket::SendBytes, sendmsg failed", error::Strerror(errno));
+    if (*size >= 0 && (*size - len != 0)) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::SendBytes, sendmsg failed", logging::NumberToString(*size).c_str());
+    } else if (*size == -1) {
+        if (errno == EINTR || errno == EAGAIN) {
+            //LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::SendBytes, sendmsg failed", error::Strerror(errno).c_str());
+        } else {
+            mStatus = wStatus::IOError("wChannelSocket::SendBytes, sendmsg failed", error::Strerror(errno));
+        }
     }
     return mStatus;
 }
@@ -168,10 +170,12 @@ const wStatus& wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) 
     *size = recvmsg(mChannel[1], &msg, 0);
     if (*size == 0) {
         mStatus = wStatus::IOError("wChannelSocket::RecvBytes, client was closed", "");
-    } else if (*size == -1 && (errno == EINTR || errno == EAGAIN)) {
-        mStatus.Clear();
     } else if (*size == -1) {
-        mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", error::Strerror(errno));
+        if (errno == EINTR || errno == EAGAIN) {
+            //LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::RecvBytes, recvmsg failed", error::Strerror(errno).c_str());
+        } else {
+            mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", error::Strerror(errno));
+        }
     } else {
         if (msg.msg_flags & (MSG_TRUNC|MSG_CTRUNC)) {
         	LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelSocket::RecvBytes, recvmsg() truncated data", "");
