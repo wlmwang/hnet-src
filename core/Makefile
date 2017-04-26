@@ -6,9 +6,8 @@
 
 #
 # gcc 4.8+(gdb7.6+)
-# 如需protobuf组件，需预先编译vendor目录下的protobuf软件包
-# 如需tinyxml组件，需预先编译vendor目录下的tinyxml软件包
-# 所需的.so文件都将安装到路径/usr/local/lib中
+# 如需protobuf组件，需预先编译vendor目录下的protobuf软件包，并打开 -D_USE_PROTOBUF_ , -lprotobuf 编译参数
+# 所需的.so文件都将安装到路径/usr/local/lib中，安转后建议将 /usr/local/lib 加入ldconfig加载路径
 #
 
 CC		:= g++
