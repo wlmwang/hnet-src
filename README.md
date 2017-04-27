@@ -13,5 +13,3 @@ HNET网络框架初衷是为了公司另一基础产品（动态负载均衡-容
 ```
 
 [目录](document/SUMMARY.md)
-
-[手册](document/README.md)
