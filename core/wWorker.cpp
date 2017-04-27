@@ -49,12 +49,12 @@ const wStatus& wWorker::PrepareStart() {
     	// 将其他进程的channel[1]关闭，自己的除外
     	if (n == mSlot || mMaster->Worker(n) == NULL || mMaster->Worker(n)->mPid == -1) {
     		continue;
-    	} else if (close(mMaster->Worker(n)->ChannelFD(1)) == -1) {
+    	} else if (mMaster->Worker(n)->ChannelClose(1) == -1) {
     		return mStatus = wStatus::IOError("wWorker::PrepareStart, channel close() failed", error::Strerror(errno));
     	}
     }
     // 关闭该进程worker进程的channel[0]描述符
-    if (close(mMaster->Worker(mSlot)->ChannelFD(0)) == -1) {
+    if (mMaster->Worker(mSlot)->ChannelClose(0) == -1) {
     	return mStatus = wStatus::IOError("wWorker::PrepareStart, channel close() failed", error::Strerror(errno));
     }
 
@@ -79,7 +79,6 @@ const wStatus& wWorker::Start() {
     if (!(mStatus = Run()).Ok()) {
     	return mStatus;
     }
-
     // 启动server服务
 	return mStatus = mMaster->Server()->WorkerStart();
 }

@@ -93,7 +93,6 @@ install:
 	-rm -rf $(INS_INC)
 	-mkdir $(INS_INC)
 	-cp -f $(DIR_SRC)/*.h $(INS_INC)
-	-cp -f $(DIR_SRC)/*.inl $(INS_INC)
 	-cp -f ${LIBNAME}.*	$(INS_LIB)
 	-ldconfig
 	-ln -fs $(LD_LIB) $(INS_LIB)/$(LN_LIB)

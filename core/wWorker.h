@@ -39,12 +39,20 @@ public:
 	const wStatus& PrepareStart();
 	const wStatus& Start();
 
+	inline wMaster* Master() { return mMaster;}
+
 	inline pid_t& Pid() { return mPid;}
 	inline uint32_t& Slot() { return mSlot;}
 
+	inline wChannelSocket* Channel() { return mChannel;}
 	inline int& ChannelFD(uint8_t i) { return (*mChannel)[i];}
-    inline wChannelSocket* Channel() { return mChannel;}
-    inline wMaster* Master() { return mMaster;}
+	inline int ChannelClose(uint8_t i) {
+		if (close(ChannelFD(i)) == -1) {
+			return -1;
+		}
+		ChannelFD(i) = kFDUnknown;
+		return 0;
+	}
 
 protected:
 	friend class wMaster;
