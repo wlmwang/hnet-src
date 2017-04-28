@@ -35,8 +35,11 @@ public:
     void ResetBuffer();
     virtual ~wTask();
 
-    // 登录验证
-    virtual const wStatus& Login() {
+    virtual const wStatus& Connect() {
+        return mStatus.Clear();
+    }
+
+    virtual const wStatus& ReConnect() {
         return mStatus.Clear();
     }
 
@@ -90,7 +93,7 @@ public:
     const wStatus& SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t timeout = 30);
 #endif
 
-    // 广播其他worker进程
+    // 同步广播其他worker进程
     const wStatus& SyncWorker(char cmd[], size_t len);
 #ifdef _USE_PROTOBUF_
     const wStatus& SyncWorker(const google::protobuf::Message* msg);

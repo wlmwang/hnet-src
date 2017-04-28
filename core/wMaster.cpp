@@ -160,9 +160,9 @@ const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
 		open.set_fd(mWorkerPool[mSlot]->ChannelFD(0));
         std::vector<uint32_t> blackslot(1, mSlot);
 #ifdef _USE_PROTOBUF_
-        mServer->NotifyWorker(&open, kMaxProcess, &blackslot);
+        mServer->SyncWorker(&open, kMaxProcess, &blackslot);
 #else
-		mServer->NotifyWorker(reinterpret_cast<char*>(&open), sizeof(open), kMaxProcess, &blackslot);
+		mServer->SyncWorker(reinterpret_cast<char*>(&open), sizeof(open), kMaxProcess, &blackslot);
 #endif
 		usleep(100);
 	}
@@ -395,9 +395,9 @@ const wStatus& wMaster::ReapChildren() {
 						continue;
 					}
 #ifdef _USE_PROTOBUF_
-					mServer->NotifyWorker(&close, n);
+					mServer->SyncWorker(&close, n);
 #else
-					mServer->NotifyWorker(reinterpret_cast<char*>(&close), sizeof(close), n);
+					mServer->SyncWorker(reinterpret_cast<char*>(&close), sizeof(close), n);
 #endif
 				}
 			}
@@ -421,9 +421,9 @@ const wStatus& wMaster::ReapChildren() {
 				open.set_fd(mWorkerPool[i]->ChannelFD(0));
 				std::vector<uint32_t> blackslot(1, i);
 #ifdef _USE_PROTOBUF_
-				mServer->NotifyWorker(&open, kMaxProcess, &blackslot);
+				mServer->SyncWorker(&open, kMaxProcess, &blackslot);
 #else
-				mServer->NotifyWorker(reinterpret_cast<char*>(&open), sizeof(open), kMaxProcess, &blackslot);
+				mServer->SyncWorker(reinterpret_cast<char*>(&open), sizeof(open), kMaxProcess, &blackslot);
 #endif
 				mLive = 1;
 				continue;
@@ -475,12 +475,12 @@ void wMaster::SignalWorker(int signo) {
         	
 	        /* TODO: EAGAIN */
 #ifdef _USE_PROTOBUF_
-	        if (mServer->NotifyWorker(channel, i).Ok()) {
+	        if (mServer->SyncWorker(channel, i).Ok()) {
         		mWorkerPool[i]->mExiting = 1;
 				continue;
 	        }
 #else
-	        if (mServer->NotifyWorker(reinterpret_cast<char*>(channel), sizeof(*channel), i).Ok()) {
+	        if (mServer->SyncWorker(reinterpret_cast<char*>(channel), sizeof(*channel), i).Ok()) {
         		mWorkerPool[i]->mExiting = 1;
 				continue;
 	        }

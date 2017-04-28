@@ -272,7 +272,7 @@ const wStatus& wTask::Send2Buf(const google::protobuf::Message* msg) {
 const wStatus& wTask::SyncWorker(char cmd[], size_t len) {
     if (mServer && mServer->Worker()) {
         std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
-        mStatus = mServer->NotifyWorker(cmd, len, kMaxProcess, &blackslot);
+        mStatus = mServer->SyncWorker(cmd, len, kMaxProcess, &blackslot);
     } else {
         mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
     }
@@ -283,7 +283,7 @@ const wStatus& wTask::SyncWorker(char cmd[], size_t len) {
 const wStatus& wTask::SyncWorker(const google::protobuf::Message* msg) {
     if (mServer && mServer->Worker()) {
         std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
-        mStatus = mServer->NotifyWorker(msg, kMaxProcess, &blackslot);
+        mStatus = mServer->SyncWorker(msg, kMaxProcess, &blackslot);
     } else {
         mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
     }

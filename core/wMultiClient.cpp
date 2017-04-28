@@ -63,10 +63,9 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
     }
 
     if (mStatus.Ok()) {
-        // 登录
-        if (!(mStatus = mTask->Login()).Ok()) {
+        if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
             SAFE_DELETE(mTask);
-        } else if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
+        } else if (!(mStatus = mTask->Connect()).Ok()) {
             SAFE_DELETE(mTask);
         }
     }
@@ -92,7 +91,12 @@ const wStatus& wMultiClient::ReConnect(wTask* task) {
 
     // 重置task缓冲
     task->ResetBuffer();
-    return AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, false);
+    if (!(mStatus = AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, false)).Ok()) {
+        return mStatus;
+    } else if (!(mStatus = task->ReConnect()).Ok()) {
+        return mStatus;
+    }
+    return mStatus;
 }
 
 const wStatus& wMultiClient::DisConnect(wTask* task) {

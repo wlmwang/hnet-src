@@ -273,11 +273,10 @@ const wStatus& wServer::AcceptConn(wTask *task) {
     }
     
     if (mStatus.Ok()) {
-    	// 登录
-		if (!(mStatus = mTask->Login()).Ok()) {
+		if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
 		    SAFE_DELETE(mTask);
-		} else if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
-		    SAFE_DELETE(mTask);
+		} else if (!(mStatus = mTask->Connect()).Ok()) {
+			SAFE_DELETE(mTask);
 		}
     }
     return mStatus;
@@ -313,7 +312,7 @@ const wStatus& wServer::Broadcast(const google::protobuf::Message* msg) {
 }
 #endif
 
-const wStatus& wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const std::vector<uint32_t>* blackslot) {
+const wStatus& wServer::SyncWorker(char *cmd, int len, uint32_t solt, const std::vector<uint32_t>* blackslot) {
 	ssize_t ret;
 	char buf[kPackageSize];
 	if (solt == kMaxProcess) {
@@ -336,14 +335,14 @@ const wStatus& wServer::NotifyWorker(char *cmd, int len, uint32_t solt, const st
 			wTask::Assertbuf(buf, cmd, len);
 			mStatus = mMaster->Worker(solt)->Channel()->SendBytes(buf, sizeof(uint32_t) + sizeof(uint8_t) + len, &ret);
 		} else {
-			mStatus = wStatus::Corruption("wServer::NotifyWorker failed 1", "worker channel is null");
+			mStatus = wStatus::Corruption("wServer::SyncWorker failed 1", "worker channel is null");
 		}
 	}
     return mStatus;
 }
 
 #ifdef _USE_PROTOBUF_
-const wStatus& wServer::NotifyWorker(const google::protobuf::Message* msg, uint32_t solt, const std::vector<uint32_t>* blackslot) {
+const wStatus& wServer::SyncWorker(const google::protobuf::Message* msg, uint32_t solt, const std::vector<uint32_t>* blackslot) {
 	ssize_t ret;
 	char buf[kPackageSize];
 	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
@@ -366,7 +365,7 @@ const wStatus& wServer::NotifyWorker(const google::protobuf::Message* msg, uint3
 			wTask::Assertbuf(buf, msg);
 			mStatus = mMaster->Worker(solt)->Channel()->SendBytes(buf, sizeof(uint32_t) + len, &ret);
 		} else {
-			mStatus = wStatus::Corruption("wServer::NotifyWorker failed 2", "worker channel is null");
+			mStatus = wStatus::Corruption("wServer::SyncWorker failed 2", "worker channel is null");
 		}
 	}
     return mStatus;
