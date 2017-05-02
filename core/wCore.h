@@ -92,7 +92,7 @@ const uint32_t  kPageSize = 4096;
 const bool      kLittleEndian = true;
 
 // 心跳线程与主线程分离开关
-const bool		kScheduleTurn = false;	// v3.0.2 wServer bug
+const bool		kScheduleTurn = false;
 // 心跳开关
 const bool		kHeartbeatTurn = true;
 
