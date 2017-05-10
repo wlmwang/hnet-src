@@ -9,6 +9,7 @@
 #include "wMisc.h"
 #include "wChannelTask.h"
 #include "wTcpTask.h"
+#include "wHttpTask.h"
 #include "wConfig.h"
 #include "wServer.h"
 #include "wMaster.h"
@@ -108,6 +109,32 @@ int ExampleTcpTask::ExampleEchoChannel(struct Request_t *request) {
 	return 0;
 }
 
+class ExampleHttpTask : public wHttpTask {
+public:
+	ExampleHttpTask(wSocket *socket, int32_t type) : wHttpTask(socket, type) {
+		// 多播事件注册
+		On(example::CMD_EXAMPLE_REQ, example::EXAMPLE_REQ_ECHO, &ExampleHttpTask::ExampleEchoReq, this);
+	}
+	int ExampleEchoReq(struct Request_t *request);
+};
+
+int ExampleHttpTask::ExampleEchoReq(struct Request_t *request) {
+
+	std::cout << QueryGet("cmd") << " | " << QueryGet("para") << std::endl;
+
+	for (std::map<std::string, std::string>::iterator it = Req().begin(); it != Req().end(); it++) {
+		std::cout << "REQ: " << it->first << " = " << it->second << std::endl;
+	}
+
+	// 返回
+	ResponseSet("Content-Type", "text/html; charset=UTF-8");
+	Write("<h1>hnet is work!<h1>");
+	for (std::map<std::string, std::string>::iterator it = Res().begin(); it != Res().end(); it++) {
+		std::cout << "RES: " << it->first << " = " << it->second << std::endl;
+	}
+	return 0;
+}
+
 class ExampleServer : public wServer {
 public:
 	ExampleServer(wConfig* config) : wServer(config) { }
@@ -115,7 +142,15 @@ public:
 	virtual const wStatus& NewTcpTask(wSocket* sock, wTask** ptr) {
 	    SAFE_NEW(ExampleTcpTask(sock, Shard(sock)), *ptr);
 	    if (*ptr == NULL) {
-			return mStatus = wStatus::IOError("ExampleServer::NewTcpTask", "ExampleTask new failed");
+			return mStatus = wStatus::IOError("ExampleServer::NewTcpTask", "ExampleTcpTask new failed");
+	    }
+	    return mStatus;
+	}
+	
+	virtual const wStatus& NewHttpTask(wSocket* sock, wTask** ptr) {
+	    SAFE_NEW(ExampleHttpTask(sock, Shard(sock)), *ptr);
+	    if (*ptr == NULL) {
+			return mStatus = wStatus::IOError("ExampleServer::NewHttpTask", "ExampleHttpTask new failed");
 	    }
 	    return mStatus;
 	}
@@ -123,7 +158,7 @@ public:
 	virtual const wStatus& NewChannelTask(wSocket* sock, wTask** ptr) {
 		SAFE_NEW(ExampleChannelTask(sock, mMaster, Shard(sock)), *ptr);
 	    if (*ptr == NULL) {
-			return mStatus = wStatus::IOError("ExampleServer::NewChannelTask", "new failed");
+			return mStatus = wStatus::IOError("ExampleServer::NewChannelTask", "ExampleChannelTask new failed");
 	    }
 	    return mStatus;
 	}
@@ -137,7 +172,6 @@ int main(int argc, const char *argv[]) {
 	if (config == NULL) {
 		return -1;
 	}
-
 	wStatus s;
 
 	// 解析命令行

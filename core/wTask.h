@@ -76,6 +76,9 @@ public:
     const wStatus& SyncSend(const google::protobuf::Message* msg, ssize_t *size);
 #endif
 
+    // 添加epoll可写事件
+    const wStatus& Output();
+
     // SyncSend的异步发送版本
     const wStatus& AsyncSend(char cmd[], size_t len);
 #ifdef _USE_PROTOBUF_

@@ -4,6 +4,7 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include <algorithm>
 #include "wMultiClient.h"
 #include "wEnv.h"
 #include "wTcpSocket.h"
@@ -28,6 +29,8 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
     if (type >= kClientNumShard) {
         return mStatus = wStatus::Corruption("wMultiClient::AddConnect failed", "overload type");
     }
+    
+    std::transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
 
     wSocket *socket;
     if (protocol == "TCP") {
@@ -64,9 +67,9 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
 
     if (mStatus.Ok()) {
         if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
-            SAFE_DELETE(mTask);
+            RemoveTask(mTask, NULL, true);
         } else if (!(mStatus = mTask->Connect()).Ok()) {
-            SAFE_DELETE(mTask);
+            RemoveTask(mTask, NULL, true);
         }
     }
     return mStatus;
@@ -92,9 +95,9 @@ const wStatus& wMultiClient::ReConnect(wTask* task) {
     // 重置task缓冲
     task->ResetBuffer();
     if (!(mStatus = AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, false)).Ok()) {
-        return mStatus;
+        RemoveTask(mTask, NULL, false);
     } else if (!(mStatus = task->ReConnect()).Ok()) {
-        return mStatus;
+        RemoveTask(mTask, NULL, false);
     }
     return mStatus;
 }

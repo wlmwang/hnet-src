@@ -7,6 +7,7 @@
 #include "wTask.h"
 #include "wCommand.h"
 #include "wMisc.h"
+#include "wLogger.h"
 #include "wSocket.h"
 #include "wMaster.h"
 #include "wWorker.h"
@@ -91,7 +92,7 @@ const wStatus& wTask::TaskRecv(ssize_t *size) {
                 mStatus = wStatus::Corruption("wTask::TaskRecv, message length error, out range", ">0");
                 break;
             } else if (reallen > static_cast<uint32_t>(len - sizeof(uint32_t))) {
-            	wStatus::Corruption("wTask::TaskRecv, recv a part of message", ">0");
+                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::TaskRecv, recv a part of message", ">0");
                 mStatus.Clear();
                 break;
             }
@@ -121,7 +122,7 @@ const wStatus& wTask::TaskRecv(ssize_t *size) {
                 mStatus = wStatus::Corruption("wTask::TaskRecv, message length error, out range", "<=0");
                 break;
             } else if (reallen > static_cast<uint32_t>(kPackageSize - abs(len) - sizeof(uint32_t))) {
-            	wStatus::Corruption("wTask::TaskRecv, recv a part of message", "<=0");
+                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::TaskRecv, recv a part of message", "<=0");
                 mStatus.Clear();
                 break;
             }
@@ -336,6 +337,17 @@ const wStatus& wTask::SyncSend(const google::protobuf::Message* msg, ssize_t *si
     return mStatus = mSocket->SendBytes(mTempBuff, len + sizeof(uint32_t), size);
 }
 #endif
+
+const wStatus& wTask::Output() {
+    if (mSCType == 0 && mServer != NULL) {
+        mStatus = mServer->AddTask(this, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+    } else if (mSCType == 1 && mClient != NULL) {
+        mStatus = mClient->AddTask(this, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+    } else {
+        mStatus = wStatus::Corruption("wTask::Output, failed", "mServer or mClient is null");
+    }
+    return mStatus;
+}
 
 const wStatus& wTask::SyncRecv(char cmd[], ssize_t *size, uint32_t timeout) {
 	// 包长度 + 数据协议 + 消息协议头

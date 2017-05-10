@@ -86,6 +86,19 @@ const wStatus& wConfig::GetOption(int argc, const char *argv[]) {
                 }
                 return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires port number");
 
+            case 'x':
+                if (*p) {
+                    SetStrConf("protocol", p);
+                    goto next;
+                }
+
+                p = argv[++i]; // 多一个空格
+                if (*p) {
+                    SetStrConf("protocol", p);
+                    goto next;
+                }
+                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-x\" requires protocol address");
+
             case 'P':
                 if (*p) {
                 	SetStrConf("pid_path", p);

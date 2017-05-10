@@ -12,6 +12,8 @@
 #include <sys/socket.h>
 #include <net/if.h>
 #include <time.h>
+#include <map>
+#include <vector>
 #include "wCore.h"
 #include "wStatus.h"
 #include "wSlice.h"
@@ -98,27 +100,41 @@ std::string EscapeString(const wSlice& value);
 
 namespace misc {
 
-int SetBinPath(std::string bin_path = "", std::string self = "/proc/self/exe");
-
-// 创建守护进程
-wStatus InitDaemon(std::string lock_path, const char *prefix = NULL);
-
 // 哈希值 murmur hash类似算法
 uint32_t Hash(const char* data, size_t n, uint32_t seed);
 
 // 最大公约数
 uint64_t Ngcd(uint64_t arr[], size_t n);
 
-// 网卡获取地址
-unsigned GetIpByIF(const char* ifname);
+// 复制字符串
+char *Cpystrn(char *dst, const char *src, size_t n);
 
 // 转化成小写
 void Strlow(char *dst, const char *src, size_t n);
 
-// 复制字符串
-char *Cpystrn(char *dst, const char *src, size_t n);
+// 转化成大写
+void Strupper(char *dst, const char *src, size_t n);
 
+int32_t Strcmp(const std::string& str1, const std::string& str2, size_t n);
+
+// 查找字符串位置
+int32_t Strpos(const std::string& haystack, const std::string& needle);
+
+// 分隔字符串
+std::vector<std::string> SplitString(const std::string& src, const std::string& delim);
+
+// unix时间戳转化tm格式
 int FastUnixSec2Tm(time_t unix_sec, struct tm* tm, int time_zone = 8);
+
+// 网卡获取地址
+unsigned GetIpByIF(const char* ifname);
+
+// 切换进程工作目录
+// 行成功则返回0, 失败返回-1, errno 为错误代码
+int SetBinPath(std::string bin_path = "", std::string self = "/proc/self/exe");
+
+// 创建守护进程
+wStatus InitDaemon(std::string lock_path, const char *prefix = NULL);
 
 inline const char* IP2Text(u_long ip) {
     in_addr in;
@@ -150,11 +166,6 @@ inline uint32_t Align(uint32_t d, uint32_t a) {
 
 inline u_char* AlignPtr(char* p, char* a) {
     return (u_char *) (((uintptr_t) (p) + ((uintptr_t) a - 1)) & ~((uintptr_t) a - 1));
-}
-
-template <typename T = uint64_t>
-inline void Swap(T a, T b) {
-    T tmp = a; a = b; b = tmp;
 }
 
 }   // namespace misc

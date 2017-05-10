@@ -8,7 +8,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <poll.h> 
+#include <poll.h>
+#include <algorithm>
 #include "wEnv.h"
 #include "wServer.h"
 #include "wConfig.h"
@@ -23,6 +24,7 @@
 #include "wUdpTask.h"
 #include "wUnixTask.h"
 #include "wChannelTask.h"
+#include "wHttpTask.h"
 
 namespace hnet {
 
@@ -156,6 +158,14 @@ const wStatus& wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
     return mStatus.Clear();
 }
 
+const wStatus& wServer::NewHttpTask(wSocket* sock, wTask** ptr) {
+    SAFE_NEW(wHttpTask(sock, Shard(sock)), *ptr);
+    if (*ptr == NULL) {
+		return mStatus = wStatus::IOError("wServer::NewHttpTask", "new failed");
+    }
+    return mStatus.Clear();
+}
+
 const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {
 		// 争抢锁
@@ -249,7 +259,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		    return mStatus;
 		}
 		NewUnixTask(socket, &mTask);
-    } else if(task->Socket()->SP() == kSpTcp) {
+    } else if (task->Socket()->SP() == kSpTcp) {
 		int64_t fd;
 		struct sockaddr_in sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);	
@@ -268,15 +278,34 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		    return mStatus;
 		}
 		NewTcpTask(socket, &mTask);
+	} else if (task->Socket()->SP() == kSpHttp) {
+		int64_t fd;
+		struct sockaddr_in sockAddr;
+		socklen_t sockAddrSize = sizeof(sockAddr);	
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
+		    return mStatus;
+		}
+
+		// tcp socket
+		wTcpSocket *socket;
+		SAFE_NEW(wTcpSocket(kStConnect, kSpHttp), socket);
+		socket->FD() = fd;
+		socket->Host() = inet_ntoa(sockAddr.sin_addr);
+		socket->Port() = sockAddr.sin_port;
+		socket->SS() = kSsConnected;
+		if (!(mStatus = socket->SetFL()).Ok()) {
+		    return mStatus;
+		}
+		NewHttpTask(socket, &mTask);
     } else {
 		mStatus = wStatus::NotSupported("wServer::AcceptConn", "unknown task");
     }
     
     if (mStatus.Ok()) {
 		if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
-		    SAFE_DELETE(mTask);
+		    RemoveTask(mTask, NULL, true);
 		} else if (!(mStatus = mTask->Connect()).Ok()) {
-			SAFE_DELETE(mTask);
+			RemoveTask(mTask, NULL, true);
 		}
     }
     return mStatus;
@@ -389,14 +418,17 @@ const wStatus& wServer::Send(wTask *task, const google::protobuf::Message* msg) 
 #endif
 
 const wStatus& wServer::AddListener(const std::string& ipaddr, uint16_t port, std::string protocol) {
+	std::transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
+
     wSocket *socket;
     if (protocol == "UDP") {
-    	// udp无 listen socket
-		SAFE_NEW(wUdpSocket(kStConnect), socket);
+		SAFE_NEW(wUdpSocket(kStConnect), socket);	// udp无 listen socket
+	} else if (protocol == "UNIX") {
+		SAFE_NEW(wUnixSocket(kStListen), socket);
     } else if(protocol == "TCP") {
     	SAFE_NEW(wTcpSocket(kStListen), socket);
-    } else if (protocol == "UNIX") {
-    	SAFE_NEW(wUnixSocket(kStListen), socket);
+    } else if (protocol == "HTTP") {
+    	SAFE_NEW(wTcpSocket(kStListen, kSpHttp), socket);
     } else {
     	socket = NULL;
     }
@@ -459,13 +491,16 @@ const wStatus& wServer::Listener2Epoll(bool addpool) {
 		case kSpUnix:
 		    NewUnixTask(*it, &task);
 		    break;
+		case kSpHttp:
+		    NewHttpTask(*it, &task);
+		    break;
 		default:
 			task = NULL;
 		    mStatus = wStatus::NotSupported("wServer::Listener2Epoll", "unknown task");
 		}
 		if (mStatus.Ok()) {
 		    if (!AddTask(task, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
-				SAFE_DELETE(task);
+				RemoveTask(task, NULL, true);
 		    }
 		}
     }

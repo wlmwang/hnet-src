@@ -4,6 +4,7 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include <algorithm>
 #include "wSingleClient.h"
 #include "wTcpSocket.h"
 #include "wUnixSocket.h"
@@ -19,6 +20,8 @@ wSingleClient::~wSingleClient() {
 }
 
 const wStatus& wSingleClient::Connect(const std::string& ipaddr, uint16_t port, std::string protocol) {
+    std::transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
+
     wSocket *socket;
     if (protocol == "TCP") {
 	   SAFE_NEW(wTcpSocket(kStConnect), socket);

@@ -87,11 +87,12 @@ public:
     template<typename T = wServer*>
     inline T Server() { return reinterpret_cast<T>(mServer);}
 
+    const wStatus& AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
+    
 protected:
     const wStatus& Recv();
     const wStatus& InitEpoll();
 
-    const wStatus& AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
     const wStatus& RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
     const wStatus& CleanTask();
     
