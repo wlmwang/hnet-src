@@ -124,7 +124,7 @@ int ExampleHttpTask::ExampleEchoReq(struct Request_t *request) {
 	for (std::map<std::string, std::string>::iterator it = Req().begin(); it != Req().end(); it++) {
 		std::cout << "REQ: " << it->first << " = " << it->second << std::endl;
 	}
-	
+
 	// 返回
 	ResponseSet("Content-Type", "text/html; charset=UTF-8");
 	Write("<h1>hnet is work!<h1>");
@@ -133,7 +133,6 @@ int ExampleHttpTask::ExampleEchoReq(struct Request_t *request) {
 		std::cout << "RES: " << it->first << " = " << it->second << std::endl;
 	}
 	std::cout << "-------------------" << std::endl;
-
 	return 0;
 }
 

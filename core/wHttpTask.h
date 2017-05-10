@@ -32,8 +32,8 @@ public:
     virtual const wStatus& TaskRecv(ssize_t *size);
     virtual const wStatus& Handlemsg(char buf[], uint32_t len);
 
-    inline std::map<std::string, std::string> Req() { return mReq;}
-    inline std::map<std::string, std::string> Res() { return mRes;}
+    inline std::map<std::string, std::string>& Req() { return mReq;}
+    inline std::map<std::string, std::string>& Res() { return mRes;}
     
     inline std::string Url() { return kProtocol[1] + RequestGet(kHeader[2]) + mReq[kLine[1]];}
     inline std::string Method() { return mReq[kLine[0]];}
