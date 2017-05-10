@@ -16,13 +16,12 @@
 namespace hnet {
 
 class wSocket;
-
-const char	kLine[][16]		= {"method", "uri", "schema", "pathinfo", "querystring", "get", "post", "code", "status", "body"};
 const char	kProtocol[][16]	= {"HTTP/1.1", "http://"};
+const char	kCmd[][8]		= {"cmd", "para"};
+const char	kLine[][16]		= {"Method", "Uri", "Schema", "PathInfo", "QueryString", "Get", "Post", "Code", "Status", "Body"};
 const char  kMethod[][8]	= {"GET", "POST", "PUT", "DELETE", "HEAD", "PATCH"};
 const char  kHeader[][32]	= {"Content-Length", "Content-Type", "Host", "Connection", "X-Powered-By", "Cache-Control", "Pragma", "Keep-Alive", 
 								"User-Agent", "Accept", "Accept-Encoding", "Accept-Language", "Accept-Charset", "Referer"};
-const char	kCmd[][8]		= {"cmd", "para"};
 const char	kColon[]		= ": ";
 const char	kEndl[]			= "\r\n\r\n";
 

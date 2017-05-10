@@ -278,7 +278,6 @@ const wStatus& wHttpTask::ParseResponse() {
 		if (it->first == kLine[2] || it->first == kLine[7] || it->first == kLine[8] || it->first == kLine[9]) {
 			continue;
 		}
-
 		tmp = it->first + kColon + it->second + kCRLF;
 		memcpy(mTempBuff + len, tmp.c_str(), tmp.size());
 		len += tmp.size();

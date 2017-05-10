@@ -121,17 +121,19 @@ public:
 int ExampleHttpTask::ExampleEchoReq(struct Request_t *request) {
 
 	std::cout << QueryGet("cmd") << " | " << QueryGet("para") << std::endl;
-
 	for (std::map<std::string, std::string>::iterator it = Req().begin(); it != Req().end(); it++) {
 		std::cout << "REQ: " << it->first << " = " << it->second << std::endl;
 	}
-
+	
 	// 返回
 	ResponseSet("Content-Type", "text/html; charset=UTF-8");
 	Write("<h1>hnet is work!<h1>");
+
 	for (std::map<std::string, std::string>::iterator it = Res().begin(); it != Res().end(); it++) {
 		std::cout << "RES: " << it->first << " = " << it->second << std::endl;
 	}
+	std::cout << "-------------------" << std::endl;
+
 	return 0;
 }
 
