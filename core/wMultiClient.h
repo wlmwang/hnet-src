@@ -78,7 +78,8 @@ public:
 
     virtual const wStatus& NewTcpTask(wSocket* sock, wTask** ptr, int type = 0);
     virtual const wStatus& NewUnixTask(wSocket* sock, wTask** ptr, int type = 0);
-	
+	virtual const wStatus& NewHttpTask(wSocket* sock, wTask** ptr, int type = 0);
+
     virtual void CheckHeartBeat();
 
     template<typename T = wConfig*>

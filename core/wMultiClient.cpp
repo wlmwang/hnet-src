@@ -11,6 +11,7 @@
 #include "wUnixSocket.h"
 #include "wTcpTask.h"
 #include "wUnixTask.h"
+#include "wHttpTask.h"
 
 namespace hnet {
 
@@ -35,7 +36,9 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
     wSocket *socket;
     if (protocol == "TCP") {
        SAFE_NEW(wTcpSocket(kStConnect), socket);
-    } else if(protocol == "UNIX") {
+    } else if (protocol == "HTTP") {
+        SAFE_NEW(wTcpSocket(kStConnect, kSpHttp), socket);
+    } else if (protocol == "UNIX") {
        SAFE_NEW(wUnixSocket(kStConnect), socket);
     } else {
         socket = NULL;
@@ -59,7 +62,9 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
 
     if (protocol == "TCP") {
         NewTcpTask(socket, &mTask, type);
-    } else if(protocol == "UNIX") {
+    } else if (protocol == "HTTP") {
+        NewHttpTask(socket, &mTask, type);
+    } else if (protocol == "UNIX") {
         NewUnixTask(socket, &mTask, type);
     } else {
         mStatus = wStatus::NotSupported("wMultiClient::AcceptConn", "unknown task");
@@ -139,6 +144,14 @@ const wStatus& wMultiClient::NewUnixTask(wSocket* sock, wTask** ptr, int type) {
     SAFE_NEW(wUnixTask(sock, type), *ptr);
     if (*ptr == NULL) {
         return mStatus = wStatus::IOError("wMultiClient::NewUnixTask", "new failed");
+    }
+    return mStatus.Clear();
+}
+
+const wStatus& wMultiClient::NewHttpTask(wSocket* sock, wTask** ptr, int type) {
+    SAFE_NEW(wHttpTask(sock, type), *ptr);
+    if (*ptr == NULL) {
+        return mStatus = wStatus::IOError("wMultiClient::wHttpTask", "new failed");
     }
     return mStatus.Clear();
 }

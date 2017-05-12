@@ -116,6 +116,7 @@ const wStatus& wHttpTask::TaskRecv(ssize_t *size) {
            		// GET请求
            		int32_t pos = misc::Strpos(std::string(mRecvRead, 0, leftlen), kEndl);
                 if (pos == -1) {
+                	memset(mTempBuff, 0, sizeof(mTempBuff));
                 	memcpy(mTempBuff, mRecvRead, leftlen);
                 	memcpy(mTempBuff + leftlen, mRecvBuff, mRecvLen - leftlen);
                 	pos = misc::Strpos(std::string(mTempBuff, 0, mRecvLen), kEndl);
@@ -140,7 +141,8 @@ const wStatus& wHttpTask::TaskRecv(ssize_t *size) {
                 }
             } else if ((leftlen >= strlen(kMethod[1]) && misc::Strcmp(std::string(mRecvRead, 0, strlen(kMethod[1])), kMethod[1], strlen(kMethod[1])) == 0) || 
             	(leftlen == 0 && misc::Strcmp(std::string(mRecvBuff, 0, strlen(kMethod[1])), kMethod[1], strlen(kMethod[1])) == 0)) {
-            	// POST
+            	// POST请求
+            	memset(mTempBuff, 0, sizeof(mTempBuff));
             	memcpy(mTempBuff, mRecvRead, leftlen);
             	memcpy(mTempBuff + leftlen, mRecvBuff, mRecvLen - leftlen);
 
@@ -175,6 +177,10 @@ const wStatus& wHttpTask::TaskRecv(ssize_t *size) {
                 if (!mStatus.Ok()) {
                     break;
                 }
+            } else {
+           		// 未知请求
+                mStatus = wStatus::Corruption("wHttpTask::TaskRecv, method error", "<=0");
+                break;
             }
         }
     }
@@ -189,12 +195,14 @@ const wStatus& wHttpTask::Handlemsg(char buf[], uint32_t len) {
 	if (!cmd.empty() && !para.empty()) {
 		struct Request_t request(buf, len);
 		if (mEventCmd(CmdId(atoi(cmd.c_str()), atoi(para.c_str())), &request) == false) {
-			mStatus = wStatus::Corruption("wTask::Handlemsg, invalid request, no method find", "cmd:" + cmd + ", para:" + para);
+			ResponseSet(kHeader[3], "close");
+			Error("Not Found(cmd,para illegal)", "404");
 		}
 	} else {
-		mStatus = wStatus::Corruption("wTask::Handlemsg, invalid request, no cmd or para find", "");
+		ResponseSet(kHeader[3], "close");
+		Error("Bad Request(cmd,para must)", "400");
 	}
-	return ParseResponse();
+	return AsyncResponse();
 }
 
 const wStatus& wHttpTask::ParseRequest(char buf[], uint32_t len) {
@@ -243,7 +251,7 @@ const wStatus& wHttpTask::ParseRequest(char buf[], uint32_t len) {
 			}
 		} else {
 			mReq.insert(std::make_pair(kLine[6], *it));
-			// post
+			// POST数据
 			std::vector<std::string> line2 = misc::SplitString(mReq[kLine[6]], "&");
 			if (!line2.empty()) {
 				for (std::vector<std::string>::iterator it2 = line2.begin(); it2 != line2.end(); it2++) {
@@ -260,16 +268,19 @@ const wStatus& wHttpTask::ParseRequest(char buf[], uint32_t len) {
 	return mStatus;
 }
 
-const wStatus& wHttpTask::ParseResponse() {
-    AssertResponse();
+const wStatus& wHttpTask::AsyncResponse() {
     const char *buffend = mSendBuff + kPackageSize;
     ssize_t writelen =  mSendWrite - mSendRead;
     ssize_t leftlen = buffend - mSendWrite;
     ssize_t len = 0;
     std::string tmp;
 
+    // 填写默认头
+    FillResponse();
+
     // 响应行
-    tmp = mRes[kLine[2]] + " " + mRes[kLine[8]] + " " + mRes[kLine[7]] + kCRLF;
+    memset(mTempBuff, 0, sizeof(mTempBuff));
+    tmp = mRes[kLine[2]] + " " + mRes[kLine[7]] + " " + mRes[kLine[8]] + kCRLF;
 	memcpy(mTempBuff, tmp.c_str(), tmp.size());
 	len = tmp.size();
 
@@ -293,6 +304,7 @@ const wStatus& wHttpTask::ParseResponse() {
 		len += tmp.size();
 	}
 
+	// 异步缓冲
     if ((writelen >= 0 && leftlen >= static_cast<ssize_t>(len)) || (writelen < 0 && abs(writelen) >= static_cast<ssize_t>(len))) {
     	// 单向剩余足够（右边剩余 || 中间剩余）
     	memcpy(mSendWrite, mTempBuff, len);
@@ -309,15 +321,157 @@ const wStatus& wHttpTask::ParseResponse() {
 	return mStatus = Output();
 }
 
-void wHttpTask::AssertResponse() {
-	if (!mReq[kHeader[3]].empty()) {	// keep-alive
-		ResponseSet(kHeader[3], mReq[kHeader[3]]);
-		ResponseSet(kHeader[7], "timeout=30, max=120");
-	} else {
-		ResponseSet(kHeader[3], "close");
+const wStatus& wHttpTask::SyncResponse(char buf[], ssize_t* size, uint32_t timeout) {
+	int32_t pos = 0, pos1 = 0, len = 0;
+	size_t recvlen = 0;
+	bool ok = false;
+	memset(mTempBuff, 0, sizeof(mTempBuff));
+	for (uint64_t step = 1, usc = 1, timeline = timeout * 1000000; usc <= timeline; step <<= 1, usc += step) {
+		if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvlen, kPackageSize, size)).Ok()) {
+			return mStatus;
+        } else if (*size > 0) {
+        	recvlen += *size;
+        }
+        if (recvlen < strlen(kProtocol[0])) {
+   			usleep(step);
+            continue;
+        }
+
+        if (misc::Strcmp(std::string(mTempBuff, 0, strlen(kProtocol[0])), kProtocol[0], strlen(kProtocol[0])) == 0) {
+       		pos = misc::Strpos(std::string(mTempBuff, 0, recvlen), kEndl);
+       		if (pos == -1) {
+	   			usleep(step);
+	            continue;
+       		}
+	   		pos1 = misc::Strpos(std::string(mTempBuff, 0, recvlen), kHeader[0]);
+	   		if (pos1 == -1) {
+	   			usleep(step);
+	   			continue;
+	   		}
+
+	   		len = atoi(mTempBuff + pos1 + strlen(kHeader[0]) + strlen(kColon));
+	   		if (pos + strlen(kEndl) + len > kMaxPackageSize) {
+	   			mStatus = wStatus::Corruption("wHttpTask::SyncResponse, header error(Content-Length out range)", "");
+	   			break;
+	   		} else if (pos + strlen(kEndl) + len > static_cast<uint32_t>(recvlen)) {
+	   			usleep(step);
+	   			continue;
+	   		} else {
+	   			ok = true;
+	   		}
+        } else {
+       		// 未知协议
+            mStatus = wStatus::Corruption("wHttpTask::SyncResponse, only support HTTP/1.1", "");
+            break;
+        }
+        break;
 	}
 
-    ResponseSet(kLine[2], kProtocol[0]);	// HTTP/1.1
+	if (ok == false) {
+		return mStatus.Ok()? (mStatus = wStatus::Corruption("wTask::SyncResponse, message length error", "illegal message")): mStatus;
+	}
+	*size = recvlen;
+	memcpy(buf, mTempBuff , *size);
+    return mStatus.Clear();
+}
+
+const wStatus& wHttpTask::AsyncRequest() {
+    const char *buffend = mSendBuff + kPackageSize;
+    ssize_t writelen =  mSendWrite - mSendRead;
+    ssize_t leftlen = buffend - mSendWrite;
+    ssize_t len = 0;
+    std::string tmp;
+
+    // 填写默认头
+    FillResponse();
+    
+    // 请求行
+    memset(mTempBuff, 0, sizeof(mTempBuff));
+    tmp = mRes[kLine[0]] + " " + mRes[kLine[1]] + " " + mRes[kLine[2]] + kCRLF;
+	memcpy(mTempBuff, tmp.c_str(), tmp.size());
+	len = tmp.size();
+
+	// header
+	for (std::map<std::string, std::string>::iterator it = mRes.begin(); it != mRes.end(); it++) {
+		if (it->first == kLine[2] || it->first == kLine[7] || it->first == kLine[8] || it->first == kLine[9]) {
+			continue;
+		}
+		tmp = it->first + kColon + it->second + kCRLF;
+		memcpy(mTempBuff + len, tmp.c_str(), tmp.size());
+		len += tmp.size();
+	}
+	tmp = kCRLF;
+	memcpy(mTempBuff + len, tmp.c_str(), tmp.size());
+	len += tmp.size();
+	
+	// 响应body
+	if (!mRes[kLine[9]].empty()) {
+		tmp = mRes[kLine[9]];
+		memcpy(mTempBuff + len, tmp.c_str(), tmp.size());
+		len += tmp.size();
+	}
+
+	// 异步缓冲
+    if ((writelen >= 0 && leftlen >= static_cast<ssize_t>(len)) || (writelen < 0 && abs(writelen) >= static_cast<ssize_t>(len))) {
+    	// 单向剩余足够（右边剩余 || 中间剩余）
+    	memcpy(mSendWrite, mTempBuff, len);
+    	mSendWrite += len;
+    } else if (writelen >= 0 && leftlen < static_cast<ssize_t>(len + sizeof(uint32_t))) {
+    	// 分段剩余足够（两边剩余）
+    	memcpy(mSendWrite, mTempBuff, leftlen);
+    	memcpy(mSendBuff, mTempBuff + leftlen, len - leftlen);
+    	mSendWrite = mSendBuff + len - leftlen;
+    } else {
+    	return mStatus = wStatus::Corruption("wHttpTask::ParseResponse, message length error", "left buffer not enough");
+    }
+    mSendLen += len;
+    return mStatus = Output();
+}
+
+const wStatus& wHttpTask::SyncRequest(ssize_t* size) {
+    ssize_t len = 0;
+    std::string tmp;
+
+    // 填写默认头
+    FillResponse();
+    
+    // 请求行
+    tmp = mRes[kLine[0]] + " " + mRes[kLine[1]] + " " + mRes[kLine[2]] + kCRLF;
+	memcpy(mTempBuff, tmp.c_str(), tmp.size());
+	len = tmp.size();
+
+	// header
+	for (std::map<std::string, std::string>::iterator it = mRes.begin(); it != mRes.end(); it++) {
+		if (it->first == kLine[2] || it->first == kLine[7] || it->first == kLine[8] || it->first == kLine[9]) {
+			continue;
+		}
+		tmp = it->first + kColon + it->second + kCRLF;
+		memcpy(mTempBuff + len, tmp.c_str(), tmp.size());
+		len += tmp.size();
+	}
+	tmp = kCRLF;
+	memcpy(mTempBuff + len, tmp.c_str(), tmp.size());
+	len += tmp.size();
+	
+	// 响应body
+	if (!mRes[kLine[9]].empty()) {
+		tmp = mRes[kLine[9]];
+		memcpy(mTempBuff + len, tmp.c_str(), tmp.size());
+		len += tmp.size();
+	}
+	return mSocket->SendBytes(mTempBuff, len, size);
+}
+
+void wHttpTask::FillResponse() {
+	if (mRes[kHeader[3]].empty() && !mReq[kHeader[3]].empty()) {	// keep-alive
+		ResponseSet(kHeader[3], mReq[kHeader[3]]);
+		ResponseSet(kHeader[7], "timeout=30, max=120");
+	} else if (mRes[kHeader[3]].empty()) {
+		ResponseSet(kHeader[3], "close");
+	}
+    if (mRes[kLine[2]].empty()) {	// HTTP/1.1
+    	ResponseSet(kLine[2], kProtocol[0]);
+    }
     if (mRes[kLine[7]].empty()) {	// code
     	ResponseSet(kLine[7], "200");
     }
@@ -344,20 +498,45 @@ void wHttpTask::AssertResponse() {
 }
 
 void wHttpTask::Error(const std::string& status, const std::string& code) {
-	std::string s = status, c = code;
-	if (s.empty()) {
-		s = HttpStatus(c);
-		if (s.empty()) {
-			c = "500";
-			s = HttpStatus(c);
+	if (!code.empty()) {
+		if (status.empty()) {
+			const std::string s = http::Status(code);
+			if (s.empty()) {
+				ResponseSet(kLine[7], "500");
+				ResponseSet(kLine[8], http::Status("500"));
+			}
+			ResponseSet(kLine[7], code);
+			ResponseSet(kLine[8], s);
+		} else {
+			ResponseSet(kLine[7], code);
+			ResponseSet(kLine[8], status);
 		}
 	}
-	ResponseSet(kLine[7], c);
-	ResponseSet(kLine[8], s);
 }
 
 void wHttpTask::Write(const std::string& body) {
 	ResponseSet(kLine[9], body);
+}
+
+const wStatus& wHttpTask::HttpGet(const std::string& url, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout) {
+	ResponseSet(kLine[0], kMethod[0]);
+	ResponseSet(kLine[1], url);
+    ResponseSet(kHeader[2], Socket()->Host() + ":" + logging::NumberToString(static_cast<uint64_t>(Socket()->Port())));
+
+    ssize_t size;
+    if (!(mStatus = SyncRequest(&size)).Ok()) {
+    	return mStatus;
+    }
+    memset(mTempBuff, 0, sizeof(mTempBuff));
+    if (!(mStatus = SyncResponse(mTempBuff, &size, timeout)).Ok()) {
+    	return mStatus;
+    }
+    res = mTempBuff;
+    return mStatus;
+}
+
+const wStatus& wHttpTask::HttpPost(const std::string& url, const std::map<std::string, std::string>& data, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout) {
+    return mStatus;
 }
 
 }	// namespace hnet

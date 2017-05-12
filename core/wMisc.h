@@ -180,6 +180,19 @@ const std::string& Strerror(int32_t err);
 
 }	// namespace error
 
+namespace http {
+
+struct StatusCode_t {
+    const char  code[4];
+    const char  status[64];
+};
+
+void StatusCodeInit();
+
+const std::string& Status(const std::string& code);
+
+}   // namespace http
+
 namespace soft {
 
 uid_t GetUser();

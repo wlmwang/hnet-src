@@ -627,7 +627,7 @@ void wServer::CheckTick() {
 }
 
 void wServer::ScheduleRun(void* argv) {
-    wServer* server = reinterpret_cast<wServer* >(argv);
+    wServer* server = reinterpret_cast<wServer*>(argv);
 	if (server->mScheduleMutex.Lock() == 0) {
 	    if (server->mHeartbeatTurn && server->mHeartbeatTimer.CheckTimer(server->mTick/1000)) {
 	    	server->CheckHeartBeat();

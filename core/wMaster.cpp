@@ -33,9 +33,9 @@ wMaster::wMaster(const std::string& title, wServer* server) : mPid(getpid()), mT
 		mPidPath = soft::GetPidPath();
 	}
 	memset(mWorkerPool, 0, sizeof(mWorkerPool));
-
 	mNcpu = sysconf(_SC_NPROCESSORS_ONLN);
-	mWorkerNum = mNcpu;
+	
+	mWorkerNum = 1;		// worker默认数量
 	mServer->mMaster = this;	// 便于server引用master中进程表
 }
 
