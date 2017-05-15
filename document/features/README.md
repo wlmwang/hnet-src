@@ -4,7 +4,7 @@
 
 * 作为一个多协议的网络框架。HNET中有以下两层含义：
 
-    * 网络协议：目前系统已支持TCP SOCKET、UNIX DOMAIN SOCKET。可方便添加诸如HTTP、WebSocket等协议。构建时仅需传递相应的协议即可。
+    * 网络协议：目前系统已支持TCP SOCKET、UNIX DOMAIN SOCKET、HTTP/1.1。可方便二次开发诸如FTP、WebSocket等协议。
 
     * 数据协议：目前系统已支持自定义协议（C/C++中表现为结构体，系统中心跳机制使用（可关闭））、Protocol Buffer协议（https://github.com/google/protobuf ，系统中channel机制使用）。当然与客户端交互，建议使用protobuf，特别是不同语言间！
 
