@@ -177,12 +177,12 @@ const wStatus& wServer::Recv() {
 
 	// 事件循环
 	std::vector<struct epoll_event> evt(kListenBacklog);
-	int ret = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
+	int ret = epoll_wait(mEpollFD, &evt[0], kListenBacklog - 1, mTimeout);
 	if (ret == -1) {
 		mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", error::Strerror(errno));
 	}
-	for (int i = 0 ; i < ret ; i++) {
-		wTask* task = reinterpret_cast<wTask *>(evt[i].data.ptr);
+	for (int i = 0; i < ret && evt[i].data.ptr; i++) {
+		wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
 		int type = task->Type();
 		if (mScheduleTurn) {
 			// 加锁
@@ -244,7 +244,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_un sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);
-		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok() && fd <= 0) {
 		    return mStatus;
 		}
 
@@ -263,7 +263,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_in sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);	
-		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok() && fd <= 0) {
 		    return mStatus;
 		}
 
@@ -282,7 +282,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_in sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);	
-		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok() && fd <= 0) {
 		    return mStatus;
 		}
 
@@ -298,7 +298,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		}
 		NewHttpTask(socket, &mTask);
     } else {
-		mStatus = wStatus::NotSupported("wServer::AcceptConn", "unknown task");
+		mStatus = wStatus::NotSupported("wServer::AcceptConn failed", "unknown protocol");
     }
     
     if (mStatus.Ok()) {
@@ -577,6 +577,7 @@ const wStatus& wServer::CleanTask() {
     for (int i = 0; i < kServerNumShard; i++) {
     	CleanTaskPool(mTaskPool[i]);
     }
+    wEnv::Default()->DeleteFile(kAcceptMutex);
     return mStatus;
 }
 

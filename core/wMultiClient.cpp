@@ -165,12 +165,12 @@ const wStatus& wMultiClient::InitEpoll() {
 
 const wStatus& wMultiClient::Recv() {
     std::vector<struct epoll_event> evt(kListenBacklog);
-    int ret = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
+    int ret = epoll_wait(mEpollFD, &evt[0], kListenBacklog - 1, mTimeout);
     if (ret == -1) {
        return mStatus = wStatus::IOError("wMultiClient::Recv, epoll_wait() failed", error::Strerror(errno));
     }
 
-    for (int i = 0 ; i < ret ; i++) {
+    for (int i = 0; i < ret && evt[i].data.ptr; i++) {
     	wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
         int type = task->Type();
         if (mScheduleTurn) {

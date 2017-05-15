@@ -99,7 +99,7 @@ const bool		kHeartbeatTurn = true;
 // 惊群锁开关
 const bool		kAcceptTurn = true;
 // 目前惊群锁实现可使用以下两种 0:semaphore（信号量，需系统支持，性能较好） 1:file（记录锁。稳定，性能有所下降）
-const int8_t	kAcceptStuff = 0;
+const int8_t	kAcceptStuff = 1;
 const char		kAcceptMutex[] = "accept.lock";
 
 // 消息协议
