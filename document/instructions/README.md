@@ -9,7 +9,7 @@
     * 请求： example::ExampleReqEcho_t
     * 响应： example::ExampleResEcho_t
     *
-    * message/example.proto（example提供的protobuf结构）
+    * message/example.proto（example开启-D_USE_PROTOBUF_实际使用的数据结构）
     * 请求： example.ExampleEchoReq
     * 响应： example.ExampleEchoRes
 
@@ -28,10 +28,9 @@
         * 写法较为有代表性。值得注意的时，wConfig、wMaster用户均可再继承来实现更为定制化配置命令以及启动方式。
 
 ```
-task客户端：每一个连接到服务器的客户端都将被虚拟为一个Task对象，在此示例中为ExampleTcpTask。
+task客户端：每一个连接到服务器的客户端都将被虚拟为一个task对象，在此示例中为ExampleTcpTask。
 server服务端：每个服务器进程都有且仅有一个server对象，在此示例中为ExampleServer。
 ```
-
 
 * example/client/exampleClient.cpp
     * 单次客户端
@@ -43,7 +42,6 @@ server服务端：每个服务器进程都有且仅有一个server对象，在�
         * ExampleClient继承之wMultiClient，为TCP客户端类。该类主要应用在需要与服务器长期交互的地方，所以一般都会以线程方式运行，正如main中所示。当然该类自带断线重连机制。
             ExampleClient::NewTcpTask方法说明如上。即客户端连接服务器成功，会调用该方法产生一个wTcpTask对象来跟踪该连接。
             ExampleClient::PrepareRun为ExampleClient作为线程启动后调用的第一个调用的方法，此时可以做连接服务器工作，成功连接返回后，即进入客户端与服务器事件循环中。
-
 
 ```
 注意：HNET的更多高级用法；完整综合应用，请查阅公司该基础产品：动态负载均衡-容错系统(HLBS)。
