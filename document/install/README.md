@@ -1,10 +1,10 @@
-# 安装依赖包
+# 安装
 
 ```
-升级gcc-4.8+
-安装protobuf（确认要使用protobuf时安装）
-安装tinyxml（确认要使用xml时安装）
-安装hnet
+升级gcc-4.8+（编译依赖）
+安装protobuf（必要时安装protobuf）
+安装tinyxml（必要时安装tinyxml。必须要使用自带的软件包tinyxml(vendor目录下)安装：libtinyxml.a被编译为可静态链接到其他动态库的包）
+安装hnet（目前几个项目多数使用静态库，并将其编译为可静态链接到其他动态库）
 ```
 
 * 环境最低要求
@@ -14,7 +14,7 @@
 
 * 升级gcc-4.8.2
 
-    * 源码安装(CentOS)  #缺少编译环境请先安装老的gcc: yum -y install gcc gcc-c++
+    * 源码安装(CentOS)  #其他系统请自行升级。缺少编译环境请先安装老的gcc: yum -y install gcc gcc-c++
         * cd /usr/local/src
         * wget http://ftp.gnu.org/gnu/gcc/gcc-4.8.2/gcc-4.8.2.tar.bz2
         * tar -jxvf gcc-4.8.2.tar.bz2
@@ -33,7 +33,7 @@
 		* cp stage1-x86_64-unknown-linux-gnu/libstdc++-v3/src/.libs/libstdc++.so.6.0.18 /usr/lib64 	#替换libstdc++运行库
 		* ldconfig
 		* strings /usr/lib64/libstdc++.so.6 | grep GLIBC
-		
+
 * 安装protobuf（默认路径 /usr/local/lib   /usr/local/include/google）
 
     * 源码安装(hnet/vendor目录附带有2.4.1版本。官方https://github.com/google/protobuf)
@@ -68,5 +68,3 @@
 
 
 [目录](../SUMMARY.md)
-
-[第三章：示例](../example/README.md)

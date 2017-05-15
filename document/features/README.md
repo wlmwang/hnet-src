@@ -25,5 +25,3 @@ HNET在架构上借鉴了少许NGINX特性（熟悉NGINX的开发人员，有助
 ```
 
 [目录](../SUMMARY.md)
-
-[第二章：安装](../install/README.md)
