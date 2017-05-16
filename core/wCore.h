@@ -75,11 +75,12 @@ const int32_t   kFDUnknown = -1;
 const uint32_t  kKeepAliveTm = 3000;
 const uint8_t   kKeepAliveCnt = 5;
 
-// 1M消息队列大小
-const uint32_t  kMsgQueueLen = 1048576;
-
 // 100M单个归档日志大小
 const off_t		kMaxLoggerSize = 104857600;
+const uint8_t	kLoggerNum = 16;
+
+// 1M共享消息队列大小
+const uint32_t  kMsgQueueLen = 1048576;
 
 // 64k客户端task消息缓冲大小
 const uint32_t  kPackageSize = 65536;
@@ -87,10 +88,10 @@ const uint32_t  kMaxPackageSize = 65532;
 const uint32_t  kMinPackageSize = 3;
 
 const uint32_t  kPageSize = 4096;
-const bool      kLittleEndian = true;
+const bool		kLittleEndian = true;
 
 // 心跳线程与主线程分离开关
-const bool		kScheduleTurn = false;
+const bool		kScheduleTurn = true;
 // 心跳开关
 const bool		kHeartbeatTurn = true;
 const uint8_t   kHeartbeat = 5;

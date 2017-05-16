@@ -27,8 +27,30 @@ public:
 		On(example::CMD_EXAMPLE_RES, example::EXAMPLE_RES_ECHO, &ExampleTask::ExampleEchoRes, this);
 #endif
 	}
+    virtual const wStatus& ReConnect();
+	
 	int ExampleEchoRes(struct Request_t *request);
 };
+
+const wStatus& ExampleTask::ReConnect() {
+
+std::cout << "ReConnect" << std::endl;
+
+// 重连事件
+#ifdef _USE_PROTOBUF_
+	example::ExampleEchoReq req;
+#else
+	example::ExampleReqEcho_t req;
+#endif
+	req.set_cmd("hello hnet~");
+
+#ifdef _USE_PROTOBUF_
+	AsyncSend(&req);
+#else
+	AsyncSend(reinterpret_cast<char*>(&req), sizeof(req));
+#endif
+	return mStatus.Clear();
+}
 
 int ExampleTask::ExampleEchoRes(struct Request_t *request) {
 #ifdef _USE_PROTOBUF_
@@ -39,7 +61,7 @@ int ExampleTask::ExampleEchoRes(struct Request_t *request) {
 	res.ParseFromArray(request->mBuf, request->mLen);
 	std::cout << res.cmd() << "|" << res.ret() << std::endl;
 
-	// 循环请求
+// 循环请求
 #ifdef _USE_PROTOBUF_
 	example::ExampleEchoReq req;
 #else
