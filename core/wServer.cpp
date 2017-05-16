@@ -652,9 +652,9 @@ void wServer::CheckHeartBeat() {
 	    				continue;
 	    			} else {
 	    				// 心跳检测
-						//uint64_t interval1 = tm - (*it)->Socket()->SendTm();
-						uint64_t interval2 = tm - (*it)->Socket()->RecvTm();
-						if (interval2 >= kKeepAliveTm*1000) {
+						uint64_t interval1 = tm - (*it)->Socket()->SendTm();
+						//uint64_t interval2 = tm - (*it)->Socket()->RecvTm();
+						if (interval1 >= kKeepAliveTm*1000) {
 							// 发送心跳
 							(*it)->HeartbeatSend();
 							if ((*it)->HeartbeatOut()) {
