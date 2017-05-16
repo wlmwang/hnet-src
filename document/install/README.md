@@ -59,7 +59,7 @@
         * cd /usr/local/src
         * tar -zxvf hnet.tar.gz
         * cd hnet/core
-        * make
+        * make  #修改Makefile编译参数-D_USE_PROTOBUF_，可打开protobuf功能
         * ```此步骤可能会有protobuf出错信息。请使用本机安装的protoc重新编译wChannel.proto文件   protoc -I./ --cpp_out=./ ./wChannel.proto```
 
         * make install

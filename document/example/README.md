@@ -1,21 +1,21 @@
 # 示例
 
 * 安装
-    * 服务端：（修改Makefile -D_USE_PROTOBUF_，可打开protobuf功能）
+    * 服务端：
         * cd /usr/local/hnet/example/server
-        * make
+        * make #修改Makefile编译参数-D_USE_PROTOBUF_，可打开protobuf功能
 
-    * 客户端：（修改Makefile -D_USE_PROTOBUF_，可打开protobuf功能）
+    * 客户端：
         * cd /usr/local/hnet/example/client
-        * make
+        * make #修改Makefile编译参数-D_USE_PROTOBUF_，可打开protobuf功能
 
-    * 客户端：（修改Makefile -D_USE_PROTOBUF_，可打开protobuf功能）
+    * 客户端：
         * cd /usr/local/hnet/example/clientd
-        * make
+        * make #修改Makefile编译参数-D_USE_PROTOBUF_，可打开protobuf功能
 
-    * 客户端：（修改Makefile -D_USE_PROTOBUF_，可打开protobuf功能）
+    * 客户端：
         * cd /usr/local/hnet/example/chttp
-        * make
+        * make #修改Makefile编译参数-D_USE_PROTOBUF_，可打开protobuf功能
 
 * 服务端启动
     * TCP
