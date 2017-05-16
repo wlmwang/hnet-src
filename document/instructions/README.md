@@ -14,22 +14,25 @@
     * 响应： example.ExampleEchoRes
 
 * 服务端：example/server/exampleServer.cpp
-    * task客户端
-        * ExampleChannelTask继承之wChannelTask，为Worker进程间同步类。构造函数中的On("example.ExampleEchoReq", &ExampleChannelTask::ExampleEchoReq, this);为事件注册。意为：当Worker进程接受到example.ExampleEchoReq（protobuf）消息的回调函数为ExampleChannelTask::ExampleEchoReq方法。
-
-        * ExampleTcpTask继承之wTcpTask，为TCP客户端类。任何一个TCP客户端都将一一对应到ExampleTcpTask上。该构造函数中有两个事件注册方法On。这里使用了HNET多播功能：都为example.ExampleEchoReq的响应方法被注册时，系统会按顺序的依次调用。即当服务器接受到客户端发送example.ExampleEchoReq请求时，依次调用ExampleTcpTask::ExampleEchoReq、ExampleTcpTask::ExampleEchoChannel方法。
-
     * server服务端
         * ExampleServer继承之wServer，为服务器类。其中有两个虚函数：
-            ExampleServer::NewTcpTask：当任一客户端连接到服务器时，服务器将调用该方法产生一个wTcpTask对象来跟踪该连接。写法固定。
-            ExampleServer::NewChannelTask：服务器启动时，每产生一个Worker进程时，服务器将调用该方法产生一个wChannelTask对象来跟踪该进程。写法固定。（以单进程方式运行服务器时，该方法无用，也不用去实现）
+
+        ExampleServer::NewTcpTask：当任一客户端连接到服务器时，服务器将调用该方法产生一个wTcpTask对象来跟踪该连接。写法固定。
+        ExampleServer::NewChannelTask：服务器启动时，每产生一个Worker进程时，服务器将调用该方法产生一个wChannelTask对象来跟踪该进程。写法固定。（以单进程方式运行服务器时，该方法无用，也不用去实现）
+
+    * task客户端
+        * ExampleTcpTask继承之wTcpTask，为TCP客户端类。任何一个TCP客户端都将一一对应到ExampleTcpTask上。
+        构造函数中有两个事件注册方法On。这里使用了HNET多播功能：都为example.ExampleEchoReq的响应方法被注册时，系统会按顺序的依次调用。即当服务器接受到客户端发送example.ExampleEchoReq请求时，依次调用ExampleTcpTask::ExampleEchoReq、ExampleTcpTask::ExampleEchoChannel方法。
+
+        * ExampleChannelTask继承之wChannelTask，为Worker进程间同步类。
+        构造函数中的On("example.ExampleEchoReq", &ExampleChannelTask::ExampleEchoReq, this);为事件注册。意为：当Worker进程接受到example.ExampleEchoReq（protobuf）消息的回调函数为ExampleChannelTask::ExampleEchoReq方法。
 
     * main
         * 写法较为有代表性。值得注意的时，wConfig、wMaster用户均可再继承来实现更为定制化配置命令以及启动方式。
 
 ```
-task客户端：每一个连接到服务器的客户端都将被虚拟为一个task对象，在此示例中为ExampleTcpTask。
-server服务端：每个服务器进程都有且仅有一个server对象，在此示例中为ExampleServer。
+server服务端：每个服务器进程都有且仅有一个server对象，在此示例中为ExampleServer
+task客户端：每一个连接到服务器的客户端都将被虚拟为一个task对象，在此示例中为ExampleTcpTask
 ```
 
 * example/client/exampleClient.cpp
