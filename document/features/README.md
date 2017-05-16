@@ -6,7 +6,7 @@
 
     * 网络协议：目前系统已支持TCP SOCKET、UNIX DOMAIN SOCKET、HTTP/1.1。可方便二次开发诸如FTP、WebSocket等协议。
 
-    * 数据协议：目前系统已支持自定义协议（C/C++中表现为结构体，系统中心跳机制使用（可关闭））、Protocol Buffer协议（https://github.com/google/protobuf ，系统中channel机制使用）。当然与客户端交互，建议使用protobuf，特别是不同语言间！
+    * 数据协议：目前系统已支持自定义协议（C/C++中表现为结构体，系统中心跳机制使用（可关闭））、Protocol Buffer协议（https://github.com/google/protobuf 。需要修改Makefile编译参数-D_USE_PROTOBUF_，打开protobuf功能）。与客户端交互，建议使用protobuf，特别是不同语言间！
 
 * 作为一个多进程的网络框架，HNET使用Master-Worker进程模式：
 
