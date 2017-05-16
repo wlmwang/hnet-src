@@ -11,8 +11,8 @@
 namespace hnet {
 
 wConfig::wConfig() : mPool(NULL), mProcTitle(NULL) {
-	// 初始化错误列表
-	error::StrerrorInit();
+	error::StrerrorInit(); // 初始化错误列表
+    http::StatusCodeInit();// 初始化http状态码
 	SAFE_NEW(wMemPool, mPool);
 }
 
@@ -85,6 +85,19 @@ const wStatus& wConfig::GetOption(int argc, const char *argv[]) {
                 	goto next;
                 }
                 return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-p\" requires port number");
+
+            case 'x':
+                if (*p) {
+                    SetStrConf("protocol", p);
+                    goto next;
+                }
+
+                p = argv[++i]; // 多一个空格
+                if (*p) {
+                    SetStrConf("protocol", p);
+                    goto next;
+                }
+                return mStatus = wStatus::InvalidArgument("wConfig::GetOption", "option \"-x\" requires protocol address");
 
             case 'P':
                 if (*p) {

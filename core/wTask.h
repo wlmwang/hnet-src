@@ -99,6 +99,14 @@ public:
     const wStatus& SyncWorker(const google::protobuf::Message* msg);
 #endif
 
+    virtual const wStatus& HttpGet(const std::string& url, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30) {
+        return mStatus = wStatus::IOError("wTask::HttpGet failed", "method should be inherit");
+    }
+
+    virtual const wStatus& HttpPost(const std::string& url, const std::map<std::string, std::string>& data, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30) {
+        return mStatus = wStatus::IOError("wTask::HttpPost failed", "method should be inherit");
+    }
+
     static void Assertbuf(char buf[], const char cmd[], size_t len);
 #ifdef _USE_PROTOBUF_
     static void Assertbuf(char buf[], const google::protobuf::Message* msg);
@@ -113,6 +121,9 @@ public:
     inline void HeartbeatReset() {
         mHeartbeat = 0;
     }
+
+    // 添加epoll可写事件
+    const wStatus& Output();
 
     // 设置服务端对象（方便异步发送）
     inline void SetServer(wServer* server) {

@@ -75,13 +75,12 @@ const int32_t   kFDUnknown = -1;
 const uint32_t  kKeepAliveTm = 3000;
 const uint8_t   kKeepAliveCnt = 5;
 
-const uint8_t   kHeartbeat = 5;
-
-// 1M消息队列大小
-const uint32_t  kMsgQueueLen = 1048576;
-
 // 100M单个归档日志大小
 const off_t		kMaxLoggerSize = 104857600;
+const uint8_t	kLoggerNum = 16;
+
+// 1M共享消息队列大小
+const uint32_t  kMsgQueueLen = 1048576;
 
 // 64k客户端task消息缓冲大小
 const uint32_t  kPackageSize = 65536;
@@ -89,17 +88,18 @@ const uint32_t  kMaxPackageSize = 65532;
 const uint32_t  kMinPackageSize = 3;
 
 const uint32_t  kPageSize = 4096;
-const bool      kLittleEndian = true;
+const bool		kLittleEndian = true;
 
 // 心跳线程与主线程分离开关
-const bool		kScheduleTurn = false;
+const bool		kScheduleTurn = true;
 // 心跳开关
 const bool		kHeartbeatTurn = true;
+const uint8_t   kHeartbeat = 5;
 
 // 惊群锁开关
 const bool		kAcceptTurn = true;
 // 目前惊群锁实现可使用以下两种 0:semaphore（信号量，需系统支持，性能较好） 1:file（记录锁。稳定，性能有所下降）
-const int8_t	kAcceptStuff = 0;
+const int8_t	kAcceptStuff = 1;	// TODO
 const char		kAcceptMutex[] = "accept.lock";
 
 // 消息协议
@@ -119,7 +119,7 @@ const uid_t     kDeamonUser = 0;
 const gid_t     kDeamonGroup = 0;
 
 const char      kSoftwareName[]   = "HNET";
-const char      kSoftwareVer[]    = "0.0.11";
+const char      kSoftwareVer[]    = "0.0.12";
 
 const char		kBinPath[] = "./";
 const char      kLockPath[] = "hnet.lock";

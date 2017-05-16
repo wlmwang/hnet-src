@@ -4,12 +4,14 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include <algorithm>
 #include "wMultiClient.h"
 #include "wEnv.h"
 #include "wTcpSocket.h"
 #include "wUnixSocket.h"
 #include "wTcpTask.h"
 #include "wUnixTask.h"
+#include "wHttpTask.h"
 
 namespace hnet {
 
@@ -28,11 +30,15 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
     if (type >= kClientNumShard) {
         return mStatus = wStatus::Corruption("wMultiClient::AddConnect failed", "overload type");
     }
+    
+    std::transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
 
     wSocket *socket;
     if (protocol == "TCP") {
        SAFE_NEW(wTcpSocket(kStConnect), socket);
-    } else if(protocol == "UNIX") {
+    } else if (protocol == "HTTP") {
+        SAFE_NEW(wTcpSocket(kStConnect, kSpHttp), socket);
+    } else if (protocol == "UNIX") {
        SAFE_NEW(wUnixSocket(kStConnect), socket);
     } else {
         socket = NULL;
@@ -56,7 +62,9 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
 
     if (protocol == "TCP") {
         NewTcpTask(socket, &mTask, type);
-    } else if(protocol == "UNIX") {
+    } else if (protocol == "HTTP") {
+        NewHttpTask(socket, &mTask, type);
+    } else if (protocol == "UNIX") {
         NewUnixTask(socket, &mTask, type);
     } else {
         mStatus = wStatus::NotSupported("wMultiClient::AcceptConn", "unknown task");
@@ -64,9 +72,9 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
 
     if (mStatus.Ok()) {
         if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
-            SAFE_DELETE(mTask);
+            RemoveTask(mTask, NULL, true);
         } else if (!(mStatus = mTask->Connect()).Ok()) {
-            SAFE_DELETE(mTask);
+            RemoveTask(mTask, NULL, true);
         }
     }
     return mStatus;
@@ -92,9 +100,9 @@ const wStatus& wMultiClient::ReConnect(wTask* task) {
     // 重置task缓冲
     task->ResetBuffer();
     if (!(mStatus = AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, false)).Ok()) {
-        return mStatus;
+        RemoveTask(mTask, NULL, false);
     } else if (!(mStatus = task->ReConnect()).Ok()) {
-        return mStatus;
+        RemoveTask(mTask, NULL, false);
     }
     return mStatus;
 }
@@ -140,6 +148,14 @@ const wStatus& wMultiClient::NewUnixTask(wSocket* sock, wTask** ptr, int type) {
     return mStatus.Clear();
 }
 
+const wStatus& wMultiClient::NewHttpTask(wSocket* sock, wTask** ptr, int type) {
+    SAFE_NEW(wHttpTask(sock, type), *ptr);
+    if (*ptr == NULL) {
+        return mStatus = wStatus::IOError("wMultiClient::wHttpTask", "new failed");
+    }
+    return mStatus.Clear();
+}
+
 const wStatus& wMultiClient::InitEpoll() {
     if ((mEpollFD = epoll_create(kListenBacklog)) == -1) {
        return mStatus = wStatus::IOError("wMultiClient::InitEpoll, epoll_create() failed", error::Strerror(errno));
@@ -149,12 +165,12 @@ const wStatus& wMultiClient::InitEpoll() {
 
 const wStatus& wMultiClient::Recv() {
     std::vector<struct epoll_event> evt(kListenBacklog);
-    int ret = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
+    int ret = epoll_wait(mEpollFD, &evt[0], kListenBacklog - 1, mTimeout);
     if (ret == -1) {
        return mStatus = wStatus::IOError("wMultiClient::Recv, epoll_wait() failed", error::Strerror(errno));
     }
 
-    for (int i = 0 ; i < ret ; i++) {
+    for (int i = 0; i < ret && evt[i].data.ptr; i++) {
     	wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
         int type = task->Type();
         if (mScheduleTurn) {
@@ -363,7 +379,7 @@ void wMultiClient::ScheduleRun(void* argv) {
 }
 
 void wMultiClient::CheckHeartBeat() {
-    uint64_t nowTm = misc::GetTimeofday();
+    uint64_t tm = misc::GetTimeofday();
     for (int i = 0; i < kClientNumShard; i++) {
         mTaskPoolMutex[i].Lock();
         if (mTaskPool[i].size() > 0) {
@@ -375,8 +391,9 @@ void wMultiClient::CheckHeartBeat() {
                     	ReConnect(*it);
         			} else {
         				// 心跳检测
-        				uint64_t interval = nowTm - (*it)->Socket()->SendTm();
-        				if (interval >= kKeepAliveTm*1000) {
+                        uint64_t interval1 = tm - (*it)->Socket()->SendTm();
+                        //uint64_t interval2 = tm - (*it)->Socket()->RecvTm();
+        				if (interval1 >= kKeepAliveTm*1000) {
         					// 发送心跳
         					(*it)->HeartbeatSend();
         					if ((*it)->HeartbeatOut()) {

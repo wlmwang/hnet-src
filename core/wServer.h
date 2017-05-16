@@ -78,7 +78,8 @@ public:
     virtual const wStatus& NewUdpTask(wSocket* sock, wTask** ptr);
     virtual const wStatus& NewUnixTask(wSocket* sock, wTask** ptr);
     virtual const wStatus& NewChannelTask(wSocket* sock, wTask** ptr);
-    
+    virtual const wStatus& NewHttpTask(wSocket* sock, wTask** ptr);
+
     virtual const wStatus& PrepareRun() {
         return mStatus;
     }
@@ -106,6 +107,8 @@ public:
     template<typename T = wWorker*>
     inline T Worker() { return mMaster->Worker<T>();}
 
+    const wStatus& AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
+    
 protected:
     friend class wMaster;
     friend class wWorker;
@@ -131,7 +134,6 @@ protected:
     const wStatus& Listener2Epoll(bool addpool = true);
     const wStatus& RemoveListener(bool delpool = true);
 
-    const wStatus& AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
     const wStatus& RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
     const wStatus& CleanTask();
 

@@ -27,10 +27,7 @@
 
 namespace hnet {
 
-const uint8_t kLoggerNum = 16;
-
 // 文件名：error.log(\.[0-9]+)?
-
 // 日志接口类，非线程安全，对外接口需加锁
 class wLogger : private wNoncopyable {
 public:

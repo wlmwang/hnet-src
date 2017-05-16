@@ -8,7 +8,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <poll.h> 
+#include <poll.h>
+#include <algorithm>
 #include "wEnv.h"
 #include "wServer.h"
 #include "wConfig.h"
@@ -23,6 +24,7 @@
 #include "wUdpTask.h"
 #include "wUnixTask.h"
 #include "wChannelTask.h"
+#include "wHttpTask.h"
 
 namespace hnet {
 
@@ -156,6 +158,14 @@ const wStatus& wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
     return mStatus.Clear();
 }
 
+const wStatus& wServer::NewHttpTask(wSocket* sock, wTask** ptr) {
+    SAFE_NEW(wHttpTask(sock, Shard(sock)), *ptr);
+    if (*ptr == NULL) {
+		return mStatus = wStatus::IOError("wServer::NewHttpTask", "new failed");
+    }
+    return mStatus.Clear();
+}
+
 const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {
 		// 争抢锁
@@ -167,12 +177,12 @@ const wStatus& wServer::Recv() {
 
 	// 事件循环
 	std::vector<struct epoll_event> evt(kListenBacklog);
-	int ret = epoll_wait(mEpollFD, &evt[0], kListenBacklog, mTimeout);
+	int ret = epoll_wait(mEpollFD, &evt[0], kListenBacklog - 1, mTimeout);
 	if (ret == -1) {
 		mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", error::Strerror(errno));
 	}
-	for (int i = 0 ; i < ret ; i++) {
-		wTask* task = reinterpret_cast<wTask *>(evt[i].data.ptr);
+	for (int i = 0; i < ret && evt[i].data.ptr; i++) {
+		wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
 		int type = task->Type();
 		if (mScheduleTurn) {
 			// 加锁
@@ -234,7 +244,7 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_un sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);
-		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok() && fd <= 0) {
 		    return mStatus;
 		}
 
@@ -249,11 +259,11 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		    return mStatus;
 		}
 		NewUnixTask(socket, &mTask);
-    } else if(task->Socket()->SP() == kSpTcp) {
+    } else if (task->Socket()->SP() == kSpTcp) {
 		int64_t fd;
 		struct sockaddr_in sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);	
-		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok() && fd <= 0) {
 		    return mStatus;
 		}
 
@@ -268,15 +278,34 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		    return mStatus;
 		}
 		NewTcpTask(socket, &mTask);
+	} else if (task->Socket()->SP() == kSpHttp) {
+		int64_t fd;
+		struct sockaddr_in sockAddr;
+		socklen_t sockAddrSize = sizeof(sockAddr);	
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok() && fd <= 0) {
+		    return mStatus;
+		}
+
+		// tcp socket
+		wTcpSocket *socket;
+		SAFE_NEW(wTcpSocket(kStConnect, kSpHttp), socket);
+		socket->FD() = fd;
+		socket->Host() = inet_ntoa(sockAddr.sin_addr);
+		socket->Port() = sockAddr.sin_port;
+		socket->SS() = kSsConnected;
+		if (!(mStatus = socket->SetFL()).Ok()) {
+		    return mStatus;
+		}
+		NewHttpTask(socket, &mTask);
     } else {
-		mStatus = wStatus::NotSupported("wServer::AcceptConn", "unknown task");
+		mStatus = wStatus::NotSupported("wServer::AcceptConn failed", "unknown protocol");
     }
     
     if (mStatus.Ok()) {
 		if (!AddTask(mTask, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
-		    SAFE_DELETE(mTask);
+		    RemoveTask(mTask, NULL, true);
 		} else if (!(mStatus = mTask->Connect()).Ok()) {
-			SAFE_DELETE(mTask);
+			RemoveTask(mTask, NULL, true);
 		}
     }
     return mStatus;
@@ -389,14 +418,17 @@ const wStatus& wServer::Send(wTask *task, const google::protobuf::Message* msg) 
 #endif
 
 const wStatus& wServer::AddListener(const std::string& ipaddr, uint16_t port, std::string protocol) {
+	std::transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
+
     wSocket *socket;
     if (protocol == "UDP") {
-    	// udp无 listen socket
-		SAFE_NEW(wUdpSocket(kStConnect), socket);
+		SAFE_NEW(wUdpSocket(kStConnect), socket);	// udp无 listen socket
+	} else if (protocol == "UNIX") {
+		SAFE_NEW(wUnixSocket(kStListen), socket);
     } else if(protocol == "TCP") {
     	SAFE_NEW(wTcpSocket(kStListen), socket);
-    } else if (protocol == "UNIX") {
-    	SAFE_NEW(wUnixSocket(kStListen), socket);
+    } else if (protocol == "HTTP") {
+    	SAFE_NEW(wTcpSocket(kStListen, kSpHttp), socket);
     } else {
     	socket = NULL;
     }
@@ -459,13 +491,16 @@ const wStatus& wServer::Listener2Epoll(bool addpool) {
 		case kSpUnix:
 		    NewUnixTask(*it, &task);
 		    break;
+		case kSpHttp:
+		    NewHttpTask(*it, &task);
+		    break;
 		default:
 			task = NULL;
 		    mStatus = wStatus::NotSupported("wServer::Listener2Epoll", "unknown task");
 		}
 		if (mStatus.Ok()) {
 		    if (!AddTask(task, EPOLLIN, EPOLL_CTL_ADD, true).Ok()) {
-				SAFE_DELETE(task);
+				RemoveTask(task, NULL, true);
 		    }
 		}
     }
@@ -542,6 +577,7 @@ const wStatus& wServer::CleanTask() {
     for (int i = 0; i < kServerNumShard; i++) {
     	CleanTaskPool(mTaskPool[i]);
     }
+    wEnv::Default()->DeleteFile(kAcceptMutex);
     return mStatus;
 }
 
@@ -592,7 +628,7 @@ void wServer::CheckTick() {
 }
 
 void wServer::ScheduleRun(void* argv) {
-    wServer* server = reinterpret_cast<wServer* >(argv);
+    wServer* server = reinterpret_cast<wServer*>(argv);
 	if (server->mScheduleMutex.Lock() == 0) {
 	    if (server->mHeartbeatTurn && server->mHeartbeatTimer.CheckTimer(server->mTick/1000)) {
 	    	server->CheckHeartBeat();
@@ -616,8 +652,9 @@ void wServer::CheckHeartBeat() {
 	    				continue;
 	    			} else {
 	    				// 心跳检测
-						uint64_t interval = tm - (*it)->Socket()->SendTm();
-						if (interval >= kKeepAliveTm*1000) {
+						uint64_t interval1 = tm - (*it)->Socket()->SendTm();
+						//uint64_t interval2 = tm - (*it)->Socket()->RecvTm();
+						if (interval1 >= kKeepAliveTm*1000) {
 							// 发送心跳
 							(*it)->HeartbeatSend();
 							if ((*it)->HeartbeatOut()) {

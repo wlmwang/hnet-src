@@ -7,6 +7,7 @@
 #ifndef _W_SINGLE_CLIENT_H_
 #define _W_SINGLE_CLIENT_H_
 
+#include <map>
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
@@ -21,7 +22,7 @@ namespace hnet {
 // 单连接、同步接口(使用task同步接口)客户端
 class wSingleClient : private wNoncopyable {
 public:
-    wSingleClient();
+    wSingleClient() : mTask(NULL) { }
     ~wSingleClient();
 
     const wStatus& Connect(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
@@ -44,6 +45,8 @@ public:
     }
 #endif
 
+    const wStatus& HttpGet(const std::string& url, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30);
+    const wStatus& HttpPost(const std::string& url, const std::map<std::string, std::string>& data, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30);
 protected:
     wTask* mTask;
     wStatus mStatus;

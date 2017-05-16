@@ -78,7 +78,8 @@ public:
 
     virtual const wStatus& NewTcpTask(wSocket* sock, wTask** ptr, int type = 0);
     virtual const wStatus& NewUnixTask(wSocket* sock, wTask** ptr, int type = 0);
-	
+	virtual const wStatus& NewHttpTask(wSocket* sock, wTask** ptr, int type = 0);
+
     virtual void CheckHeartBeat();
 
     template<typename T = wConfig*>
@@ -87,11 +88,12 @@ public:
     template<typename T = wServer*>
     inline T Server() { return reinterpret_cast<T>(mServer);}
 
+    const wStatus& AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
+    
 protected:
     const wStatus& Recv();
     const wStatus& InitEpoll();
 
-    const wStatus& AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
     const wStatus& RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
     const wStatus& CleanTask();
     

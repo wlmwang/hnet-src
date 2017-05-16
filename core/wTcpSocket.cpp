@@ -97,14 +97,15 @@ const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16
 				} else if(rt == 0) {
 					return mStatus = wStatus::IOError("wTcpSocket::Connect connect timeout", "");
 				} else {
-					int val, len = sizeof(int);
-					if (getsockopt(mFD, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&val), reinterpret_cast<socklen_t*>(&len)) == -1) {
+					int error, len = sizeof(int);
+					int code = getsockopt(mFD, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&error), reinterpret_cast<socklen_t*>(&len));
+					if (code == -1) {
 					    return mStatus = wStatus::IOError("wTcpSocket::Connect getsockopt SO_ERROR failed", error::Strerror(errno));
 					}
-					if (val > 0) {
-					    return mStatus = wStatus::IOError("wTcpSocket::Connect connect failed", "");
+					if (error != 0) {
+						errno = error;
+					    return mStatus = wStatus::IOError("wTcpSocket::Connect connect failed", error::Strerror(errno));
 					}
-
 					// 连接成功
 					*ret = 0;
 					break;
@@ -132,7 +133,6 @@ const wStatus& wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, sock
 	while (true) {
 		*fd = static_cast<int64_t>(accept(mFD, clientaddr, addrsize));
 		if (*fd > 0) {
-			mStatus.Clear();
 			break;
 		} else if (errno == EAGAIN) {
 			continue;
