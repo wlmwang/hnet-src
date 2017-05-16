@@ -379,7 +379,7 @@ void wMultiClient::ScheduleRun(void* argv) {
 }
 
 void wMultiClient::CheckHeartBeat() {
-    uint64_t nowTm = misc::GetTimeofday();
+    uint64_t tm = misc::GetTimeofday();
     for (int i = 0; i < kClientNumShard; i++) {
         mTaskPoolMutex[i].Lock();
         if (mTaskPool[i].size() > 0) {
@@ -391,8 +391,9 @@ void wMultiClient::CheckHeartBeat() {
                     	ReConnect(*it);
         			} else {
         				// 心跳检测
-        				uint64_t interval = nowTm - (*it)->Socket()->SendTm();
-        				if (interval >= kKeepAliveTm*1000) {
+                        uint64_t interval1 = tm - (*it)->Socket()->SendTm();
+                        uint64_t interval2 = tm - (*it)->Socket()->RecvTm();
+        				if (interval1 >= kKeepAliveTm*1000 && interval2 >= kKeepAliveTm*1000) {
         					// 发送心跳
         					(*it)->HeartbeatSend();
         					if ((*it)->HeartbeatOut()) {

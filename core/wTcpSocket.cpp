@@ -133,7 +133,6 @@ const wStatus& wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, sock
 	while (true) {
 		*fd = static_cast<int64_t>(accept(mFD, clientaddr, addrsize));
 		if (*fd > 0) {
-			mStatus.Clear();
 			break;
 		} else if (errno == EAGAIN) {
 			continue;

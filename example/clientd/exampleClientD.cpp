@@ -93,7 +93,6 @@ int main(int argc, const char *argv[]) {
 	if (config == NULL) {
 		return -1;
 	}
-
 	wStatus s;
 
 	// 解析命令行
@@ -109,7 +108,6 @@ int main(int argc, const char *argv[]) {
 	// 版本输出 && 守护进程创建
 	bool version, daemon;
 	if (config->GetConf("version", &version) && version == true) {
-		;
 		std::cout << soft::SetSoftName("example client daemon -") << soft::GetSoftVer() << std::endl;
 		return -1;
 	} else if (config->GetConf("daemon", &daemon) && daemon == true) {

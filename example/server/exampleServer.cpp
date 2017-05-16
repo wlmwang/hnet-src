@@ -100,8 +100,8 @@ int ExampleTcpTask::ExampleEchoChannel(struct Request_t *request) {
 	req.ParseFromArray(request->mBuf, request->mLen);
 	std::cout << "tcp receive 2:" << req.cmd() << std::endl;
 
+	// 同步所有worker进程
 #ifdef _USE_PROTOBUF_
-	// 发送给其他worker进程
 	SyncWorker(&req);
 #else
 	SyncWorker(request->mBuf, request->mLen);
