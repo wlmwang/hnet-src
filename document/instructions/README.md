@@ -16,7 +16,6 @@
 * 服务端：example/server/exampleServer.cpp
     * server服务端
         * ExampleServer继承之wServer，为服务器类。其中有两个虚函数：
-
         ExampleServer::NewTcpTask：当任一客户端连接到服务器时，服务器将调用该方法产生一个wTcpTask对象来跟踪该连接。写法固定。
         ExampleServer::NewChannelTask：服务器启动时，每产生一个Worker进程时，服务器将调用该方法产生一个wChannelTask对象来跟踪该进程。写法固定。（以单进程方式运行服务器时，该方法无用，也不用去实现）
 
