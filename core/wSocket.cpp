@@ -33,7 +33,6 @@ const wStatus& wSocket::SetFL(bool nonblock) {
 
 const wStatus& wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     mRecvTm = misc::GetTimeofday();
-    
     while (true) {
         *size = recv(mFD, reinterpret_cast<void*>(buf), len, 0);
         if (*size > 0) {
