@@ -53,7 +53,7 @@ public:
     virtual const wStatus& Reload();
 
     // master主进程退出函数
-    virtual void ProcessExit() { }
+    virtual void ProcessExit();
 
     inline uint32_t& WorkerNum() { return mWorkerNum;}
 
@@ -89,6 +89,8 @@ protected:
     const wStatus& CreatePidFile();
     const wStatus& DeletePidFile();
 
+    const wStatus& DeleteAcceptFile();
+    
     // 给所有worker进程发送信号
     void SignalWorker(int signo);
 

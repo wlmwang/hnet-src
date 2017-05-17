@@ -139,7 +139,7 @@ const wStatus& wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
     if (*ptr == NULL) {
 		return mStatus = wStatus::IOError("wMaster::NewWorker", "new failed");
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
@@ -165,7 +165,7 @@ const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
 #endif
 		usleep(100);
 	}
-	return mStatus.Clear();
+	return mStatus;
 }
 
 const wStatus& wMaster::SpawnWorker(int64_t type) {
@@ -258,7 +258,7 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
 		mWorker->mDetached = 1;
 		break;
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wMaster::PrepareRun() {
@@ -271,6 +271,10 @@ const wStatus& wMaster::Run() {
 
 const wStatus& wMaster::Reload() {
 	return mStatus;
+}
+
+void wMaster::ProcessExit() {
+	//...
 }
 
 const wStatus& wMaster::HandleSignal() {
@@ -309,9 +313,13 @@ const wStatus& wMaster::HandleSignal() {
 	
 	// 所有worker退出，且收到了退出信号，则master退出
 	if (!mLive && (g_terminate || g_quit)) {
+	    if (mServer) {
+		    mServer->CleanListenSock();
+	    }
 		ProcessExit();
 	    DeletePidFile();
-	    exit(0);
+	    DeleteAcceptFile();
+	    exit(-1);
 	}
 	
 	// SIGTERM、SIGINT
@@ -435,7 +443,7 @@ const wStatus& wMaster::ReapChildren() {
 			mLive = 1;
 		}
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 void wMaster::SignalWorker(int signo) {
@@ -509,6 +517,10 @@ const wStatus& wMaster::CreatePidFile() {
 
 const wStatus& wMaster::DeletePidFile() {
 	return mStatus = wEnv::Default()->DeleteFile(mPidPath);
+}
+
+const wStatus& wMaster::DeleteAcceptFile() {
+	return mStatus = wEnv::Default()->DeleteFile(kAcceptMutex);
 }
 
 const wStatus& wMaster::SignalProcess(const std::string& signal) {

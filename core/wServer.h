@@ -136,6 +136,7 @@ protected:
 
     const wStatus& RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
     const wStatus& CleanTask();
+    const wStatus& CleanListenSock();   // master退出进程调用
 
     const wStatus& AddToTaskPool(wTask *task);
     std::vector<wTask*>::iterator RemoveTaskPool(wTask *task);

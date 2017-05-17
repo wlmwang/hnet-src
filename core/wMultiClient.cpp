@@ -30,7 +30,6 @@ const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uin
     if (type >= kClientNumShard) {
         return mStatus = wStatus::Corruption("wMultiClient::AddConnect failed", "overload type");
     }
-    
     std::transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
 
     wSocket *socket;
@@ -137,7 +136,7 @@ const wStatus& wMultiClient::NewTcpTask(wSocket* sock, wTask** ptr, int type) {
     if (*ptr == NULL) {
         return mStatus = wStatus::IOError("wMultiClient::NewTcpTask", "new failed");
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wMultiClient::NewUnixTask(wSocket* sock, wTask** ptr, int type) {
@@ -145,7 +144,7 @@ const wStatus& wMultiClient::NewUnixTask(wSocket* sock, wTask** ptr, int type) {
     if (*ptr == NULL) {
         return mStatus = wStatus::IOError("wMultiClient::NewUnixTask", "new failed");
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wMultiClient::NewHttpTask(wSocket* sock, wTask** ptr, int type) {
@@ -153,14 +152,14 @@ const wStatus& wMultiClient::NewHttpTask(wSocket* sock, wTask** ptr, int type) {
     if (*ptr == NULL) {
         return mStatus = wStatus::IOError("wMultiClient::wHttpTask", "new failed");
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wMultiClient::InitEpoll() {
     if ((mEpollFD = epoll_create(kListenBacklog)) == -1) {
        return mStatus = wStatus::IOError("wMultiClient::InitEpoll, epoll_create() failed", error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wMultiClient::Recv() {

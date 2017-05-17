@@ -63,7 +63,7 @@ const wStatus& wServer::SingleStart(bool daemon) {
     	if (mExiting) {
 		    ProcessExit();
 		    CleanTask();
-		    exit(0);
+		    exit(2);
     	}
 		Recv();
 		HandleSignal();
@@ -100,8 +100,7 @@ const wStatus& wServer::WorkerStart(bool daemon) {
     while (daemon) {
     	if (mExiting) {
     	    ProcessExit();
-		    CleanTask();
-		    exit(0);
+		    exit(2);
     	}
 		Recv();
 		Run();
@@ -114,8 +113,7 @@ const wStatus& wServer::WorkerStart(bool daemon) {
 const wStatus& wServer::HandleSignal() {
     if (g_terminate) {
 		ProcessExit();
-		CleanTask();
-		exit(0);
+		exit(2);
     } else if (g_quit)	{
 		// 优雅退出
 		g_quit = 0;
@@ -131,7 +129,7 @@ const wStatus& wServer::NewTcpTask(wSocket* sock, wTask** ptr) {
     if (*ptr == NULL) {
 		return mStatus = wStatus::IOError("wServer::NewTcpTask", "new failed");
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wServer::NewUdpTask(wSocket* sock, wTask** ptr) {
@@ -139,7 +137,7 @@ const wStatus& wServer::NewUdpTask(wSocket* sock, wTask** ptr) {
     if (*ptr == NULL) {
 		return mStatus = wStatus::IOError("wServer::NewUdpTask", "new failed");
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wServer::NewUnixTask(wSocket* sock, wTask** ptr) {
@@ -147,7 +145,7 @@ const wStatus& wServer::NewUnixTask(wSocket* sock, wTask** ptr) {
     if (*ptr == NULL) {
 		return mStatus = wStatus::IOError("wServer::NewUnixTask", "new failed");
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
@@ -155,7 +153,7 @@ const wStatus& wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
     if (*ptr == NULL) {
 		return mStatus = wStatus::IOError("wServer::NewChannelTask", "new failed");
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wServer::NewHttpTask(wSocket* sock, wTask** ptr) {
@@ -163,7 +161,7 @@ const wStatus& wServer::NewHttpTask(wSocket* sock, wTask** ptr) {
     if (*ptr == NULL) {
 		return mStatus = wStatus::IOError("wServer::NewHttpTask", "new failed");
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wServer::Recv() {
@@ -419,7 +417,6 @@ const wStatus& wServer::Send(wTask *task, const google::protobuf::Message* msg) 
 
 const wStatus& wServer::AddListener(const std::string& ipaddr, uint16_t port, std::string protocol) {
 	std::transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
-
     wSocket *socket;
     if (protocol == "UDP") {
 		SAFE_NEW(wUdpSocket(kStConnect), socket);	// udp无 listen socket
@@ -570,14 +567,13 @@ const wStatus& wServer::RemoveTask(wTask* task, std::vector<wTask*>::iterator* i
 }
 
 const wStatus& wServer::CleanTask() {
-    if (close(mEpollFD) == -1) {
-		return mStatus = wStatus::IOError("wServer::CleanTask, close() failed", error::Strerror(errno));
-    }
-    mEpollFD = kFDUnknown;
     for (int i = 0; i < kServerNumShard; i++) {
     	CleanTaskPool(mTaskPool[i]);
     }
-    wEnv::Default()->DeleteFile(kAcceptMutex);
+    if (close(mEpollFD) == -1) {
+		mStatus = wStatus::IOError("wServer::CleanTask, close() failed", error::Strerror(errno));
+    }
+    mEpollFD = kFDUnknown;
     return mStatus;
 }
 
@@ -604,6 +600,13 @@ const wStatus& wServer::CleanTaskPool(std::vector<wTask*> pool) {
     }
     pool.clear();
     return mStatus;
+}
+
+const wStatus& wServer::CleanListenSock() {
+	for (std::vector<wSocket*>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
+		SAFE_DELETE(*it);
+	}
+	return mStatus;
 }
 
 void wServer::CheckTick() {

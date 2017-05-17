@@ -345,7 +345,7 @@ wStatus InitDaemon(std::string lock_path, const char *prefix) {
     }
 
     if (fork() != 0) {
-        exit(0);
+        exit(-1);
     }
     setsid();
     
@@ -361,7 +361,7 @@ wStatus InitDaemon(std::string lock_path, const char *prefix) {
     stSig.AddSigno(SIGTTOU);
 
     if (fork() != 0) {
-        exit(0);
+        exit(-1);
     }
     unlink(lock_path.c_str());
     return wStatus::Nothing();
