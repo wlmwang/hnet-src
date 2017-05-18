@@ -32,7 +32,7 @@ const wStatus& wTcpSocket::Open() {
 	if (mIsKeepAlive) {
 		return SetKeepAlive(kKeepAliveTm, kKeepAliveTm, kKeepAliveCnt);
 	}
-	return mStatus.Clear();
+	return mStatus;
 }
 
 const wStatus& wTcpSocket::Bind(const std::string& host, uint16_t port) {
@@ -43,7 +43,7 @@ const wStatus& wTcpSocket::Bind(const std::string& host, uint16_t port) {
 	if (bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Bind bind failed", error::Strerror(errno));
 	}
-	return mStatus.Clear();
+	return mStatus;
 }
 
 const wStatus& wTcpSocket::Listen(const std::string& host, uint16_t port) {
@@ -121,7 +121,7 @@ const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16
 		*ret = -1;
 		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDBUF failed", error::Strerror(errno));
 	}
-	return mStatus.Clear();
+	return mStatus;
 }
 
 const wStatus& wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *addrsize) {

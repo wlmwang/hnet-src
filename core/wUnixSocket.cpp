@@ -20,7 +20,7 @@ const wStatus& wUnixSocket::Open() {
 	if ((mFD = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
 		return mStatus = wStatus::IOError("wUnixSocket::Open socket() AF_UNIX failed", error::Strerror(errno));
 	}
-	return mStatus.Clear();
+	return mStatus;
 }
 
 const wStatus& wUnixSocket::Bind(const std::string& host, uint16_t port) {
@@ -31,7 +31,7 @@ const wStatus& wUnixSocket::Bind(const std::string& host, uint16_t port) {
 	if (bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr)) == -1) {
 		return mStatus = wStatus::IOError("wUnixSocket::Bind bind failed", error::Strerror(errno));
 	}
-	return mStatus.Clear();
+	return mStatus;
 }
 
 const wStatus& wUnixSocket::Listen(const std::string& host, uint16_t port) {

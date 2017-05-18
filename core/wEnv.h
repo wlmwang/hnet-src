@@ -44,7 +44,7 @@ public:
     virtual const wStatus& NewLogger(const std::string& fname, wLogger** result, off_t maxsize = kMaxLoggerSize) = 0;
 
     // 返回信号量对象，进程间同步
-    virtual const wStatus& NewSem(const std::string *devshm, wSem** result) = 0;
+    virtual const wStatus& NewSem(const std::string& devshm, wSem** result) = 0;
 
     // 锁文件
     virtual const wStatus& LockFile(const std::string& fname, wFileLock** lock) = 0;

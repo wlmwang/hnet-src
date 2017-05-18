@@ -26,21 +26,21 @@ public:
         if (sigfillset(&mSet) == -1) {
             return mStatus = wStatus::IOError("wSigSet::FillSet failed", error::Strerror(errno));
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
     const wStatus& AddSet(int signo) {
         if (sigaddset(&mSet, signo) == -1) {
             return mStatus = wStatus::IOError("wSigSet::AddSet failed", error::Strerror(errno));
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
     const wStatus& DelSet(int signo) {
         if (sigdelset(&mSet, signo) == -1) {
             return mStatus = wStatus::IOError("wSigSet::AddSet failed", error::Strerror(errno));
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
     // 若真则返回1,若假则返回0,若出错则返回-1
@@ -48,7 +48,7 @@ public:
         if (sigismember(&mSet, signo) == -1) {
             return mStatus = wStatus::IOError("wSigSet::AddSet failed", error::Strerror(errno));
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
     // 阻塞信号集
@@ -59,7 +59,7 @@ public:
         if (sigprocmask(iType, &mSet, pOldSet) == -1) {
             return mStatus = wStatus::IOError("wSigSet::Procmask failed", error::Strerror(errno));
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
     // 进程未决的信号集
@@ -67,7 +67,7 @@ public:
         if (sigpending(pPendSet) == -1) {
             return mStatus = wStatus::IOError("wSigSet::Pending failed", error::Strerror(errno));
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
     // 阻塞等待信号集事件发生

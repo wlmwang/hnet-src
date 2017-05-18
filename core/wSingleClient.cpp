@@ -57,7 +57,7 @@ const wStatus& wSingleClient::Connect(const std::string& ipaddr, uint16_t port, 
     if (mTask == NULL) {
 	   return mStatus = wStatus::IOError("wSingleClient::Connect", "task new failed");
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wSingleClient::HttpGet(const std::string& url, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout) {

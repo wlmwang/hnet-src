@@ -222,7 +222,7 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
     mWorker->mExited = 0;
 
 	if (type >= 0) {
-		return mStatus.Clear();
+		return mStatus;
 	}
 
 	mWorker->mExiting = 0;
@@ -313,12 +313,12 @@ const wStatus& wMaster::HandleSignal() {
 	
 	// 所有worker退出，且收到了退出信号，则master退出
 	if (!mLive && (g_terminate || g_quit)) {
+	    ProcessExit();
 	    if (mServer) {
 		    mServer->CleanListenSock();
+		    mServer->DeleteAcceptFile();
 	    }
-		ProcessExit();
 	    DeletePidFile();
-	    DeleteAcceptFile();
 	    exit(-1);
 	}
 	
@@ -519,10 +519,6 @@ const wStatus& wMaster::DeletePidFile() {
 	return mStatus = wEnv::Default()->DeleteFile(mPidPath);
 }
 
-const wStatus& wMaster::DeleteAcceptFile() {
-	return mStatus = wEnv::Default()->DeleteFile(kAcceptMutex);
-}
-
 const wStatus& wMaster::SignalProcess(const std::string& signal) {
 	std::string str;
 	if (!(mStatus = hnet::ReadFileToString(wEnv::Default(), mPidPath, &str)).Ok()) {
@@ -536,7 +532,7 @@ const wStatus& wMaster::SignalProcess(const std::string& signal) {
 				if (kill(pid, s->mSigno) == -1) {
 					return mStatus = wStatus::Corruption("wMaster::SignalProcess, kill() failed", error::Strerror(errno));
 				} else {
-					return mStatus.Clear();
+					return mStatus;
 				}
 			}
 		}

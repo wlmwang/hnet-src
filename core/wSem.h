@@ -18,8 +18,6 @@ namespace hnet {
 // 用于多进程同步操作
 class wSem : private wNoncopyable {
 public:
-	wSem(const std::string* devshm = NULL) { }
-
 	virtual ~wSem() { }
 
 	// devshm = NULL时有创建无名信号量，否则创建有名信号量
@@ -44,51 +42,46 @@ public:
 // 信号量操作类(有名&&无名)
 class wPosixSem : public wSem {
 public:
-	wPosixSem(const std::string* devshm = NULL) {
-		if (devshm != NULL) {
-			mDevshm = *devshm;
-		}
-	}
+	wPosixSem(const std::string& devshm) : mDevshm(devshm) { }
 
 	virtual ~wPosixSem() {
 		Destroy();
     }
 
-	virtual const wStatus& Open(int oflag = O_CREAT, mode_t mode = 0644, unsigned int value = 1) {
+	virtual const wStatus& Open(int oflag = O_CREAT, mode_t mode = 0644, unsigned int value = 1/** 初值为value*/) {
 		if (mDevshm.size() > 0) {
 			// 有名信号量
 			sem_t* id = sem_open(mDevshm.c_str(), oflag, mode, value);
 			if (id == SEM_FAILED) {
-				return mStatus = wStatus::IOError("wPosixSem::Open, sem_open() failed", error::Strerror(errno));
+				mStatus = wStatus::IOError("wPosixSem::Open, sem_open() failed", error::Strerror(errno));
 			}
 			mSemId = *id;
 		} else {
 			// 无名信号量
-			if (sem_init(&mSemId, 1 /* 多进程共享 */, value /* 初值为value */) == -1) {
-				return mStatus = wStatus::IOError("wPosixSem::Open, sem_init() failed", error::Strerror(errno));
+			if (sem_init(&mSemId, 0, value) == -1) {
+				mStatus = wStatus::IOError("wPosixSem::Open, sem_init() failed", error::Strerror(errno));
 			}
 		}
-		return mStatus.Clear();
+		return mStatus;
 	}
 
 	virtual const wStatus& Wait() {
         if (sem_wait(&mSemId) == -1) {
-            return mStatus = wStatus::IOError("wPosixSem::Wait, sem_wait() failed", error::Strerror(errno));
+            mStatus = wStatus::IOError("wPosixSem::Wait, sem_wait() failed", error::Strerror(errno));
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
 	virtual const wStatus& TryWait() {
-        if (sem_trywait(&mSemId) == -1) {
-        	// 未能获取锁
-            return mStatus = wStatus::IOError("wPosixSem::TryWait, sem_trywait() failed", error::Strerror(errno), false);
+        if (sem_trywait(&mSemId) == -1) {	// 未能获取锁
+            mStatus = wStatus::IOError("wPosixSem::TryWait, sem_trywait() failed", error::Strerror(errno), false);
         }
         return mStatus.Clear();
     }
 
 	virtual const wStatus& Post() {
         if (sem_post(&mSemId) == -1) {
-            return mStatus = wStatus::IOError("wPosixSem::Post, sem_post() failed", error::Strerror(errno));
+            mStatus = wStatus::IOError("wPosixSem::Post, sem_post() failed", error::Strerror(errno));
         }
         return mStatus.Clear();
     }
@@ -97,21 +90,22 @@ public:
 		if (mDevshm.size() > 0) {
 			// 只有最后一个进程 sem_unlink 有效
 	        if (sem_close(&mSemId) == -1) {
-	            return mStatus = wStatus::IOError("wPosixSem::Destroy, sem_close() failed", error::Strerror(errno));
-	        } else if (sem_unlink(mDevshm.c_str()) == -1) {
-	        	return mStatus = wStatus::IOError("wPosixSem::Destroy, sem_unlink() failed", error::Strerror(errno));
+	            mStatus = wStatus::IOError("wPosixSem::Destroy, sem_close() failed", error::Strerror(errno));
+	        }
+	        if (sem_unlink(mDevshm.c_str()) == -1) {
+	        	mStatus = wStatus::IOError("wPosixSem::Destroy, sem_unlink() failed", error::Strerror(errno));
 	        }
 		} else {
 	        if (sem_destroy(&mSemId) == -1) {
 	            return mStatus = wStatus::IOError("wPosixSem::Destroy, sem_destroy() failed", error::Strerror(errno));
 	        }
 		}
-		return mStatus.Clear();
+		return mStatus;
 	}
 
 protected:
+	const std::string mDevshm;
 	sem_t mSemId;
-	std::string mDevshm;
 	wStatus mStatus;
 };
 

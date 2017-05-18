@@ -20,14 +20,14 @@ const wStatus& wPosixSequentialFile::Read(size_t n, wSlice* result, char* scratc
         	return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
         }
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wPosixSequentialFile::Skip(uint64_t n) {
     if (fseek(mFile, n, SEEK_CUR)) {
         return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 
@@ -37,7 +37,7 @@ const wStatus& wPosixRandomAccessFile::Read(uint64_t offset, size_t n, wSlice* r
     if (r < 0) {
     	return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 bool wMmapLimiter::Acquire() {
@@ -66,7 +66,7 @@ const wStatus& wPosixMmapReadableFile::Read(uint64_t offset, size_t n, wSlice* r
     } else {
         *result = wSlice(reinterpret_cast<char*>(mMmappedRegion) + offset, n);
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 
@@ -75,7 +75,7 @@ const wStatus& wPosixWritableFile::Append(const wSlice& data) {
     if (r != data.size()) {
         return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wPosixWritableFile::Close() {
@@ -83,14 +83,14 @@ const wStatus& wPosixWritableFile::Close() {
         return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
     }
     mFile = NULL;
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wPosixWritableFile::Flush() {
     if (fflush(mFile) != 0) {
     	return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 // 刷新数据到文件
@@ -98,7 +98,7 @@ const wStatus& wPosixWritableFile::Sync() {
     if (fflush(mFile) != 0 || fdatasync(fileno(mFile)) != 0) {
     	return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 // 写字符到文件接口

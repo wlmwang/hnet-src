@@ -88,8 +88,6 @@ protected:
 
     const wStatus& CreatePidFile();
     const wStatus& DeletePidFile();
-
-    const wStatus& DeleteAcceptFile();
     
     // 给所有worker进程发送信号
     void SignalWorker(int signo);

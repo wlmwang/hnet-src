@@ -16,7 +16,7 @@ const wStatus& wUdpSocket::Open() {
 	if ((mFD = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 		return mStatus = wStatus::AccessIllegal("wUdpSocket::Open socket() AF_INET failed", error::Strerror(errno));
 	}
-	return mStatus.Clear();
+	return mStatus;
 }
 
 const wStatus& wUdpSocket::Bind(const std::string& host, uint16_t port) {
@@ -27,7 +27,7 @@ const wStatus& wUdpSocket::Bind(const std::string& host, uint16_t port) {
 	if (bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr)) == -1) {
 		return mStatus = wStatus::IOError("wUdpSocket::Bind bind failed", error::Strerror(errno));
 	}
-	return mStatus.Clear();
+	return mStatus;
 }
 
 const wStatus& wUdpSocket::Listen(const std::string& host, uint16_t port) {
@@ -48,7 +48,7 @@ const wStatus& wUdpSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
         if (*size == 0) {
             mStatus = wStatus::IOError("wUdpSocket::RecvBytes, client was closed", "");
         } else if (*size == -1 && (errno == EINTR || errno == EAGAIN)) {
-            mStatus.Clear();
+            //mStatus.Clear();
         } else if (*size == -1) {
             mStatus = wStatus::IOError("wUdpSocket::RecvBytes, recvfrom failed", error::Strerror(errno));
         }
@@ -67,9 +67,9 @@ const wStatus& wUdpSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
 		socketAddr.sin_addr.s_addr = inet_addr(mClientHost.c_str());
 		*size = sendto(mFD, reinterpret_cast<void*>(buf), len, 0, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr));
 	    if (*size >= 0) {
-	        mStatus.Clear();
+	        //mStatus.Clear();
 	    } else if (*size == -1 && (errno == EINTR || errno == EAGAIN)) {
-	        mStatus.Clear();
+	        //mStatus.Clear();
 	    } else {
 	        mStatus = wStatus::IOError("wUdpSocket::SendBytes, sendto failed", error::Strerror(errno));
 	    }

@@ -34,11 +34,11 @@ public:
         FILE* f = fopen(fname.c_str(), "r");
         if (f == NULL) {
             *result = NULL;
-            return mStatus = wStatus::IOError(fname, error::Strerror(errno));
+            mStatus = wStatus::IOError(fname, error::Strerror(errno));
         } else {
             SAFE_NEW(wPosixSequentialFile(fname, f), *result);
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
     virtual const wStatus& NewRandomAccessFile(const std::string& fname, wRandomAccessFile** result) {
@@ -64,25 +64,24 @@ public:
             if (!mStatus.Ok()) {
                 mMmapLimit.Release();
             }
-            return mStatus;
         } else {
             SAFE_NEW(wPosixRandomAccessFile(fname, fd), *result);
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
     virtual const wStatus& NewWritableFile(const std::string& fname, wWritableFile** result) {
         FILE* f = fopen(fname.c_str(), "w");
         if (f == NULL) {
             *result = NULL;
-            return mStatus = wStatus::IOError(fname, error::Strerror(errno));
+            mStatus = wStatus::IOError(fname, error::Strerror(errno));
         } else {
             SAFE_NEW(wPosixWritableFile(fname, f), *result);
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
-    virtual const wStatus& NewSem(const std::string* devshm, wSem** result) {
+    virtual const wStatus& NewSem(const std::string& devshm, wSem** result) {
     	SAFE_NEW(wPosixSem(devshm), *result);
     	if (!(mStatus = (*result)->Open()).Ok()) {
     		SAFE_DELETE(*result);
@@ -130,9 +129,9 @@ public:
     virtual const wStatus& NewLogger(const std::string& fname, wLogger** result, off_t maxsize = kMaxLoggerSize) {
     	SAFE_NEW(wPosixLogger(fname, &wPosixEnv::getpid, maxsize), *result);
 		if (*result == NULL) {
-			return mStatus = wStatus::IOError(fname, error::Strerror(errno));
+			mStatus = wStatus::IOError(fname, error::Strerror(errno));
 		}
-		return mStatus.Clear();
+		return mStatus;
     }
 
     // 获取某目录下所有文件、目录名
@@ -152,7 +151,7 @@ public:
         	}
         }
         closedir(d);
-        return mStatus.Clear();
+        return mStatus;
     }
 
     virtual const wStatus& GetBinPath(std::string* result, std::string self = "/proc/self/exe") {
@@ -168,7 +167,7 @@ public:
 			}
 		}
     	*result = dir_path;
-    	return mStatus.Clear();
+    	return mStatus;
     }
 
     virtual const wStatus& GetRealPath(const std::string& fname, std::string* result) {
@@ -177,46 +176,46 @@ public:
         	return mStatus = wStatus::IOError(fname, error::Strerror(errno));
         }
         *result = dir_path;
-        return mStatus.Clear();
+        return mStatus;
     }
 
     virtual const wStatus& DeleteFile(const std::string& fname) {
         if (unlink(fname.c_str()) != 0) {
-            return  mStatus = wStatus::IOError(fname, error::Strerror(errno), false);
+            mStatus = wStatus::IOError(fname, error::Strerror(errno), false);
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
     virtual const wStatus& CreateDir(const std::string& name) {
         if (mkdir(name.c_str(), 0755) != 0) {
-            return mStatus = wStatus::IOError(name, error::Strerror(errno), false);
+            mStatus = wStatus::IOError(name, error::Strerror(errno), false);
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
     virtual const wStatus& DeleteDir(const std::string& name) {
         if (rmdir(name.c_str()) != 0) {
-        	return mStatus = wStatus::IOError(name, error::Strerror(errno));
+        	mStatus = wStatus::IOError(name, error::Strerror(errno));
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
     virtual const wStatus& GetFileSize(const std::string& fname, uint64_t* size) {
         struct stat sbuf;
         if (stat(fname.c_str(), &sbuf) != 0) {
             *size = 0;
-            return mStatus = wStatus::IOError(fname, error::Strerror(errno));
+            mStatus = wStatus::IOError(fname, error::Strerror(errno));
         } else {
             *size = sbuf.st_size;
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
     virtual const wStatus& RenameFile(const std::string& src, const std::string& target) {
         if (rename(src.c_str(), target.c_str()) != 0) {
-            return mStatus = wStatus::IOError(src, error::Strerror(errno));
+            mStatus = wStatus::IOError(src, error::Strerror(errno));
         }
-        return mStatus.Clear();
+        return mStatus;
     }
 
     virtual bool FileExists(const std::string& fname) {
@@ -259,7 +258,7 @@ private:
     void PthreadCall(const char* label, int err) {
         if (err != 0) {
         	std::string str = "wEnv::PthreadCall, pthread ";
-        	wStatus::Corruption(str + label, error::Strerror(err));
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", str.c_str(), error::Strerror(err).c_str());
         	exit(-1);
         }
     }

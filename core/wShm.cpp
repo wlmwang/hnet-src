@@ -70,7 +70,7 @@ const wStatus& wPosixShm::CreateShm(char* ptr, int pipeid) {
 	mShmhead->mStart = addr;
 	mShmhead->mEnd = addr + mSize;
 	mShmhead->mUsedOff = ptr = addr + sizeof(struct Shmhead_t);
-	return mStatus.Clear();
+	return mStatus;
 }
 
 const wStatus& wPosixShm::AttachShm(char* ptr, int pipeid) {
@@ -92,14 +92,14 @@ const wStatus& wPosixShm::AttachShm(char* ptr, int pipeid) {
 
 	mShmhead = reinterpret_cast<struct Shmhead_t*>(addr);
 	ptr = mShmhead->mUsedOff;
-	return mStatus.Clear();
+	return mStatus;
 }
 
 const wStatus& wPosixShm::AllocShm(char* ptr, size_t size) {
 	if (mShmhead->mUsedOff + size < mShmhead->mEnd) {
 		ptr = mShmhead->mUsedOff;
 		mShmhead->mUsedOff += size;
-		return mStatus.Clear();
+		return mStatus;
 	}
 	return mStatus = wStatus::Corruption("wPosixShm::AllocShm failed", "shm space not enough");
 }
@@ -111,7 +111,7 @@ const wStatus& wPosixShm::Destroy() {
     } else if (mShmId > 0 && shmctl(mShmId, IPC_RMID, NULL) == -1) {
     	return mStatus = wStatus::IOError("wPosixShm::Destroy, shmctl(IPC_RMID) failed", error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 }	// namespace hnet

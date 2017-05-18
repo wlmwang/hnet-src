@@ -39,7 +39,7 @@ public:
 
 protected:
     virtual const wStatus& Bind(const std::string& host, uint16_t port = 0) {
-        return mStatus.Clear();
+        return mStatus;
     }
 
     // 0:传递给其他进程，供写入数据

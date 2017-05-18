@@ -85,7 +85,7 @@ const wStatus& wServer::WorkerStart(bool daemon) {
 
     // 惊群锁
     if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
-    	if (kAcceptStuff == 0 && !(mStatus = wEnv::Default()->NewSem(NULL, &mAcceptSem)).Ok()) {
+    	if (kAcceptStuff == 0 && !(mStatus = wEnv::Default()->NewSem(kAcceptMutex, &mAcceptSem)).Ok()) {
     		return mStatus;
     	}
     	// 清除epoll中listen socket监听事件，由各worker争抢惊群锁
@@ -100,6 +100,9 @@ const wStatus& wServer::WorkerStart(bool daemon) {
     while (daemon) {
     	if (mExiting) {
     	    ProcessExit();
+    	    if (mAcceptSem) {
+    	    	mAcceptSem->Destroy();
+    	    }
 		    exit(2);
     	}
 		Recv();
@@ -113,6 +116,9 @@ const wStatus& wServer::WorkerStart(bool daemon) {
 const wStatus& wServer::HandleSignal() {
     if (g_terminate) {
 		ProcessExit();
+	    if (mAcceptSem) {
+	    	mAcceptSem->Destroy();
+	    }
 		exit(2);
     } else if (g_quit)	{
 		// 优雅退出
@@ -227,10 +233,11 @@ const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == true) {
 		RemoveListener(false);
 		mAcceptHeld = false;
+		
 		// 释放锁
-		if (kAcceptStuff == 0) {
+		if (kAcceptStuff == 0 && mAcceptSem) {
 			mAcceptSem->Post();
-		} else if (kAcceptStuff == 1) {
+		} else if (kAcceptStuff == 1 && mAcceptFL) {
 			wEnv::Default()->UnlockFile(mAcceptFL);
 		}
 	}
@@ -607,6 +614,10 @@ const wStatus& wServer::CleanListenSock() {
 		SAFE_DELETE(*it);
 	}
 	return mStatus;
+}
+
+const wStatus& wServer::DeleteAcceptFile() {
+	return mStatus = wEnv::Default()->DeleteFile(kAcceptMutex);
 }
 
 void wServer::CheckTick() {

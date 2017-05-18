@@ -42,7 +42,7 @@ const wStatus& wChannelSocket::Open() {
 
     // mChannel[1]被监听（可读事件）
     mFD = mChannel[1];
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wChannelSocket::Close() {

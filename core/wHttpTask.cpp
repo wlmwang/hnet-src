@@ -22,169 +22,169 @@ const wStatus& wHttpTask::TaskRecv(ssize_t *size) {
 	}
 	*size = 0;
 
-    // len >= 0 正向剩余
-    // len < 0 分段，中间剩余
-    ssize_t len =  static_cast<ssize_t>(mRecvWrite - mRecvRead);
-    size_t leftlen = len >= 0? static_cast<size_t>(buffend - mRecvWrite): static_cast<size_t>(abs(len));
+	// len >= 0 正向剩余
+	// len < 0 分段，中间剩余
+	ssize_t len =  static_cast<ssize_t>(mRecvWrite - mRecvRead);
+	size_t leftlen = len >= 0? static_cast<size_t>(buffend - mRecvWrite): static_cast<size_t>(abs(len));
 
-    if (mRecvLen < kPackageSize) {
-    	if (len >= 0 && leftlen <= 10*sizeof(kProtocol[0])) {
-    		// 队列太过靠后，重新调整
-    		memmove(mRecvBuff, mRecvRead, len);
-    		mRecvRead = mRecvBuff;
-    		mRecvWrite= mRecvBuff + len;
-    		len =  static_cast<ssize_t>(mRecvWrite - mRecvRead);
-    		leftlen = len>=0? static_cast<size_t>(buffend - mRecvWrite): static_cast<size_t>(abs(len));
-    	}
+	if (mRecvLen < kPackageSize) {
+		if (len >= 0 && leftlen <= 10*sizeof(kProtocol[0])) {
+			// 队列太过靠后，重新调整
+			memmove(mRecvBuff, mRecvRead, len);
+			mRecvRead = mRecvBuff;
+			mRecvWrite= mRecvBuff + len;
+			len =  static_cast<ssize_t>(mRecvWrite - mRecvRead);
+			leftlen = len>=0? static_cast<size_t>(buffend - mRecvWrite): static_cast<size_t>(abs(len));
+		}
 
-    	if (leftlen > 0) {
-        	// socket接受数据
-        	if (!(mStatus = mSocket->RecvBytes(mRecvWrite, leftlen, size)).Ok() || *size < 0) {
-                return mStatus;
-            }
-            mRecvLen += *size;
-            mRecvWrite += *size;
-    	}
-    }
+		if (leftlen > 0) {
+			// socket接受数据
+			if (!(mStatus = mSocket->RecvBytes(mRecvWrite, leftlen, size)).Ok() || *size < 0) {
+				return mStatus;
+			}
+			mRecvLen += *size;
+			mRecvWrite += *size;
+		}
+	}
 
-    // 消息解析
-    auto handleFunc = [this] (char* buf, uint32_t len, char* nextbuf) {
-        this->mStatus = this->Handlemsg(buf, len);
-        this->mRecvRead = nextbuf;
-        this->mRecvLen -= len;
-    };
+	// 消息解析
+	auto handleFunc = [this] (char* buf, uint32_t len, char* nextbuf) {
+		this->mStatus = this->Handlemsg(buf, len);
+		this->mRecvRead = nextbuf;
+		this->mRecvLen -= len;
+	};
 
-    while (mRecvLen > strlen(kProtocol[0]) + strlen(kMethod[0]) + strlen(kCRLF)) {
-    	// 循环队列
-    	if (mRecvRead == buffend && mRecvWrite != mRecvBuff) {
-            mRecvRead = mRecvBuff;
-        }
-    	ssize_t len =  static_cast<ssize_t>(mRecvWrite - mRecvRead);
-        
-        uint32_t reallen = 0;
-        if (len > 0) {
-            // 消息字符在正向缓冲中
-           	if (misc::Strcmp(std::string(mRecvRead, 0, strlen(kMethod[0])), kMethod[0], strlen(kMethod[0])) == 0) {
-           		// GET请求
-           		int32_t pos = misc::Strpos(std::string(mRecvRead, 0, len), kEndl);
-           		if (pos == -1) {
-           			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [GET] recv a part of message", ">0");
-           			mStatus.Clear();
-	                break;
-           		}
+	while (mRecvLen > strlen(kProtocol[0]) + strlen(kMethod[0]) + strlen(kCRLF)) {
+		// 循环队列
+		if (mRecvRead == buffend && mRecvWrite != mRecvBuff) {
+			mRecvRead = mRecvBuff;
+		}
+		ssize_t len =  static_cast<ssize_t>(mRecvWrite - mRecvRead);
+		
+		uint32_t reallen = 0;
+		if (len > 0) {
+			// 消息字符在正向缓冲中
+			if (misc::Strcmp(std::string(mRecvRead, 0, strlen(kMethod[0])), kMethod[0], strlen(kMethod[0])) == 0) {
+				// GET请求
+				int32_t pos = misc::Strpos(std::string(mRecvRead, 0, len), kEndl);
+				if (pos == -1) {
+					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [GET] recv a part of message", ">0");
+					mStatus.Clear();
+					break;
+				}
 
-           		reallen = pos + strlen(kEndl);
-           	} else if (misc::Strcmp(std::string(mRecvRead, 0, strlen(kMethod[1])), kMethod[1], strlen(kMethod[1])) == 0) {
-           		// POST请求
-           		int32_t pos = misc::Strpos(std::string(mRecvRead, 0, len), kEndl);
-           		if (pos == -1) {
-	                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [POST] recv a part of message", ">0");
-	                mStatus.Clear();
-	                break;
-           		}
+				reallen = pos + strlen(kEndl);
+			} else if (misc::Strcmp(std::string(mRecvRead, 0, strlen(kMethod[1])), kMethod[1], strlen(kMethod[1])) == 0) {
+				// POST请求
+				int32_t pos = misc::Strpos(std::string(mRecvRead, 0, len), kEndl);
+				if (pos == -1) {
+					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [POST] recv a part of message", ">0");
+					mStatus.Clear();
+					break;
+				}
 
-           		int32_t pos1 = misc::Strpos(std::string(mRecvRead, 0, len), kHeader[0]);
-           		if (pos1 == -1) {
-           			mStatus = wStatus::Corruption("wHttpTask::TaskRecv, [POST] header error(has no Content-Length)", ">0");
-           			break;
-           		}
-           		int32_t contentLength = atoi(mRecvRead + pos1 + strlen(kHeader[0]) + strlen(kColon));
-           		if (pos + strlen(kEndl) + contentLength > kMaxPackageSize) {
-           			mStatus = wStatus::Corruption("wHttpTask::TaskRecv, [POST] header error(Content-Length out range)", ">0");
-           			break;
-           		} else if (pos + strlen(kEndl) + contentLength > static_cast<uint32_t>(len)) {
-	                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [POST] recv a part of message", ">0");
-	                mStatus.Clear();
-	                break;
-           		}
+				int32_t pos1 = misc::Strpos(std::string(mRecvRead, 0, len), kHeader[0]);
+				if (pos1 == -1) {
+					mStatus = wStatus::Corruption("wHttpTask::TaskRecv, [POST] header error(has no Content-Length)", ">0");
+					break;
+				}
+				int32_t contentLength = atoi(mRecvRead + pos1 + strlen(kHeader[0]) + strlen(kColon));
+				if (pos + strlen(kEndl) + contentLength > kMaxPackageSize) {
+					mStatus = wStatus::Corruption("wHttpTask::TaskRecv, [POST] header error(Content-Length out range)", ">0");
+					break;
+				} else if (pos + strlen(kEndl) + contentLength > static_cast<uint32_t>(len)) {
+					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [POST] recv a part of message", ">0");
+					mStatus.Clear();
+					break;
+				}
 
-           		reallen = pos + strlen(kEndl) + contentLength;
-           	} else {
-           		// 未知请求
-                mStatus = wStatus::Corruption("wHttpTask::TaskRecv, method error", ">0");
-                break;
-           	}
+				reallen = pos + strlen(kEndl) + contentLength;
+			} else {
+				// 未知请求
+				mStatus = wStatus::Corruption("wHttpTask::TaskRecv, method error", ">0");
+				break;
+			}
 
-            handleFunc(mRecvRead, reallen, mRecvRead + reallen);
-            if (!mStatus.Ok()) {
-                break;
-            }
-        } else {
-            leftlen = buffend - mRecvRead;
-            if ((leftlen >= strlen(kMethod[0]) && misc::Strcmp(std::string(mRecvRead, 0, strlen(kMethod[0])), kMethod[0], strlen(kMethod[0])) == 0) ||
-            	(leftlen == 0 && misc::Strcmp(std::string(mRecvBuff, 0, strlen(kMethod[0])), kMethod[0], strlen(kMethod[0])) == 0)) {
-           		// GET请求
-           		int32_t pos = misc::Strpos(std::string(mRecvRead, 0, leftlen), kEndl);
-                if (pos == -1) {
-                	memset(mTempBuff, 0, sizeof(mTempBuff));
-                	memcpy(mTempBuff, mRecvRead, leftlen);
-                	memcpy(mTempBuff + leftlen, mRecvBuff, mRecvLen - leftlen);
-                	pos = misc::Strpos(std::string(mTempBuff, 0, mRecvLen), kEndl);
-	           		if (pos == -1) {
-	           			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [GET] recv a part of message", "<=0");
-	           			mStatus.Clear();
-		                break;
-	           		}
+			handleFunc(mRecvRead, reallen, mRecvRead + reallen);
+			if (!mStatus.Ok()) {
+				break;
+			}
+		} else {
+			leftlen = buffend - mRecvRead;
+			if ((leftlen >= strlen(kMethod[0]) && misc::Strcmp(std::string(mRecvRead, 0, strlen(kMethod[0])), kMethod[0], strlen(kMethod[0])) == 0) ||
+				(leftlen == 0 && misc::Strcmp(std::string(mRecvBuff, 0, strlen(kMethod[0])), kMethod[0], strlen(kMethod[0])) == 0)) {
+				// GET请求
+				int32_t pos = misc::Strpos(std::string(mRecvRead, 0, leftlen), kEndl);
+				if (pos == -1) {
+					memset(mTempBuff, 0, sizeof(mTempBuff));
+					memcpy(mTempBuff, mRecvRead, leftlen);
+					memcpy(mTempBuff + leftlen, mRecvBuff, mRecvLen - leftlen);
+					pos = misc::Strpos(std::string(mTempBuff, 0, mRecvLen), kEndl);
+					if (pos == -1) {
+						LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [GET] recv a part of message", "<=0");
+						mStatus.Clear();
+						break;
+					}
 
-	           		reallen = leftlen + pos + strlen(kEndl);
-                } else {
-                	reallen = pos + strlen(kEndl);
-                }
+					reallen = leftlen + pos + strlen(kEndl);
+				} else {
+					reallen = pos + strlen(kEndl);
+				}
 
-                if (reallen <= leftlen) {
-                	handleFunc(mRecvRead, reallen, mRecvRead + reallen);
-                } else {
-                	handleFunc(mTempBuff, reallen, mRecvBuff + reallen - leftlen);
-                }
-                if (!mStatus.Ok()) {
-                    break;
-                }
-            } else if ((leftlen >= strlen(kMethod[1]) && misc::Strcmp(std::string(mRecvRead, 0, strlen(kMethod[1])), kMethod[1], strlen(kMethod[1])) == 0) || 
-            	(leftlen == 0 && misc::Strcmp(std::string(mRecvBuff, 0, strlen(kMethod[1])), kMethod[1], strlen(kMethod[1])) == 0)) {
-            	// POST请求
-            	memset(mTempBuff, 0, sizeof(mTempBuff));
-            	memcpy(mTempBuff, mRecvRead, leftlen);
-            	memcpy(mTempBuff + leftlen, mRecvBuff, mRecvLen - leftlen);
+				if (reallen <= leftlen) {
+					handleFunc(mRecvRead, reallen, mRecvRead + reallen);
+				} else {
+					handleFunc(mTempBuff, reallen, mRecvBuff + reallen - leftlen);
+				}
+				if (!mStatus.Ok()) {
+					break;
+				}
+			} else if ((leftlen >= strlen(kMethod[1]) && misc::Strcmp(std::string(mRecvRead, 0, strlen(kMethod[1])), kMethod[1], strlen(kMethod[1])) == 0) || 
+				(leftlen == 0 && misc::Strcmp(std::string(mRecvBuff, 0, strlen(kMethod[1])), kMethod[1], strlen(kMethod[1])) == 0)) {
+				// POST请求
+				memset(mTempBuff, 0, sizeof(mTempBuff));
+				memcpy(mTempBuff, mRecvRead, leftlen);
+				memcpy(mTempBuff + leftlen, mRecvBuff, mRecvLen - leftlen);
 
-           		int32_t pos = misc::Strpos(std::string(mTempBuff, 0, mRecvLen), kEndl);
-           		if (pos == -1) {
-	                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [POST] recv a part of message", "<=0");
-	                mStatus.Clear();
-	                break;
-           		}
+				int32_t pos = misc::Strpos(std::string(mTempBuff, 0, mRecvLen), kEndl);
+				if (pos == -1) {
+					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [POST] recv a part of message", "<=0");
+					mStatus.Clear();
+					break;
+				}
 
-           		int32_t pos1 = misc::Strpos(std::string(mTempBuff, 0, mRecvLen), kHeader[0]);
-           		if (pos1 == -1) {
-           			mStatus = wStatus::Corruption("wHttpTask::TaskRecv, [POST] header error(has no Content-Length)", "<=0");
-           			break;
-           		}
-           		int32_t contentLength = atoi(mTempBuff + pos1 + strlen(kHeader[0]) + strlen(kColon));
-           		if (pos + strlen(kEndl) + contentLength > kMaxPackageSize) {
-           			mStatus = wStatus::Corruption("wHttpTask::TaskRecv, [POST] header error(Content-Length out range)", "<=0");
-           			break;
-           		} else if (pos + strlen(kEndl) + contentLength > static_cast<uint32_t>(mRecvLen)) {
-	                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [POST] recv a part of message", "<=0");
-	                mStatus.Clear();
-	                break;
-           		}
+				int32_t pos1 = misc::Strpos(std::string(mTempBuff, 0, mRecvLen), kHeader[0]);
+				if (pos1 == -1) {
+					mStatus = wStatus::Corruption("wHttpTask::TaskRecv, [POST] header error(has no Content-Length)", "<=0");
+					break;
+				}
+				int32_t contentLength = atoi(mTempBuff + pos1 + strlen(kHeader[0]) + strlen(kColon));
+				if (pos + strlen(kEndl) + contentLength > kMaxPackageSize) {
+					mStatus = wStatus::Corruption("wHttpTask::TaskRecv, [POST] header error(Content-Length out range)", "<=0");
+					break;
+				} else if (pos + strlen(kEndl) + contentLength > static_cast<uint32_t>(mRecvLen)) {
+					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [POST] recv a part of message", "<=0");
+					mStatus.Clear();
+					break;
+				}
 
-           		reallen = pos + strlen(kEndl) + contentLength;
-                if (reallen <= leftlen) {
-                	handleFunc(mTempBuff, reallen, mRecvRead + reallen);
-                } else {
-                	handleFunc(mTempBuff, reallen, mRecvBuff + reallen - leftlen);
-                }
-                if (!mStatus.Ok()) {
-                    break;
-                }
-            } else {
-           		// 未知请求
-                mStatus = wStatus::Corruption("wHttpTask::TaskRecv, method error", "<=0");
-                break;
-            }
-        }
-    }
-    return mStatus;
+				reallen = pos + strlen(kEndl) + contentLength;
+				if (reallen <= leftlen) {
+					handleFunc(mTempBuff, reallen, mRecvRead + reallen);
+				} else {
+					handleFunc(mTempBuff, reallen, mRecvBuff + reallen - leftlen);
+				}
+				if (!mStatus.Ok()) {
+					break;
+				}
+			} else {
+				// 未知请求
+				mStatus = wStatus::Corruption("wHttpTask::TaskRecv, method error", "<=0");
+				break;
+			}
+		}
+	}
+	return mStatus;
 }
 
 const wStatus& wHttpTask::Handlemsg(char buf[], uint32_t len) {

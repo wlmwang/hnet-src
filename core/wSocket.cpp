@@ -21,14 +21,14 @@ const wStatus& wSocket::Close() {
         return mStatus = wStatus::IOError("wSocket::Close failed", error::Strerror(errno));
     }
     mFD = kFDUnknown;
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wSocket::SetFL(bool nonblock) {
     if (fcntl(mFD, F_SETFL, (nonblock == true ? fcntl(mFD, F_GETFL, 0) | O_NONBLOCK : fcntl(mFD, F_GETFL, 0) & ~O_NONBLOCK)) == -1) {
         return mStatus = wStatus::IOError("wSocket::SetFL F_SETFL failed", error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {

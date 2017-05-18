@@ -46,14 +46,14 @@ const wStatus& wSignal::AddMaskSet(int signo) {
     if (sigaddset(&mSigAct.sa_mask, signo) == -1) {
         return mStatus = wStatus::IOError("wSignal::wSignal, sigaddset failed", error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wSignal::AddSigno(int signo, struct sigaction *oact) {
     if (sigaction(signo, &mSigAct, oact) == -1) {
         mStatus = wStatus::IOError("wSignal::wSignal, sigaction failed", error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wSignal::AddHandler(const Signal_t *signal) {

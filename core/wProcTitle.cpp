@@ -58,7 +58,7 @@ const wStatus& wProcTitle::SaveArgv(int argc, const char* argv[]) {
     }
     environ = mEnv;
 
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wProcTitle::Setproctitle(const char *title, const char *pretitle, bool attach) {
@@ -79,7 +79,7 @@ const wStatus& wProcTitle::Setproctitle(const char *title, const char *pretitle,
         	p = misc::Cpystrn(p, mArgv[i], size -= strlen(mArgv[i]));
         }
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 }   // namespace hnet
