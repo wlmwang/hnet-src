@@ -91,6 +91,9 @@ public:
     const wStatus& AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
     
 protected:
+    void Locks(std::vector<int>* slot = NULL, std::vector<int>* blackslot = NULL);
+    void Unlocks(std::vector<int>* slot = NULL, std::vector<int>* blackslot = NULL);
+
     const wStatus& Recv();
     const wStatus& InitEpoll();
 
@@ -126,7 +129,6 @@ protected:
 
     wConfig* mConfig;
     wServer* mServer;
-
     wStatus mStatus;
 };
 

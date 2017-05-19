@@ -170,6 +170,44 @@ const wStatus& wServer::NewHttpTask(wSocket* sock, wTask** ptr) {
     return mStatus;
 }
 
+void wServer::Locks(std::vector<int>* slot, std::vector<int>* blackslot) {
+	if (slot) {
+	    for (std::vector<int>::iterator it = slot->begin(); it != slot->end(); it++) {
+	        if (blackslot && std::find(blackslot->begin(), blackslot->end(), *it) != blackslot->end()) {
+	            continue;
+	        } else if (*it < kServerNumShard) {
+	        	mTaskPoolMutex[*it].Lock();
+	        }
+	    }
+	} else {
+	    for (int i = 0; i < kServerNumShard; i++) {
+	        if (blackslot && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
+	            continue;
+	        }
+	        mTaskPoolMutex[i].Lock();
+	    }
+	}
+}
+
+void wServer::Unlocks(std::vector<int>* slot, std::vector<int>* blackslot) {
+	if (slot) {
+	    for (std::vector<int>::iterator it = slot->begin(); it != slot->end(); it++) {
+	        if (blackslot && std::find(blackslot->begin(), blackslot->end(), *it) != blackslot->end()) {
+	            continue;
+	        } else if (*it < kServerNumShard) {
+	        	mTaskPoolMutex[*it].Unlock();
+	        }
+	    }
+	} else {
+	    for (int i = 0; i < kServerNumShard; i++) {
+	        if (blackslot && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
+	            continue;
+	        }
+	        mTaskPoolMutex[i].Unlock();
+	    }
+	}
+}
+
 const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {
 		// 争抢锁
@@ -186,11 +224,15 @@ const wStatus& wServer::Recv() {
 		mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", error::Strerror(errno));
 	}
 	for (int i = 0; i < ret && evt[i].data.ptr; i++) {
-		wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
-		int type = task->Type();
-		if (mScheduleTurn) {	// 加锁
-			mTaskPoolMutex[type].Lock();
+		if (mScheduleTurn) {
+			Locks();
 		}
+		wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
+		std::vector<int> slot(1, task->Type());
+		if (mScheduleTurn) {
+			Unlocks(NULL, &slot);
+		}
+
 		if (task->Socket()->FD() == kFDUnknown) {
 			RemoveTask(task);
 		} else if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
@@ -224,8 +266,7 @@ const wStatus& wServer::Recv() {
 			}
 		}
 		if (mScheduleTurn) {
-			// 解锁
-			mTaskPoolMutex[type].Unlock();
+			Unlocks(&slot, NULL);
 		}
 	}
 
@@ -353,7 +394,7 @@ const wStatus& wServer::SyncWorker(char *cmd, int len, uint32_t solt, const std:
 		for (uint32_t i = 0; i < kMaxProcess; i++) {
 			if (mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
 				continue;
-			} else if (blackslot != NULL && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
+			} else if (blackslot && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
 				continue;
 			}
 
@@ -383,7 +424,7 @@ const wStatus& wServer::SyncWorker(const google::protobuf::Message* msg, uint32_
 		for (uint32_t i = 0; i < kMaxProcess; i++) {
 			if (mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
 				continue;
-			} else if (blackslot != NULL && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
+			} else if (blackslot && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
 				continue;
 			}
 
@@ -653,13 +694,15 @@ void wServer::ScheduleRun(void* argv) {
 void wServer::CheckHeartBeat() {
     uint64_t tm = misc::GetTimeofday();
     for (int i = 0; i < kServerNumShard; i++) {
-    	mTaskPoolMutex[i].Lock();
+    	std::vector<int> slot(1, i);
+    	if (mScheduleTurn) {
+	    	Locks(&slot);
+    	}
 	    if (mTaskPool[i].size() > 0) {
 	    	std::vector<wTask*>::iterator it = mTaskPool[i].begin();
 	    	while (it != mTaskPool[i].end()) {
 	    		if ((*it)->Socket()->ST() == kStConnect && ((*it)->Socket()->SP() == kSpTcp || (*it)->Socket()->SP() == kSpUnix)) {
-	    			if ((*it)->Socket()->SS() == kSsUnconnect) {
-	    				// 断线连接
+	    			if ((*it)->Socket()->SS() == kSsUnconnect) {	// 断线连接
 	    				RemoveTask(*it, &it);
 	    				continue;
 	    			} else {
@@ -669,8 +712,7 @@ void wServer::CheckHeartBeat() {
 						if (interval1 >= kKeepAliveTm*1000) {
 							// 发送心跳
 							(*it)->HeartbeatSend();
-							if ((*it)->HeartbeatOut()) {
-								// 心跳超限
+							if ((*it)->HeartbeatOut()) {	// 心跳超限
 								RemoveTask(*it, &it);
 								continue;
 							}
@@ -680,7 +722,9 @@ void wServer::CheckHeartBeat() {
 	    		it++;
 	    	}
 	    }
-    	mTaskPoolMutex[i].Unlock();
+    	if (mScheduleTurn) {
+	    	Unlocks(&slot);
+    	}
     }
 }
 

@@ -162,18 +162,60 @@ const wStatus& wMultiClient::InitEpoll() {
     return mStatus;
 }
 
+void wMultiClient::Locks(std::vector<int>* slot, std::vector<int>* blackslot) {
+    if (slot) {
+        for (std::vector<int>::iterator it = slot->begin(); it != slot->end(); it++) {
+            if (blackslot && std::find(blackslot->begin(), blackslot->end(), *it) != blackslot->end()) {
+                continue;
+            } else if (*it < kClientNumShard) {
+                mTaskPoolMutex[*it].Lock();
+            }
+        }
+    } else {
+        for (int i = 0; i < kClientNumShard; i++) {
+            if (blackslot && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
+                continue;
+            }
+            mTaskPoolMutex[i].Lock();
+        }
+    }
+}
+
+void wMultiClient::Unlocks(std::vector<int>* slot, std::vector<int>* blackslot) {
+    if (slot) {
+        for (std::vector<int>::iterator it = slot->begin(); it != slot->end(); it++) {
+            if (blackslot && std::find(blackslot->begin(), blackslot->end(), *it) != blackslot->end()) {
+                continue;
+            } else if (*it < kClientNumShard) {
+                mTaskPoolMutex[*it].Unlock();
+            }
+        }
+    } else {
+        for (int i = 0; i < kClientNumShard; i++) {
+            if (blackslot && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
+                continue;
+            }
+            mTaskPoolMutex[i].Unlock();
+        }
+    }
+}
+
 const wStatus& wMultiClient::Recv() {
     struct epoll_event evt[kListenBacklog];
     int ret = epoll_wait(mEpollFD, evt, kListenBacklog, mTimeout);
     if (ret == -1) {
        return mStatus = wStatus::IOError("wMultiClient::Recv, epoll_wait() failed", error::Strerror(errno));
     }
-    for (int i = 0; i < ret && evt[i].data.ptr; i++) {
-    	wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
-        int type = task->Type();
-        if (mScheduleTurn) {    // 加锁
-        	mTaskPoolMutex[type].Lock();
+    for (int i = 0; i < ret; i++) {
+        if (mScheduleTurn) {
+            Locks();
         }
+        wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
+        std::vector<int> slot(1, task->Type());
+        if (mScheduleTurn) {
+            Unlocks(NULL, &slot);
+        }
+
         if (evt[i].events & (EPOLLERR|EPOLLPRI)) {
             task->Socket()->SS() = kSsUnconnect;
             RemoveTask(task, NULL, false);
@@ -201,8 +243,7 @@ const wStatus& wMultiClient::Recv() {
             }
         }
         if (mScheduleTurn) {
-    		// 解锁
-    		mTaskPoolMutex[type].Unlock();
+            Unlocks(&slot, NULL);
         }
     }
     return mStatus;
@@ -378,7 +419,10 @@ void wMultiClient::ScheduleRun(void* argv) {
 void wMultiClient::CheckHeartBeat() {
     uint64_t tm = misc::GetTimeofday();
     for (int i = 0; i < kClientNumShard; i++) {
-        mTaskPoolMutex[i].Lock();
+        std::vector<int> slot(1, i);
+        if (mScheduleTurn) {
+            Locks(&slot);
+        }
         if (mTaskPool[i].size() > 0) {
         	std::vector<wTask*>::iterator it = mTaskPool[i].begin();
         	while (it != mTaskPool[i].end()) {
@@ -404,7 +448,9 @@ void wMultiClient::CheckHeartBeat() {
         		it++;
         	}
         }
-        mTaskPoolMutex[i].Unlock();
+        if (mScheduleTurn) {
+            Unlocks(&slot);
+        }
     }
 }
 

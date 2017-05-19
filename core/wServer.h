@@ -26,7 +26,7 @@
 
 namespace hnet {
 
-const int kServerNumShardBits = 8;
+const int kServerNumShardBits = 4;
 const int kServerNumShard = 1 << kServerNumShardBits;
 
 class wConfig;
@@ -118,6 +118,8 @@ protected:
         uint32_t hash = misc::Hash(sock->Host().c_str(), sock->Host().size(), 0);
         return hash >> (32 - kServerNumShardBits);
     }
+    void Locks(std::vector<int>* slot = NULL, std::vector<int>* blackslot = NULL);
+    void Unlocks(std::vector<int>* slot = NULL, std::vector<int>* blackslot = NULL);
 
     // 事件读写主调函数
     const wStatus& Recv();
