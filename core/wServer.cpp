@@ -188,11 +188,10 @@ const wStatus& wServer::Recv() {
 	for (int i = 0; i < ret && evt[i].data.ptr; i++) {
 		wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
 		int type = task->Type();
-		if (mScheduleTurn) {
-			// 加锁
+		if (mScheduleTurn) {	// 加锁
 			mTaskPoolMutex[type].Lock();
 		}
-		if (task->Socket()->FD() == kFDUnknown) {
+		if (!task->Socket() || task->Socket()->FD() == kFDUnknown) {
 			RemoveTask(task);
 		} else if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
 			RemoveTask(task);
@@ -659,7 +658,7 @@ void wServer::CheckHeartBeat() {
 	    if (mTaskPool[i].size() > 0) {
 	    	std::vector<wTask*>::iterator it = mTaskPool[i].begin();
 	    	while (it != mTaskPool[i].end()) {
-	    		if ((*it)->Socket()->ST() == kStConnect && ((*it)->Socket()->SP() == kSpTcp || (*it)->Socket()->SP() == kSpUnix)) {
+	    		if ((*it)->Socket() && (*it)->Socket()->ST() == kStConnect && ((*it)->Socket()->SP() == kSpTcp || (*it)->Socket()->SP() == kSpUnix)) {
 	    			if ((*it)->Socket()->SS() == kSsUnconnect) {
 	    				// 断线连接
 	    				RemoveTask(*it, &it);
