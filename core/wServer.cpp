@@ -223,9 +223,13 @@ const wStatus& wServer::Recv() {
 	if (ret == -1) {
 		mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", error::Strerror(errno));
 	}
-	for (int i = 0; i < ret && evt[i].data.ptr; i++) {
+	for (int i = 0; i < ret; i++) {
 		if (mScheduleTurn) {
 			Locks();
+            if (!evt[i].data.ptr) {
+                Unlocks();
+                continue;
+            }
 		}
 		wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
 		std::vector<int> slot(1, task->Type());

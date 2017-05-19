@@ -209,6 +209,10 @@ const wStatus& wMultiClient::Recv() {
     for (int i = 0; i < ret; i++) {
         if (mScheduleTurn) {
             Locks();
+            if (!evt[i].data.ptr) {
+                Unlocks();
+                continue;
+            }
         }
         wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
         std::vector<int> slot(1, task->Type());
