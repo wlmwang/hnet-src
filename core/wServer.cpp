@@ -180,8 +180,8 @@ const wStatus& wServer::Recv() {
 	}
 
 	// 事件循环
-	std::vector<struct epoll_event> evt(kListenBacklog);
-	int ret = epoll_wait(mEpollFD, &evt[0], kListenBacklog - 1, mTimeout);
+	struct epoll_event evt[kListenBacklog];
+	int ret = epoll_wait(mEpollFD, evt, kListenBacklog, mTimeout);
 	if (ret == -1) {
 		mStatus = wStatus::IOError("wServer::Recv, epoll_wait() failed", error::Strerror(errno));
 	}
@@ -191,7 +191,7 @@ const wStatus& wServer::Recv() {
 		if (mScheduleTurn) {	// 加锁
 			mTaskPoolMutex[type].Lock();
 		}
-		if (!task->Socket() || task->Socket()->FD() == kFDUnknown) {
+		if (task->Socket()->FD() == kFDUnknown) {
 			RemoveTask(task);
 		} else if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
 			RemoveTask(task);
@@ -626,8 +626,7 @@ void wServer::CheckTick() {
 	}
 	mLatestTm += mTick;
 
-	if (mScheduleTurn) {
-		// 任务开关
+	if (mScheduleTurn) {	// 任务开关
 		if (mScheduleMutex.TryLock() == 0) {
 		    if (mScheduleOk == true) {
 		    	mScheduleOk = false;
@@ -658,7 +657,7 @@ void wServer::CheckHeartBeat() {
 	    if (mTaskPool[i].size() > 0) {
 	    	std::vector<wTask*>::iterator it = mTaskPool[i].begin();
 	    	while (it != mTaskPool[i].end()) {
-	    		if ((*it)->Socket() && (*it)->Socket()->ST() == kStConnect && ((*it)->Socket()->SP() == kSpTcp || (*it)->Socket()->SP() == kSpUnix)) {
+	    		if ((*it)->Socket()->ST() == kStConnect && ((*it)->Socket()->SP() == kSpTcp || (*it)->Socket()->SP() == kSpUnix)) {
 	    			if ((*it)->Socket()->SS() == kSsUnconnect) {
 	    				// 断线连接
 	    				RemoveTask(*it, &it);

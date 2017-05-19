@@ -163,21 +163,19 @@ const wStatus& wMultiClient::InitEpoll() {
 }
 
 const wStatus& wMultiClient::Recv() {
-    std::vector<struct epoll_event> evt(kListenBacklog);
-    int ret = epoll_wait(mEpollFD, &evt[0], kListenBacklog - 1, mTimeout);
+    struct epoll_event evt[kListenBacklog];
+    int ret = epoll_wait(mEpollFD, evt, kListenBacklog, mTimeout);
     if (ret == -1) {
        return mStatus = wStatus::IOError("wMultiClient::Recv, epoll_wait() failed", error::Strerror(errno));
     }
-
     for (int i = 0; i < ret && evt[i].data.ptr; i++) {
     	wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
         int type = task->Type();
-        if (mScheduleTurn) {
-        	// 加锁
+        if (mScheduleTurn) {    // 加锁
         	mTaskPoolMutex[type].Lock();
         }
-        if (evt[i].events & (EPOLLERR | EPOLLPRI)) {
-        	task->Socket()->SS() = kSsUnconnect;
+        if (evt[i].events & (EPOLLERR|EPOLLPRI)) {
+            task->Socket()->SS() = kSsUnconnect;
             RemoveTask(task, NULL, false);
         } else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
             if (evt[i].events & EPOLLIN) {
