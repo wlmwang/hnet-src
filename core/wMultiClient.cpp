@@ -201,39 +201,31 @@ void wMultiClient::Unlocks(std::vector<int>* slot, std::vector<int>* blackslot) 
 }
 
 const wStatus& wMultiClient::Recv() {
+    // 事件循环
+    if (mScheduleTurn) Locks();
     struct epoll_event evt[kListenBacklog];
     int ret = epoll_wait(mEpollFD, evt, kListenBacklog, mTimeout);
-    if (ret == -1) {
-       return mStatus = wStatus::IOError("wMultiClient::Recv, epoll_wait() failed", error::Strerror(errno));
-    }
-    for (int i = 0; i < ret; i++) {
-        if (mScheduleTurn) {
-            Locks();
-            if (!evt[i].data.ptr) {
-                Unlocks();
-                continue;
-            }
-        }
+    if (ret == -1) mStatus = wStatus::IOError("wMultiClient::Recv, epoll_wait() failed", error::Strerror(errno));
+    if (mScheduleTurn) Unlocks();
+
+    for (int i = 0; i < ret && evt[i].data.ptr; i++) {
+        if (mScheduleTurn) Locks();
         wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
         std::vector<int> slot(1, task->Type());
-        if (mScheduleTurn) {
-            Unlocks(NULL, &slot);
-        }
+        if (mScheduleTurn) Unlocks(NULL, &slot);
 
-        if (evt[i].events & (EPOLLERR|EPOLLPRI)) {
+        if (task->Socket()->FD() == kFDUnknown || evt[i].events & (EPOLLERR|EPOLLPRI)) {
             task->Socket()->SS() = kSsUnconnect;
             RemoveTask(task, NULL, false);
         } else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
-            if (evt[i].events & EPOLLIN) {
-                // 套接口准备好了读取操作
+            if (evt[i].events & EPOLLIN) {  // 套接口准备好了读取操作
             	ssize_t size;
             	if (!(mStatus = task->TaskRecv(&size)).Ok()) {
                 	task->Socket()->SS() = kSsUnconnect;
                     RemoveTask(task, NULL, false);
                 }
             } else if (evt[i].events & EPOLLOUT) {
-                // 清除写事件
-                if (task->SendLen() == 0) {
+                if (task->SendLen() == 0) { // 清除写事件
                     AddTask(task, EPOLLIN, EPOLL_CTL_MOD, false);
                 } else {
                     // 套接口准备好了写入操作
@@ -246,9 +238,8 @@ const wStatus& wMultiClient::Recv() {
                 }
             }
         }
-        if (mScheduleTurn) {
-            Unlocks(&slot, NULL);
-        }
+
+        if (mScheduleTurn) Unlocks(&slot);
     }
     return mStatus;
 }
@@ -322,7 +313,6 @@ const wStatus& wMultiClient::Send(wTask *task, const google::protobuf::Message* 
 const wStatus& wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) {
     struct epoll_event evt;
     evt.events = ev | EPOLLERR | EPOLLHUP;
-    evt.data.fd = task->Socket()->FD();
     evt.data.ptr = task;
     if (epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt) == -1) {
         return mStatus = wStatus::IOError("wMultiClient::AddTask, epoll_ctl() failed", error::Strerror(errno));
@@ -344,7 +334,8 @@ const wStatus& wMultiClient::AddToTaskPool(wTask* task) {
 
 const wStatus& wMultiClient::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter, bool delpool) {
     struct epoll_event evt;
-    evt.data.fd = task->Socket()->FD();
+    evt.events = 0;
+    evt.data.ptr = NULL;
     if (epoll_ctl(mEpollFD, EPOLL_CTL_DEL, task->Socket()->FD(), &evt) < 0) {
         mStatus = wStatus::IOError("wMultiClient::RemoveTask, epoll_ctl() failed", error::Strerror(errno));
     }
@@ -421,12 +412,9 @@ void wMultiClient::ScheduleRun(void* argv) {
 }
 
 void wMultiClient::CheckHeartBeat() {
-    uint64_t tm = misc::GetTimeofday();
     for (int i = 0; i < kClientNumShard; i++) {
         std::vector<int> slot(1, i);
-        if (mScheduleTurn) {
-            Locks(&slot);
-        }
+        if (mScheduleTurn) Locks(&slot);
         if (mTaskPool[i].size() > 0) {
         	std::vector<wTask*>::iterator it = mTaskPool[i].begin();
         	while (it != mTaskPool[i].end()) {
@@ -434,27 +422,18 @@ void wMultiClient::CheckHeartBeat() {
         			if ((*it)->Socket()->SS() == kSsUnconnect) {
                     	// 重连服务器
                     	ReConnect(*it);
-        			} else {
-        				// 心跳检测
-                        uint64_t interval1 = tm - (*it)->Socket()->SendTm();
-                        //uint64_t interval2 = tm - (*it)->Socket()->RecvTm();
-        				if (interval1 >= kKeepAliveTm*1000) {
-        					// 发送心跳
-        					(*it)->HeartbeatSend();
-        					if ((*it)->HeartbeatOut()) {
-        						// 心跳超限
-        						(*it)->Socket()->SS() = kSsUnconnect;
-        						RemoveTask(*it, NULL, false);
-        					}
-        				}
+        			} else { // 心跳检测
+                        (*it)->HeartbeatSend(); // 发送心跳
+                        if ((*it)->HeartbeatOut()) {    // 心跳超限
+                            (*it)->Socket()->SS() = kSsUnconnect;
+                            RemoveTask(*it, NULL, false);
+                        }
         			}
         		}
         		it++;
         	}
         }
-        if (mScheduleTurn) {
-            Unlocks(&slot);
-        }
+        if (mScheduleTurn) Unlocks(&slot);
     }
 }
 
