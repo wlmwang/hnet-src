@@ -8,6 +8,8 @@
 # gcc 4.8+(gdb7.6+)
 # 需要预先编译vendor目录下的protobuf软件包；core下hnet
 # 所需的.so文件建议安装到ldconfig加载路径中(/usr/local/lib)
+# 
+# 若需打开protobuf，需打开LIBFLAGS和CC_SRC参数。并确保hnet是_USE_PROTOBUF_版本
 #
 
 CC		:= g++
@@ -18,8 +20,8 @@ LDFLAGS	:= -Wl,-dy #-Wl,-Bdynamic
 # 第三方库
 DIR_INC		:= -I/usr/local/include/hnet
 DIR_LIB		:= -L/usr/local/lib
-#LIBFLAGS	:= ${DIR_LIB} $(ARFLAGS) -lhnet -lprotobuf $(LDFLAGS) -lpthread
 LIBFLAGS	:= ${DIR_LIB} $(ARFLAGS) -lhnet $(LDFLAGS) -lpthread
+#LIBFLAGS	:= ${DIR_LIB} $(ARFLAGS) -lhnet -lprotobuf $(LDFLAGS) -lpthread
 
 # 主目录,message,command目录
 DIR_SRC		:= ./

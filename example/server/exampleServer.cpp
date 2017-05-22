@@ -13,11 +13,10 @@
 #include "wConfig.h"
 #include "wServer.h"
 #include "wMaster.h"
+#include "exampleCmd.h"
 
 #ifdef _USE_PROTOBUF_
 #include "example.pb.h"
-#else
-#include "exampleCmd.h"
 #endif
 
 using namespace hnet;

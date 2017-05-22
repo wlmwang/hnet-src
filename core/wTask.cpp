@@ -32,7 +32,7 @@ wTask::~wTask() {
 const wStatus& wTask::HeartbeatSend() {
     mHeartbeat++;
     struct wCommand cmd;
-    return AsyncSend(reinterpret_cast<char *>(&cmd), sizeof(cmd));
+    return AsyncSend(reinterpret_cast<char*>(&cmd), sizeof(cmd));
 }
 
 const wStatus& wTask::Output() {
@@ -207,7 +207,7 @@ void wTask::Assertbuf(char buf[], const google::protobuf::Message* msg) {
 	// 类名
 	memcpy(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t), pbName.data(), nameLen);
     // 消息体
-	msg->SerializeToArray(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + nameLen, msg->ByteSize());
+	msg->SerializeToArray(reinterpret_cast<void*>(buf+sizeof(uint32_t)+sizeof(uint8_t)+sizeof(uint16_t)+nameLen), msg->ByteSize());
 }
 #endif
 

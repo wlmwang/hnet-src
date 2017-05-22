@@ -34,7 +34,7 @@ INCFLAGS	:= -I${DIR_SRC}
 
 # 源文件
 CPP_SRC	:= $(wildcard ${DIR_SRC}*.cpp)
-#CC_SRC	:= $(wildcard ${DIR_SRC}*.cc)
+CC_SRC	:= 
 
 # 编译文件
 DIR_AR	:= ./ar

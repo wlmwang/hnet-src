@@ -9,11 +9,10 @@
 #include "wMisc.h"
 #include "wTcpTask.h"
 #include "wMultiClient.h"
+#include "exampleCmd.h"
 
 #ifdef _USE_PROTOBUF_
 #include "example.pb.h"
-#else
-#include "exampleCmd.h"
 #endif
 
 using namespace hnet;
@@ -49,7 +48,7 @@ std::cout << "ReConnect" << std::endl;
 #else
 	AsyncSend(reinterpret_cast<char*>(&req), sizeof(req));
 #endif
-	return mStatus.Clear();
+	return mStatus;
 }
 
 int ExampleTask::ExampleEchoRes(struct Request_t *request) {
