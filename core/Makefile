@@ -46,7 +46,7 @@ LD_OBJ	:= $(patsubst %.cpp, ${DIR_LD}/%.o, $(notdir ${CPP_SRC})) $(patsubst %.cc
 LIBNAME	:= libhnet
 AR_LIB	:= ${LIBNAME}.a
 LN_LIB	:= ${LIBNAME}.so
-LD_LIB	:= ${LIBNAME}.so.0.0.12
+LD_LIB	:= ${LIBNAME}.so.0.0.13
 SN_LIB	:= ${LIBNAME}.so.0
 
 # 安装目录
