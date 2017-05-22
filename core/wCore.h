@@ -94,7 +94,7 @@ const bool		kLittleEndian = true;
 const bool		kScheduleTurn = true;
 // 心跳开关
 const bool		kHeartbeatTurn = true;
-const uint8_t   kHeartbeat = 5;
+const uint8_t   kHeartbeat = 10;
 
 // 惊群锁开关
 const bool		kAcceptTurn = true;
