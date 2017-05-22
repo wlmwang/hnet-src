@@ -15,8 +15,7 @@ template <typename T>
 class wSingletonFactory {
 public:
 	static T* Instance() {
-		T* ptr;
-		SAFE_NEW(T, ptr);
+		T* ptr; SAFE_NEW(T, ptr);
 		return ptr;
 	}
 };
