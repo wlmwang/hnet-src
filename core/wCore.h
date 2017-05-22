@@ -73,7 +73,7 @@ const uint32_t  kListenBacklog = 256;
 const int32_t   kFDUnknown = -1;
 
 const uint32_t  kKeepAliveTm = 3000;
-const uint8_t   kKeepAliveCnt = 5;
+const uint8_t   kKeepAliveCnt = 10;
 
 // 100M单个归档日志大小
 const off_t		kMaxLoggerSize = 104857600;
