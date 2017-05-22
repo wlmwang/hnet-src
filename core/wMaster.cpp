@@ -14,12 +14,7 @@
 #include "wSignal.h"
 #include "wWorker.h"
 #include "wTask.h"
-
-#ifdef _USE_PROTOBUF_
-#include "wChannel.pb.h"
-#else
 #include "wChannelCmd.h"
-#endif
 
 namespace hnet {
 
@@ -143,11 +138,7 @@ const wStatus& wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
 }
 
 const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
-#ifdef _USE_PROTOBUF_
-	wChannelOpen open;
-#else
 	wChannelReqOpen_t open;
-#endif
 	for (uint32_t i = 0; i < n; ++i) {
 		// 启动worker
 		if (!SpawnWorker(type).Ok()) {
@@ -158,11 +149,7 @@ const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
 		open.set_pid(mWorkerPool[mSlot]->mPid);
 		open.set_fd(mWorkerPool[mSlot]->ChannelFD(0));
         std::vector<uint32_t> blackslot(1, mSlot);
-#ifdef _USE_PROTOBUF_
-        mServer->SyncWorker(&open, kMaxProcess, &blackslot);
-#else
-		mServer->SyncWorker(reinterpret_cast<char*>(&open), sizeof(open), kMaxProcess, &blackslot);
-#endif
+        mServer->SyncWorker(reinterpret_cast<char*>(&open), sizeof(open), kMaxProcess, &blackslot);
 		usleep(100);
 	}
 	return mStatus;
@@ -390,22 +377,14 @@ const wStatus& wMaster::ReapChildren() {
 				mWorkerPool[i]->Channel()->Close();
 
 				// 向新启动的进程传递刚被关闭的进程close消息
-#ifdef _USE_PROTOBUF_
-				wChannelClose close;
-#else
 				wChannelReqClose_t close;
-#endif
 				close.set_slot(i);
 				close.set_pid(mWorkerPool[i]->mPid);
 				for (uint32_t n = 0; n < kMaxProcess; n++) {
 					if (mWorkerPool[n]->mExited || mWorkerPool[n]->mPid == -1 || mWorkerPool[n]->ChannelFD(0) == kFDUnknown) {
 						continue;
 					}
-#ifdef _USE_PROTOBUF_
-					mServer->SyncWorker(&close, n);
-#else
 					mServer->SyncWorker(reinterpret_cast<char*>(&close), sizeof(close), n);
-#endif
 				}
 			}
 			
@@ -418,20 +397,12 @@ const wStatus& wMaster::ReapChildren() {
 				usleep(500);
 
 				// 向所有已启动worker传递刚启动worker的channel描述符
-#ifdef _USE_PROTOBUF_
-				wChannelOpen open;
-#else
 				wChannelReqOpen_t open;
-#endif
 				open.set_slot(i);
 				open.set_pid(mWorkerPool[i]->mPid);
 				open.set_fd(mWorkerPool[i]->ChannelFD(0));
 				std::vector<uint32_t> blackslot(1, i);
-#ifdef _USE_PROTOBUF_
-				mServer->SyncWorker(&open, kMaxProcess, &blackslot);
-#else
 				mServer->SyncWorker(reinterpret_cast<char*>(&open), sizeof(open), kMaxProcess, &blackslot);
-#endif
 				mLive = 1;
 				continue;
 			}
@@ -447,16 +418,10 @@ const wStatus& wMaster::ReapChildren() {
 }
 
 void wMaster::SignalWorker(int signo) {
-#ifdef _USE_PROTOBUF_
-	wChannelQuit quit;
-	wChannelTerminate terminate;
-	const google::protobuf::Message* channel = NULL;
-#else
 	wChannelReqQuit_t quit;
 	wChannelReqTerminate_t terminate;
 	wChannelReqCmd_s* channel = NULL;
-#endif
-
+	
 	if (signo == SIGQUIT) {
 		quit.set_pid(mPid);
 		channel = &quit;
@@ -481,17 +446,10 @@ void wMaster::SignalWorker(int signo) {
         if (channel != NULL) {
         	
 	        /* TODO: EAGAIN */
-#ifdef _USE_PROTOBUF_
-	        if (mServer->SyncWorker(channel, i).Ok()) {
-        		mWorkerPool[i]->mExiting = 1;
-				continue;
-	        }
-#else
 	        if (mServer->SyncWorker(reinterpret_cast<char*>(channel), sizeof(*channel), i).Ok()) {
         		mWorkerPool[i]->mExiting = 1;
 				continue;
 	        }
-#endif
 		}
 
         if (kill(mWorkerPool[i]->mPid, signo) == -1) {

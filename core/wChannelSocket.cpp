@@ -10,12 +10,7 @@
 #include "wMisc.h"
 #include "wTask.h"
 #include "wChannelSocket.h"
-
-#ifdef _USE_PROTOBUF_
-#include "wChannel.pb.h"
-#else
 #include "wChannelCmd.h"
-#endif
 
 namespace hnet {
 
@@ -66,34 +61,9 @@ const wStatus& wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) 
     // 数据协议
     uint8_t sp = static_cast<uint8_t>(coding::DecodeFixed8(buf + sizeof(uint32_t)));
     if (sp == kMpProtobuf) {
-#ifdef _USE_PROTOBUF_
-        uint16_t l = coding::DecodeFixed16(buf + sizeof(uint32_t) + sizeof(uint8_t));
-		std::string name(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t), l);
-		if (name == "hnet.wChannelOpen") {
-			// 附属信息
-			wChannelOpen open;
-			open.ParseFromArray(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + l, len - sizeof(uint32_t) - sizeof(uint8_t) - sizeof(uint16_t) - l);
-
-            msg.msg_control = reinterpret_cast<caddr_t>(&cmsg);
-            msg.msg_controllen = sizeof(cmsg);
-            memset(&cmsg, 0, sizeof(cmsg));
-
-            cmsg.cm.cmsg_level = SOL_SOCKET;
-            cmsg.cm.cmsg_type = SCM_RIGHTS;	// 附属数据对象是文件描述符
-            cmsg.cm.cmsg_len = CMSG_LEN(sizeof(int32_t));
-
-            // 文件描述符
-            *(int32_t *) CMSG_DATA(&cmsg.cm) = open.fd();
-		} else {
-	        msg.msg_control = NULL;
-	        msg.msg_controllen = 0;
-		}
-#else
         msg.msg_control = NULL;
         msg.msg_controllen = 0;
-#endif
     } else if (sp == kMpCommand) {
-#ifndef _USE_PROTOBUF_
         struct wCommand *cmd = reinterpret_cast<struct wCommand*>(buf + sizeof(uint32_t) + sizeof(uint8_t));
         if (cmd->GetId() == CmdId(CMD_CHANNEL_REQ, CHANNEL_REQ_OPEN)) {
             wChannelReqOpen_t open;
@@ -113,10 +83,6 @@ const wStatus& wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) 
             msg.msg_control = NULL;
             msg.msg_controllen = 0;
         }
-#else
-        msg.msg_control = NULL;
-        msg.msg_controllen = 0;
-#endif
     }
     
     // 套接口地址，msg_name指向要发送或是接收信息的套接口地址，仅当是数据包UDP是才需要
@@ -184,26 +150,8 @@ const wStatus& wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) 
         // 数据协议
         uint8_t sp = static_cast<uint8_t>(coding::DecodeFixed8(buf + sizeof(uint32_t)));
         if (sp == kMpProtobuf) {
-#ifdef _USE_PROTOBUF_
-            uint16_t l = coding::DecodeFixed16(buf + sizeof(uint32_t) + sizeof(uint8_t));
-    		std::string name(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t), l);
-    		if (name == "hnet.wChannelOpen") {
-    			if (cmsg.cm.cmsg_len < static_cast<socklen_t>(CMSG_LEN(sizeof(int32_t)))) {
-                    mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", "returned too small ancillary data");
-                } else if (cmsg.cm.cmsg_level != SOL_SOCKET || cmsg.cm.cmsg_type != SCM_RIGHTS) {
-                    mStatus = wStatus::IOError("wChannelSocket::RecvBytes, recvmsg failed", "returned invalid ancillary data");
-                } else {
-                	// 文件描述符
-        			wChannelOpen open;
-        			open.ParseFromArray(buf + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + l, *size - sizeof(uint32_t) - sizeof(uint8_t) - sizeof(uint16_t) - l);
-                	int32_t fd = *(int32_t *) CMSG_DATA(&cmsg.cm);
-                	open.set_fd(fd);
-                	wTask::Assertbuf(buf, &open);
-                }
-    		}
-#endif
+            //...
         } else {
-#ifndef _USE_PROTOBUF_
             struct wCommand *cmd = reinterpret_cast<struct wCommand*>(buf + sizeof(uint32_t) + sizeof(uint8_t));
             if (cmd->GetId() == CmdId(CMD_CHANNEL_REQ, CHANNEL_REQ_OPEN)) {
                 if (cmsg.cm.cmsg_len < static_cast<socklen_t>(CMSG_LEN(sizeof(int32_t)))) {
@@ -218,7 +166,6 @@ const wStatus& wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) 
                     wTask::Assertbuf(buf, reinterpret_cast<char*>(&open), sizeof(open));
                 }
             }
-#endif
         }
     }
     return mStatus;
