@@ -8,7 +8,7 @@ CC		:= g++
 AR		:= ar
 LD		:= g++
 ARFLAGS := -rc
-LDFLAGS := -shared -fpic -pipe -fno-ident
+LDFLAGS := -fpic -pipe -fno-ident
 CFLAGS	:= -Wall -O3 -Wno-unknown-pragmas -Wno-format
 
 # 第三方库
@@ -49,7 +49,7 @@ $(AR_LIB):$(AR_OBJ)
 	
 $(LD_LIB):$(LD_OBJ)
 	-rm -f $@
-	$(LD) $(LDFLAGS) -o $@ $^ $(CFLAGS) $(LIBFLAGS)
+	$(LD) -shared -o $@ $^ $(CFLAGS) $(LIBFLAGS)
 
 # 编译ar
 $(DIR_AR)/%.o:$(DIR_SRC)/%.cpp
@@ -59,7 +59,7 @@ $(DIR_AR)/%.o:$(DIR_SRC)/%.cpp
 # 编译ld
 $(DIR_LD)/%.o:$(DIR_SRC)/%.cpp
 	@echo "Compiling $@"
-	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ -fpic -pipe -fno-ident
+	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ $(LDFLAGS)
 
 clean:
 	@echo "Clean and Rebuild"

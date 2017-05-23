@@ -3,8 +3,8 @@
 ```
 升级gcc-4.8+（编译依赖）
 安装protobuf（必要时安装protobuf）
-安装tinyxml（必要时安装tinyxml。必须要使用自带的软件包tinyxml(vendor目录下)安装：libtinyxml.a被编译为可静态链接到其他动态库的包）
-安装hnet（目前几个项目多数使用静态库，并将其编译为可静态链接到其他动态库）
+安装tinyxml（必要时安装tinyxml）
+安装hnet（目前几个项目多数使用静态库，并将其编译为可静态链接到到动态库版本）
 ```
 
 * 环境最低要求
