@@ -47,10 +47,10 @@ all: ${TARGET}
 ${TARGET}: ${OBJ}
 	${CC} ${CFLAGS} $^ -o $@ ${LIBFLAGS}
 
-%.o:${DIR_SRC}/%.cpp
+${DIR_SRC}/%.o:${DIR_SRC}/%.cpp
 	${CC} ${CFLAGS} ${INCFLAGS} -c $< -o $@
 
-%.o:${DIR_MSG}/%.cc
+${DIR_SRC}/%.o:${DIR_MSG}/%.cc
 	${CC} ${CCFLAGS} ${INCFLAGS} -c $< -o $@
 
 clean:
