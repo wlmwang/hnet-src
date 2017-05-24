@@ -4,6 +4,11 @@
 # Copyright (C) Hupu, Inc.
 ###############################
 
+#
+# jsoncpp头文件: jsoncpp-1.8.0/include/json
+# jsoncpp源文件: jsoncpp-1.8.0/src/lib_json
+#
+
 CC		:= g++
 AR		:= ar
 LD		:= g++
@@ -17,9 +22,10 @@ LIBFLAGS	:=
 
 # 主目录
 DIR_SRC		:= .
+INC_SRC		:= ./include
 
 # 头文件
-INCFLAGS	:= -I${DIR_SRC}
+INCFLAGS	:= -I${DIR_SRC} -I${INC_SRC}
 
 # 源文件
 CPP_SRC	:= $(wildcard ${DIR_SRC}/*.cpp)
@@ -31,13 +37,13 @@ AR_OBJ	:= $(patsubst %.cpp, ${DIR_AR}/%.o, $(notdir ${CPP_SRC}))
 LD_OBJ	:= $(patsubst %.cpp, ${DIR_LD}/%.o, $(notdir ${CPP_SRC}))
 
 # 目标文件
-LIBNAME	:= libtinyxml
+LIBNAME	:= libjsoncpp
 AR_LIB	:= ${LIBNAME}.a
 LD_LIB	:= ${LIBNAME}.so
 
 # 安装目录
 INS_LIB	:= /usr/local/lib
-INS_INC	:= /usr/local/include/tinyxml
+INS_INC	:= /usr/local/include/jsoncpp
 
 .PHONY:all clean install
 
@@ -70,5 +76,5 @@ install:
 	@echo "Install LIB and HEADER"
 	-rm -rf ${INS_INC}
 	-mkdir ${INS_INC}
-	-cp -f ${DIR_SRC}/*.h ${INS_INC}
+	-cp -rf ${INC_SRC}/json ${INS_INC}
 	-cp -f ${LIBNAME}.* ${INS_LIB}

@@ -27,14 +27,15 @@ ARLIBFLAGS	:=
 LDLIBFLAGS	:= -L/usr/local/lib -lpthread #-lprotobuf
 
 # 主目录
-DIR_SRC		:= ./
+DIR_SRC		:= .
+DIR_MSG		:= .
 
 # 头文件
 INCFLAGS	:= -I${DIR_SRC}
 
 # 源文件
-CPP_SRC	:= $(wildcard ${DIR_SRC}*.cpp)
-CC_SRC	:= $(wildcard ${DIR_MSG}*.cc)
+CPP_SRC	:= $(wildcard ${DIR_SRC}/*.cpp)
+CC_SRC	:= $(wildcard ${DIR_MSG}/*.cc)
 
 # 编译文件
 DIR_AR	:= ./ar
@@ -55,44 +56,44 @@ INS_INC	:= /usr/local/include/hnet
 
 .PHONY:all clean install
 
-all: $(AR_LIB) $(LD_LIB)
+all: ${AR_LIB} ${LD_LIB}
 
-$(AR_LIB):$(AR_OBJ)
+${AR_LIB}:${AR_OBJ}
 	-rm -f $@
 	${AR} -rcs $@ $^
 	
-$(LD_LIB):$(LD_OBJ)
+${LD_LIB}:$(LD_OBJ)
 	-rm -f $@
-	$(LD) -shared -Wl,-soname,$(SN_LIB) -o $@ $^ $(CFLAGS) $(LDLIBFLAGS)
+	${LD} -shared -Wl,-soname,${SN_LIB} -o $@ $^ ${CFLAGS} ${LDLIBFLAGS}
 
 # 编译ar
-$(DIR_AR)/%.o:$(DIR_SRC)/%.cpp
+${DIR_AR}/%.o:${DIR_SRC}/%.cpp
 	@echo "Compiling $@"
-	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ $(ARFLAGS)
+	${CC} ${CFLAGS} ${INCFLAGS} -c $< -o $@ ${ARFLAGS}
 
-$(DIR_AR)/%.o:$(DIR_SRC)/%.cc
+${DIR_AR}/%.o:${DIR_SRC}/%.cc
 	@echo "Compiling $@"
-	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ $(ARFLAGS)
+	${CC} ${CFLAGS} ${INCFLAGS} -c $< -o $@ ${ARFLAGS}
 
 # 编译ld
-$(DIR_LD)/%.o:$(DIR_SRC)/%.cpp
+${DIR_LD}/%.o:${DIR_SRC}/%.cpp
 	@echo "Compiling $@"
-	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ $(LDFLAGS)
+	${CC} ${CFLAGS} ${INCFLAGS} -c $< -o $@ ${LDFLAGS}
 
-$(DIR_LD)/%.o:$(DIR_SRC)/%.cc
+${DIR_LD}/%.o:${DIR_SRC}/%.cc
 	@echo "Compiling $@"
-	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@ $(LDFLAGS)
+	${CC} ${CFLAGS} ${INCFLAGS} -c $< -o $@ ${LDFLAGS}
 
 clean:
 	@echo "Clean and Rebuild"
-	-rm -rf $(DIR_AR) $(DIR_LD) $(AR_LIB) $(LN_LIB) $(LD_LIB) $(SN_LIB)
-	-mkdir $(DIR_AR) $(DIR_LD)
+	-rm -rf ${DIR_AR} ${DIR_LD} ${AR_LIB} ${LN_LIB} ${LD_LIB} ${SN_LIB}
+	-mkdir ${DIR_AR} ${DIR_LD}
 	
 install:
 	@echo "Install LIB and HEADER"
-	-rm -rf $(INS_INC)
-	-mkdir $(INS_INC)
-	-cp -f $(DIR_SRC)/*.h $(INS_INC)
-	-cp -f ${LIBNAME}.*	$(INS_LIB)
+	-rm -rf ${INS_INC}
+	-mkdir ${INS_INC}
+	-cp -f ${DIR_SRC}/*.h ${INS_INC}
+	-cp -f ${LIBNAME}.*	${INS_LIB}
 	-ldconfig
-	-ln -fs $(LD_LIB) $(INS_LIB)/$(LN_LIB)
+	-ln -fs ${LD_LIB} ${INS_LIB}/${LN_LIB}
