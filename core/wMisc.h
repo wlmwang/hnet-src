@@ -191,6 +191,9 @@ void StatusCodeInit();
 
 const std::string& Status(const std::string& code);
 
+std::string UrlEncode(const std::string& str);
+std::string UrlDecode(const std::string& str);
+
 }   // namespace http
 
 namespace soft {
