@@ -150,7 +150,6 @@ const wStatus& wMaster::WorkerStart(uint32_t n, int32_t type) {
 		open.set_fd(mWorkerPool[mSlot]->ChannelFD(0));
         std::vector<uint32_t> blackslot(1, mSlot);
         mServer->SyncWorker(reinterpret_cast<char*>(&open), sizeof(open), kMaxProcess, &blackslot);
-		usleep(100);
 	}
 	return mStatus;
 }
@@ -177,9 +176,6 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
 	mWorker = mWorkerPool[mSlot];
 
 	// 打开进程间channel通道
-	if (mWorker->ChannelFD(0) != kFDUnknown || mWorker->ChannelFD(1) != kFDUnknown) {
-		mWorker->Channel()->Close();
-	}
 	if (!(mStatus = mWorker->Channel()->Open()).Ok()) {
 		return mStatus;
 	}
@@ -261,7 +257,7 @@ const wStatus& wMaster::Reload() {
 }
 
 void wMaster::ProcessExit() {
-	//...
+	return;
 }
 
 const wStatus& wMaster::HandleSignal() {
@@ -292,10 +288,8 @@ const wStatus& wMaster::HandleSignal() {
 	if (g_reap) {
 		g_reap = 0;
 
-		WorkerExitStat();
-
-		// 重启退出的worker
-		ReapChildren();
+		WorkerExitStat();	// 进程退出状态
+		ReapChildren();		// 重启退出的worker
 	}
 	
 	// 所有worker退出，且收到了退出信号，则master退出
@@ -345,19 +339,17 @@ const wStatus& wMaster::HandleSignal() {
 		
 		// 重新初始化主进程配置
 		if (!Reload().Ok()) {
-			exit(2);
+			SignalWorker(SIGQUIT);	// 关闭所有worker进程
+			return mStatus;
 		}
-		
-		// 启动新worker
-		WorkerStart(mWorkerNum, kProcessJustRespawn);
-		
-		// 100ms
-		usleep(100*1000);
+
+		WorkerStart(mWorkerNum, kProcessJustRespawn);	// 启动新worker
+
+		usleep(100*1000);	// !进程启动100ms
 		
 		mLive = 1;
 
-		// 关闭原来worker进程
-		SignalWorker(SIGTERM);
+		SignalWorker(SIGQUIT);	// 关闭原来worker进程
 	}
 	return mStatus;
 }
@@ -380,22 +372,20 @@ const wStatus& wMaster::ReapChildren() {
 				wChannelReqClose_t close;
 				close.set_slot(i);
 				close.set_pid(mWorkerPool[i]->mPid);
+				std::vector<uint32_t> blackslot;
 				for (uint32_t n = 0; n < kMaxProcess; n++) {
 					if (mWorkerPool[n]->mExited || mWorkerPool[n]->mPid == -1 || mWorkerPool[n]->ChannelFD(0) == kFDUnknown) {
-						continue;
+						blackslot.push_back(n);
 					}
-					mServer->SyncWorker(reinterpret_cast<char*>(&close), sizeof(close), n);
 				}
+				mServer->SyncWorker(reinterpret_cast<char*>(&close), sizeof(close), kMaxProcess, &blackslot);
 			}
 			
-			// 重启worker
+			// 非重启命令时，且有进程异常退出，重启
 			if (mWorkerPool[i]->mRespawn && !mWorkerPool[i]->mExiting && !g_terminate && !g_quit) {
 				if (!SpawnWorker(i).Ok()) {
 					continue;
 				}
-				// 0.5ms延迟
-				usleep(500);
-
 				// 向所有已启动worker传递刚启动worker的channel描述符
 				wChannelReqOpen_t open;
 				open.set_slot(i);
@@ -431,19 +421,20 @@ void wMaster::SignalWorker(int signo) {
 	}
 	
 	for (uint32_t i = 0; i < kMaxProcess; i++) {
-        if (mWorkerPool[i]->mDetached || mWorkerPool[i]->mPid == -1) {
-        	// 分离进程
+        if (mWorkerPool[i]->mDetached || mWorkerPool[i]->mPid == -1) {	// 分离进程
         	continue;
-        } else if (mWorkerPool[i]->mJustSpawn) {
-        	// 进程正在重启(重启命令)
-        	mWorkerPool[i]->mJustSpawn = 0;
+        }
+
+        if (mWorkerPool[i]->mJustSpawn) {	// 进程正在重启(重启命令)
+        	mWorkerPool[i]->mJustSpawn = 0;	// 只标记一次
         	continue;
-        } else if (mWorkerPool[i]->mExiting && signo == SIGQUIT) {
-			// 正在退出
+        }
+
+        if (mWorkerPool[i]->mExiting && signo == SIGQUIT) {	// 正在退出（优雅退出）
 			continue;
 		}
 		
-        if (channel != NULL) {
+        if (!channel) {
         	
 	        /* TODO: EAGAIN */
 	        if (mServer->SyncWorker(reinterpret_cast<char*>(channel), sizeof(*channel), i).Ok()) {
@@ -453,7 +444,7 @@ void wMaster::SignalWorker(int signo) {
 		}
 
         if (kill(mWorkerPool[i]->mPid, signo) == -1) {
-            if (errno == ESRCH) {
+            if (errno == ESRCH) {	// 进程或者线程不存在
                 mWorkerPool[i]->mExited = 1;
                 mWorkerPool[i]->mExiting = 0;
 				g_reap = 1;
@@ -528,8 +519,7 @@ void wMaster::WorkerExitStat() {
         one = 1;
 		uint32_t i;
 		for (i = 0; i < kMaxProcess; ++i) {
-			if (mWorkerPool[i]->mPid == pid) {
-				// 设置退出状态
+			if (mWorkerPool[i]->mPid == pid) {	// 设置退出状态
                 mWorkerPool[i]->mStat = status;
                 mWorkerPool[i]->mExited = 1;
                 break;
@@ -543,14 +533,14 @@ void wMaster::WorkerExitStat() {
 			LOG_DEBUG(soft::GetLogPath(), "%s : %s", str.c_str(), logging::NumberToString(WTERMSIG(status)).c_str());
         } else {
 			str += "exited with code";
-			LOG_DEBUG(soft::GetLogPath(), "%s : %s", str.c_str(), logging::NumberToString(WTERMSIG(status)).c_str());
+			LOG_DEBUG(soft::GetLogPath(), "%s : %s", str.c_str(), logging::NumberToString(WEXITSTATUS(status)).c_str());
         }
 	
 		// 退出码为2时，退出后不重启
         if (WEXITSTATUS(status) == 2 && mWorkerPool[i]->mRespawn) {
         	mWorkerPool[i]->mRespawn = 0;
-        	str += "exited with fatal code, and cannot be respawned";
-        	LOG_DEBUG(soft::GetLogPath(), "%s : %s", str.c_str(), logging::NumberToString(WTERMSIG(status)).c_str());
+        	str += ";exited with fatal code, and cannot be respawned";
+        	LOG_DEBUG(soft::GetLogPath(), "%s : %s", str.c_str(), logging::NumberToString(WEXITSTATUS(status)).c_str());
         }
     }
 }

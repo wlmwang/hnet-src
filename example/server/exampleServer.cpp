@@ -165,7 +165,6 @@ public:
 };
 
 int main(int argc, const char *argv[]) {
-
 	// 创建配置对象
 	wConfig* config;
 	SAFE_NEW(wConfig, config);

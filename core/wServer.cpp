@@ -62,9 +62,10 @@ const wStatus& wServer::SingleStart(bool daemon) {
     while (daemon) {
     	if (mExiting) {
 		    ProcessExit();
-		    CleanTask();
-		    exit(2);
+		    CleanListenSock();
+		    exit(0);
     	}
+
 		Recv();
 		HandleSignal();
 		Run();
@@ -99,12 +100,14 @@ const wStatus& wServer::WorkerStart(bool daemon) {
     // 进入服务主循环
     while (daemon) {
     	if (mExiting) {
-    	    ProcessExit();
     	    if (mAcceptSem) {
     	    	mAcceptSem->Destroy();
     	    }
-		    exit(2);
+    	   	ProcessExit();
+			CleanListenSock();
+		    exit(0);
     	}
+    
 		Recv();
 		Run();
 		CheckTick();
@@ -115,13 +118,12 @@ const wStatus& wServer::WorkerStart(bool daemon) {
 
 const wStatus& wServer::HandleSignal() {
     if (g_terminate) {
-		ProcessExit();
 	    if (mAcceptSem) {
 	    	mAcceptSem->Destroy();
 	    }
-		exit(2);
+	   	ProcessExit();
+		exit(0);
     } else if (g_quit)	{
-		// 优雅退出
 		g_quit = 0;
 		if (!mExiting) {
 		    mExiting = true;

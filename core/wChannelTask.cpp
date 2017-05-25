@@ -37,8 +37,8 @@ int wChannelTask::ChannelClose(struct Request_t *request) {
 		if (close(mMaster->Worker(cls.slot())->ChannelFD(0)) == -1) {
 	    	LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelClose, close() failed", error::Strerror(errno).c_str());
 		}
-		mMaster->Worker(cls.slot())->ChannelFD(0) = kFDUnknown;
 	}
+	mMaster->Worker(cls.slot())->ChannelFD(0) = kFDUnknown;
 	mMaster->Worker(cls.slot())->Pid() = -1;
 	return 0;
 }

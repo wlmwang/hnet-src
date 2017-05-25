@@ -44,18 +44,17 @@ const wStatus& wWorker::PrepareStart() {
     }
 	
     // 每个worker进程，只保留自身worker进程的channel[1]与其他所有worker进程的channel[0]描述符
-    // [1] [0] [0] ...
     for (uint32_t n = 0; n < kMaxProcess; n++) {
     	// 将其他进程的channel[1]关闭，自己的除外
     	if (n == mSlot || mMaster->Worker(n) == NULL || mMaster->Worker(n)->mPid == -1) {
     		continue;
     	} else if (mMaster->Worker(n)->ChannelClose(1) == -1) {
-    		return mStatus = wStatus::IOError("wWorker::PrepareStart, channel close() failed", error::Strerror(errno));
+    		return mStatus = wStatus::IOError("wWorker::PrepareStart, channel[1] close() failed", error::Strerror(errno));
     	}
     }
     // 关闭该进程worker进程的channel[0]描述符
     if (mMaster->Worker(mSlot)->ChannelClose(0) == -1) {
-    	return mStatus = wStatus::IOError("wWorker::PrepareStart, channel close() failed", error::Strerror(errno));
+    	return mStatus = wStatus::IOError("wWorker::PrepareStart, channel[0] close() failed", error::Strerror(errno));
     }
 
 	if (!(mStatus = PrepareRun()).Ok()) {
@@ -66,7 +65,7 @@ const wStatus& wWorker::PrepareStart() {
 	if (!(mStatus = mMaster->Server()->Config()->Setproctitle(kWorkerTitle, mTitle.c_str(), false)).Ok()) {
 		return mStatus;
 	}
-	return mStatus.Clear();
+	return mStatus;
 }
 
 const wStatus& wWorker::Start() {
