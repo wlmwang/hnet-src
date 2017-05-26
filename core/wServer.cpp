@@ -353,8 +353,7 @@ const wStatus& wServer::Broadcast(char *cmd, int len) {
     for (int i = 0; i < kServerNumShard; i++) {
 	    if (mTaskPool[i].size() > 0) {
 			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
-				if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected && (*it)->Socket()->SP() != kSpChannel
-				&& ((*it)->Socket()->SF() == kSfSend || (*it)->Socket()->SF() == kSfRvsd)) {
+				if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected && (*it)->Socket()->SP() == kSpTcp && ((*it)->Socket()->SF() == kSfSend || (*it)->Socket()->SF() == kSfRvsd)) {
 					Send(*it, cmd, len);
 				}
 			}
@@ -368,8 +367,7 @@ const wStatus& wServer::Broadcast(const google::protobuf::Message* msg) {
     for (int i = 0; i < kServerNumShard; i++) {
 	    if (mTaskPool[i].size() > 0) {
 			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
-				if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected && (*it)->Socket()->SP() != kSpChannel
-				&& ((*it)->Socket()->SF() == kSfSend || (*it)->Socket()->SF() == kSfRvsd)) {
+				if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected && (*it)->Socket()->SP() == kSpTcp && ((*it)->Socket()->SF() == kSfSend || (*it)->Socket()->SF() == kSfRvsd)) {
 					Send(*it, msg);
 				}
 			}
