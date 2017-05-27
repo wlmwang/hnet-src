@@ -130,7 +130,7 @@ private:
     }
 
     wMutex mMutex;
-    wAtomic mAllowed;
+    wAtomic<void*> mAllowed;
 };
 
 // 基于共享内存随机访问文件实现类

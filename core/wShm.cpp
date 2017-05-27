@@ -9,7 +9,7 @@
 
 namespace hnet {
 
-wPosixShm::wPosixShm(const std::string *filename, size_t size) : mShmId(-1), mFilename(*filename), mShmhead(NULL) {
+wPosixShm::wPosixShm(const std::string& filename, size_t size) : mShmId(-1), mShmhead(NULL), mFilename(filename) {
 	mSize = misc::Align(size + sizeof(struct Shmhead_t), kPageSize);
 }
 
@@ -69,7 +69,8 @@ const wStatus& wPosixShm::CreateShm(char* ptr, int pipeid) {
 	mShmhead = reinterpret_cast<struct Shmhead_t*>(addr);
 	mShmhead->mStart = addr;
 	mShmhead->mEnd = addr + mSize;
-	mShmhead->mUsedOff = ptr = addr + sizeof(struct Shmhead_t);
+	mShmhead->mUsedOff = addr + sizeof(struct Shmhead_t);
+	if (ptr) ptr = mShmhead->mUsedOff;
 	return mStatus;
 }
 
@@ -85,13 +86,13 @@ const wStatus& wPosixShm::AttachShm(char* ptr, int pipeid) {
 	}
 	
     // 映射地址
-	char* addr = reinterpret_cast<char *>(shmat(mShmId, NULL, 0));
+	char* addr = reinterpret_cast<char*>(shmat(mShmId, NULL, 0));
     if (addr == reinterpret_cast<char*>(-1)) {
     	return mStatus = wStatus::IOError("wPosixShm::AttachShm, shmat() failed", error::Strerror(errno));
     }
 
 	mShmhead = reinterpret_cast<struct Shmhead_t*>(addr);
-	ptr = mShmhead->mUsedOff;
+	if (ptr) ptr = mShmhead->mUsedOff;
 	return mStatus;
 }
 

@@ -17,6 +17,7 @@
 #include "wFile.h"
 #include "wLogger.h"
 #include "wSem.h"
+#include "wShm.h"
 #include "wMutex.h"
 #include "wMisc.h"
 
@@ -81,12 +82,17 @@ public:
         return mStatus;
     }
 
-    virtual const wStatus& NewSem(const std::string& devshm, wSem** result) {
-    	SAFE_NEW(wPosixSem(devshm), *result);
+    virtual const wStatus& NewSem(const std::string& name, wSem** result) {
+    	SAFE_NEW(wPosixSem(name), *result);
     	if (!(mStatus = (*result)->Open()).Ok()) {
     		SAFE_DELETE(*result);
     	}
     	return mStatus;
+    }
+
+    virtual const wStatus& NewShm(const std::string& filename, wShm** result, size_t size = kMsgQueueLen) {
+        SAFE_NEW(wPosixShm(filename, size), *result);
+        return mStatus;
     }
 
     // 创建文件锁

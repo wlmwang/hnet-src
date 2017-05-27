@@ -13,28 +13,29 @@
 
 namespace hnet {
 
+template <class T = void*>
 class wAtomic {
 private:
-    std::atomic<void*> mRep;
+    std::atomic<T> mRep;
 
 public:
     wAtomic() { }
 
-    explicit wAtomic(void* v) : mRep(v) { }
+    explicit wAtomic(T v) : mRep(v) { }
 
-    inline void* AcquireLoad() const {
+    inline T AcquireLoad() const {
         return mRep.load(std::memory_order_acquire);
     }
 
-    inline void ReleaseStore(void* v) {
+    inline void ReleaseStore(T v) {
         mRep.store(v, std::memory_order_release);
     }
 
-    inline void* NoBarrierLoad() const {
+    inline T NoBarrierLoad() const {
         return mRep.load(std::memory_order_relaxed);
     }
 
-    inline void NoBarrierStore(void* v) {
+    inline void NoBarrierStore(T v) {
         mRep.store(v, std::memory_order_relaxed);
     }
 };

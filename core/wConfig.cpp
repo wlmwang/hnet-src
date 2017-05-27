@@ -12,8 +12,8 @@ namespace hnet {
 
 wConfig::wConfig() : mPool(NULL), mProcTitle(NULL) {
 	error::StrerrorInit(); // 初始化错误列表
-    http::StatusCodeInit();// 初始化http状态码
-	SAFE_NEW(wMemPool, mPool);
+    http::StatusCodeInit(); // 初始化http状态码
+	SAFE_NEW(wMemPool, mPool); // 初始化内存池
 }
 
 wConfig::~wConfig() {

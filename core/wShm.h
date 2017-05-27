@@ -43,19 +43,19 @@ struct Shmhead_t {
 
 class wPosixShm : public wShm {
 public:
-	wPosixShm(const std::string *filename, size_t size = kMsgQueueLen);
+	wPosixShm(const std::string& filename, size_t size = kMsgQueueLen);
 	virtual ~wPosixShm();
 
-	const wStatus& CreateShm(char* ptr, int pipeid = 'i');
-	const wStatus& AttachShm(char* ptr, int pipeid = 'i');
+	const wStatus& CreateShm(char* ptr = NULL, int pipeid = 'i');
+	const wStatus& AttachShm(char* ptr = NULL, int pipeid = 'i');
 	const wStatus& AllocShm(char* ptr, size_t size = 0);
 	const wStatus& Destroy();
 
 protected:
 	int mShmId;
 	size_t mSize;
-	std::string mFilename;
 	struct Shmhead_t *mShmhead;
+	std::string mFilename;
 	wStatus mStatus;
 };
 
