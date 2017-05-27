@@ -92,13 +92,13 @@ public:
     // 创建文件锁
     virtual const wStatus& LockFile(const std::string& fname, wFileLock** lock) {
         *lock = NULL;
-        int fd = open(fname.c_str(), O_RDWR | O_CREAT, 0644);
+        int fd = open(fname.c_str(), O_WRONLY/*O_RDWR|O_CREAT*/, 0644);
         if (fd < 0) {
             return mStatus = wStatus::IOError(fname, error::Strerror(errno));
         } else if (!mLocks.Insert(fname)) {   // 重复加锁
             close(fd);
             return mStatus = wStatus::IOError("lock " + fname, "already held by process");
-        } else if (LockOrUnlock(fd, true) == -1) {
+        } else if (LockOrUnlock(fd, true) == -1) {  // 加锁失败
             close(fd);
             mLocks.Remove(fname);
             return mStatus = wStatus::IOError("lock " + fname, error::Strerror(errno), false);
@@ -114,8 +114,7 @@ public:
 
     // 释放锁
     virtual const wStatus& UnlockFile(wFileLock* lock) {
-        wPosixFileLock* my_lock = reinterpret_cast<wPosixFileLock*>(lock);
-        wStatus result;
+        wPosixFileLock* my_lock = reinterpret_cast<wPosixFileLock*>(lock);        
         if (LockOrUnlock(my_lock->mFD, false) == -1) {
             return mStatus = wStatus::IOError("unlock", error::Strerror(errno));
         }
@@ -176,6 +175,21 @@ public:
         	return mStatus = wStatus::IOError(fname, error::Strerror(errno));
         }
         *result = dir_path;
+        return mStatus;
+    }
+
+    virtual const wStatus& OpenFile(const std::string& fname, int& fd, int oflag = O_RDWR | O_CREAT, mode_t mode= 0644) {
+        fd = open(fname.c_str(), oflag, mode);
+        if (fd == -1) {
+            return mStatus = wStatus::IOError(fname, error::Strerror(errno));
+        }
+        return mStatus;
+    }
+    
+    virtual const wStatus& CloseFD(int fd) {
+        if (close(fd) == -1) {
+            return mStatus = wStatus::IOError("", error::Strerror(errno));
+        }
         return mStatus;
     }
 

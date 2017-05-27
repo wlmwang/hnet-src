@@ -47,6 +47,9 @@ public:
     // single模式启动服务
     const wStatus& SingleStart(bool daemon = true);
 
+    // 初始化惊群锁
+    const wStatus& InitAcceptMutex();
+
     // master-worker多进程架构
     // PrepareMaster 需在master进程中调用
     // WorkerStart在worker进程提供服务
@@ -83,6 +86,7 @@ public:
     virtual const wStatus& PrepareRun() {
         return mStatus;
     }
+    
     // 服务主循环逻辑，继承可以定制服务
     virtual const wStatus& Run() {
         return mStatus;

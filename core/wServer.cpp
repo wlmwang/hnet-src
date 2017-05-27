@@ -84,17 +84,11 @@ const wStatus& wServer::WorkerStart(bool daemon) {
     	return mStatus;
     }
 
-    // 惊群锁
+    // 清除epoll中listen socket监听事件，由各worker争抢惊群锁
     if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
-    	if (kAcceptStuff == 0 && !(mStatus = wEnv::Default()->NewSem(kAcceptMutex, &mAcceptSem)).Ok()) {
-    		return mStatus;
-    	}
-    	// 清除epoll中listen socket监听事件，由各worker争抢惊群锁
     	if (!RemoveListener(false).Ok()) {
     		return mStatus;
     	}
-    } else {
-    	mUseAcceptTurn = false;
     }
 
     // 进入服务主循环
@@ -210,9 +204,24 @@ void wServer::Unlocks(std::vector<int>* slot, std::vector<int>* blackslot) {
 	}
 }
 
+const wStatus& wServer::InitAcceptMutex() {
+	if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
+    	if (kAcceptStuff == 0) {
+    		mStatus = wEnv::Default()->NewSem(kAcceptMutex, &mAcceptSem);
+    	} else if (kAcceptStuff == 1) {
+    		int fd;
+    		if ((mStatus = wEnv::Default()->OpenFile(kAcceptMutex, fd)).Ok()) {
+    			mStatus = wEnv::Default()->CloseFD(fd);
+    		}
+    	}
+	} else if (mUseAcceptTurn == true) {
+		mUseAcceptTurn = false;
+	}
+	return mStatus;
+}
+
 const wStatus& wServer::Recv() {
-	if (mUseAcceptTurn == true && mAcceptHeld == false) {
-		// 争抢锁
+	if (mUseAcceptTurn == true && mAcceptHeld == false) {	// 争抢accept锁
 		if ((kAcceptStuff == 0 && mAcceptSem->TryWait().Ok()) || (kAcceptStuff == 1 && wEnv::Default()->LockFile(kAcceptMutex, &mAcceptFL).Ok())) {
 			Listener2Epoll(false);
 			mAcceptHeld = true;
@@ -265,14 +274,12 @@ const wStatus& wServer::Recv() {
 
 	if (mUseAcceptTurn == true && mAcceptHeld == true) {
 		RemoveListener(false);
-		mAcceptHeld = false;
-		
-		// 释放锁
-		if (kAcceptStuff == 0 && mAcceptSem) {
+		if (kAcceptStuff == 0 && mAcceptSem) {	// 释放accept锁
 			mAcceptSem->Post();
 		} else if (kAcceptStuff == 1 && mAcceptFL) {
 			wEnv::Default()->UnlockFile(mAcceptFL);
 		}
+		mAcceptHeld = false;
 	}
     return mStatus;
 }

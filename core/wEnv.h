@@ -61,6 +61,12 @@ public:
 
     virtual const wStatus& GetRealPath(const std::string& fname, std::string* result) = 0;
 
+    // 打开文件
+    virtual const wStatus& OpenFile(const std::string& fname, int& fd, int oflag = O_RDWR | O_CREAT, mode_t mode= 0644) = 0;
+
+    // 关闭fd文件描述符
+    virtual const wStatus& CloseFD(int fd) = 0;
+
     virtual const wStatus& DeleteFile(const std::string& fname) = 0;
 
     // 创建目录

@@ -109,6 +109,11 @@ const wStatus& wMaster::MasterStart() {
     if (!(mStatus = ss.Procmask()).Ok()) {
         return mStatus;
     }
+    
+    // 初始化惊群锁
+    if (!(mStatus = mServer->InitAcceptMutex()).Ok()) {
+    	return mStatus;
+    }
 
     // 初始化进程表
 	for (uint32_t i = 0; i < kMaxProcess; i++) {
@@ -461,7 +466,7 @@ void wMaster::SignalWorker(int signo) {
 
 const wStatus& wMaster::CreatePidFile() {
 	std::string pidstr = logging::NumberToString(mPid);
-	return mStatus = hnet::WriteStringToFile(wEnv::Default(), pidstr, mPidPath);
+	return mStatus = WriteStringToFile(wEnv::Default(), pidstr, mPidPath);
 }
 
 const wStatus& wMaster::DeletePidFile() {
@@ -470,7 +475,7 @@ const wStatus& wMaster::DeletePidFile() {
 
 const wStatus& wMaster::SignalProcess(const std::string& signal) {
 	std::string str;
-	if (!(mStatus = hnet::ReadFileToString(wEnv::Default(), mPidPath, &str)).Ok()) {
+	if (!(mStatus = ReadFileToString(wEnv::Default(), mPidPath, &str)).Ok()) {
 		return mStatus;
 	}
 
