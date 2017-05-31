@@ -84,9 +84,6 @@ public:
 
     virtual const wStatus& NewSem(const std::string& name, wSem** result) {
     	SAFE_NEW(wPosixSem(name), *result);
-    	if (!(mStatus = (*result)->Open()).Ok()) {
-    		SAFE_DELETE(*result);
-    	}
     	return mStatus;
     }
 

@@ -98,8 +98,10 @@ const uint8_t   kHeartbeat = 10;
 
 // 惊群锁开关
 const bool		kAcceptTurn = true;
-// 惊群锁实现可使用以下两种
-// 0:atmoic（原子锁，共享内存支持） 1:semaphore（信号量，sem_open支持） 2:file（记录锁，多数POSIX平台均对flock支持）
+// 惊群锁实现可使用以下三种
+// 0:atmoic（原子锁，共享内存支持） 
+// 1:semaphore（信号量，sem_open支持。注意：跨进程极其不稳定） 
+// 2:file（记录锁，多数POSIX平台均对flock支持）
 const int8_t	kAcceptStuff = 0;
 const char		kAcceptMutex[] = "accept.lock";
 
@@ -120,7 +122,7 @@ const uid_t     kDeamonUser = 0;
 const gid_t     kDeamonGroup = 0;
 
 const char      kSoftwareName[]   = "HNET";
-const char      kSoftwareVer[]    = "0.0.14";
+const char      kSoftwareVer[]    = "0.0.15";
 
 const char		kBinPath[] = "./";
 const char      kLockPath[] = "hnet.lock";

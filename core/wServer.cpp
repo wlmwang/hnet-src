@@ -228,7 +228,11 @@ const wStatus& wServer::InitAcceptMutex() {
     			}
     		}
 		} else if (kAcceptStuff == 1) {
-			mStatus = wEnv::Default()->NewSem(kAcceptMutex, &mAcceptSem);
+			if ((mStatus = wEnv::Default()->NewSem(kAcceptMutex, &mAcceptSem)).Ok()) {
+				if (mAcceptSem->Open() == -1) {
+					mStatus = wStatus::IOError("wServer::InitAcceptMutex open sem failed", "");
+				}
+			}
 		} else if (kAcceptStuff == 2) {
     		int fd;
     		if ((mStatus = wEnv::Default()->OpenFile(kAcceptMutex, fd)).Ok()) {
@@ -244,7 +248,7 @@ const wStatus& wServer::InitAcceptMutex() {
 const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {	// 争抢accept锁
 		if ((kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeStrong(false, true)) ||
-			(kAcceptStuff == 1 && mAcceptSem->TryWait().Ok()) || 
+			(kAcceptStuff == 1 && mAcceptSem->TryWait() == 0) || 
 			(kAcceptStuff == 2 && wEnv::Default()->LockFile(kAcceptMutex, &mAcceptFL).Ok())) {
 			Listener2Epoll(false);
 			mAcceptHeld = true;

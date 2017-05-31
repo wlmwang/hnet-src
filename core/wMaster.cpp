@@ -43,7 +43,7 @@ const wStatus& wMaster::PrepareStart() {
     std::string host;
     int16_t port = 0;
     if (!mServer->Config()->GetConf("host", &host) || !mServer->Config()->GetConf("port", &port)) {
-    	return mStatus = wStatus::Corruption("wMaster::PrepareStart failed", "host or port is illegal");
+    	return mStatus = wStatus::Corruption("wMaster::PrepareStart failed, host or port is illegal", "");
     }
 
     if (!PrepareRun().Ok()) {
@@ -57,8 +57,8 @@ const wStatus& wMaster::PrepareStart() {
     }
 
     // 进程标题
-    if (!(mStatus = mServer->Config()->Setproctitle(kMasterTitle, mTitle.c_str())).Ok()) {
-    	return mStatus;
+    if (mServer->Config()->Setproctitle(kMasterTitle, mTitle.c_str()) == -1) {
+    	return mStatus = wStatus::Corruption("wMaster::PrepareStart Setproctitle failed", "");
     }
 
     // server预启动，创建 listen socket
@@ -86,7 +86,7 @@ const wStatus& wMaster::SingleStart() {
 
 const wStatus& wMaster::MasterStart() {
     if (mWorkerNum > kMaxProcess) {
-        return mStatus = wStatus::Corruption("wMaster::MasterStart, processes can be spawned", "worker number is overflow");
+        return mStatus = wStatus::Corruption("wMaster::MasterStart, processes can be spawned, worker number is overflow", "");
     }
 
     // 创建pid && 初始化信号处理器

@@ -62,9 +62,9 @@ const wStatus& wWorker::PrepareStart() {
 	}
 	
     // 子进程标题
-	if (!(mStatus = mMaster->Server()->Config()->Setproctitle(kWorkerTitle, mTitle.c_str(), false)).Ok()) {
-		return mStatus;
-	}
+    if (mMaster->Server()->Config()->Setproctitle(kWorkerTitle, mTitle.c_str(), false) == -1) {
+        return mStatus = wStatus::IOError("wWorker::PrepareStart Setproctitle failed", "");
+    }
 	return mStatus;
 }
 

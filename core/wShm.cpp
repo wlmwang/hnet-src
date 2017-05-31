@@ -118,7 +118,7 @@ void* wPosixShm::AllocShm(size_t size) {
 }
 
 void wPosixShm::Destroy() {
-    if (mShmhead && mShmhead->mStart && shmdt(reinterpret_cast<void*>(mShmhead->mStart)) == -1) {	// 关闭当前进程中的共享内存句柄
+    if (mShmhead && shmdt(reinterpret_cast<void*>(mShmhead->mStart)) == -1) {	// 关闭当前进程中的共享内存句柄
     	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixShm::Destroy shmdt() failed", error::Strerror(errno).c_str());
     } 
     if (mShmId > 0 && shmctl(mShmId, IPC_RMID, NULL) == -1) {	// 只有最后一个进程 shmctl() IPC_RMID 有效

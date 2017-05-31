@@ -22,15 +22,12 @@ public:
     virtual ~wConfig();
     virtual const wStatus& GetOption(int argc, const char *argv[]);
 
-    inline const wStatus& Setproctitle(const char* pretitle, const char* title, bool attach = true) {
-    	return mStatus = mProcTitle->Setproctitle(pretitle, title, attach);
+    inline int Setproctitle(const char* pretitle, const char* title, bool attach = true) {
+        return mProcTitle->Setproctitle(pretitle, title, attach);
     }
-
-    inline const wStatus& InitProcTitle(int argc, const char *argv[]) {
-        if (mProcTitle == NULL) {
-            return mStatus = wStatus::IOError("wConfig::InitProcTitle", "new failed");
-        }
-        return mStatus = mProcTitle->SaveArgv(argc, argv);
+    
+    inline int InitProcTitle(int argc, const char *argv[]) {
+        return mProcTitle->SaveArgv(argc, argv);
     }
 
     template<typename T>

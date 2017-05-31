@@ -149,7 +149,10 @@ const wStatus& wConfig::GetOption(int argc, const char *argv[]) {
     }
 
 	SAFE_NEW(wProcTitle, mProcTitle);
-    return mStatus = InitProcTitle(argc, argv);
+    if (InitProcTitle(argc, argv) == -1) {
+        mStatus = wStatus::InvalidArgument("wConfig::GetOption InitProcTitle failed", "");
+    }
+    return mStatus;
 }
 
 bool wConfig::SetBoolConf(const std::string& key, bool val, bool force) {

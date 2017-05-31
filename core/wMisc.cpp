@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <algorithm>
 #include "wMisc.h"
+#include "wLogger.h"
 
 namespace hnet {
 namespace coding {
@@ -313,34 +314,30 @@ int SetBinPath(std::string bin_path, std::string self) {
     return 0;
 }
 
-wStatus InitDaemon(std::string lock_path, const char *prefix) {
+int InitDaemon(std::string lock_path, const char *prefix) {
     // 独占式锁定文件，防止有相同程序的进程已经启动
     if (lock_path.size() <= 0) {
     	lock_path = soft::GetLockPath();
     }
     int lockFD = open(lock_path.c_str(), O_RDWR|O_CREAT, 0640);
     if (lockFD < 0) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-        return wStatus::IOError("misc::InitDaemon, open lock_path failed", err);
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "misc::InitDaemon open() failed", error::Strerror(errno).c_str());
+    	return -1;
     }
     if (flock(lockFD, LOCK_EX | LOCK_NB) < 0) {
-    	char err[kMaxErrorLen];
-    	::strerror_r(errno, err, kMaxErrorLen);
-        return wStatus::IOError("misc::InitDaemon, flock lock_path failed(maybe server is already running)", err);
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "misc::InitDaemon flock() failed", error::Strerror(errno).c_str());
+        return -1;
     }
 
     // 若是以root身份运行，设置进程的实际、有效uid
     if (geteuid() == 0) {
         if (setuid(soft::GetUser()) == -1) {
-        	char err[kMaxErrorLen];
-        	::strerror_r(errno, err, kMaxErrorLen);
-            return wStatus::Corruption("misc::InitDaemon, setuid failed", err);
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "misc::InitDaemon setuid() failed", error::Strerror(errno).c_str());
+            return -1;
         }
         if (setgid(soft::GetGroup()) == -1) {
-        	char err[kMaxErrorLen];
-        	::strerror_r(errno, err, kMaxErrorLen);
-            return wStatus::Corruption("misc::InitDaemon, setgid failed", err);
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "misc::InitDaemon setgid() failed", error::Strerror(errno).c_str());
+            return -1;
         }
     }
 
@@ -364,7 +361,7 @@ wStatus InitDaemon(std::string lock_path, const char *prefix) {
         exit(-1);
     }
     unlink(lock_path.c_str());
-    return wStatus::Nothing();
+    return 0;
 }
 
 }	// namespace misc

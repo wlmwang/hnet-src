@@ -190,7 +190,7 @@ int main(int argc, const char *argv[]) {
 	} else if (config->GetConf("daemon", &daemon) && daemon == true) {
 		std::string lock_path;
 		config->GetConf("lock_path", &lock_path);
-		if (!misc::InitDaemon(lock_path).Ok()) {
+		if (misc::InitDaemon(lock_path) == -1) {
 			std::cout << "create daemon failed" << std::endl;
 			return -1;
 		}

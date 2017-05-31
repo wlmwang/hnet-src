@@ -6,9 +6,9 @@
 
 #include "wProcTitle.h"
 #include "wMisc.h"
+#include "wLogger.h"
 
 extern char **environ;
-
 namespace hnet {
 
 wProcTitle::~wProcTitle() {
@@ -23,7 +23,7 @@ wProcTitle::~wProcTitle() {
     SAFE_DELETE_VEC(mEnv);
 }
 
-const wStatus& wProcTitle::SaveArgv(int argc, const char* argv[]) {
+int wProcTitle::SaveArgv(int argc, const char* argv[]) {
 	mArgc = argc;
 	mOsArgv = argv;
 	mNumEnv = 0;
@@ -32,17 +32,10 @@ const wStatus& wProcTitle::SaveArgv(int argc, const char* argv[]) {
 
     // 移动**argv到堆上mArgv
     SAFE_NEW_VEC(mArgc, char*, mArgv);
-    if (mArgv == NULL) {
-	   return mStatus = wStatus::IOError("wProcTitle::SaveArgv", "new failed");
-    }
     for (int i = 0; i < mArgc; ++i) {
         // 包含\0结尾
         size = strlen(argv[i]) + 1;
         SAFE_NEW_VEC(size, char, mArgv[i]);
-    	if (mArgv[i] == NULL) {
-    	    mStatus = wStatus::IOError("wProcTitle::SaveArgv", "new failed");
-    	    break;
-    	}
         memcpy(mArgv[i], argv[i], size);
     }
 
@@ -50,18 +43,16 @@ const wStatus& wProcTitle::SaveArgv(int argc, const char* argv[]) {
     while (environ[mNumEnv]) { mNumEnv++;}
 
     SAFE_NEW_VEC(mNumEnv, char*, mEnv);
-    for (int i = 0; i < mNumEnv; ++i) {
-        // 包含\0结尾
+    for (int i = 0; i < mNumEnv; ++i) { // 包含\0结尾
         size = strlen(environ[i]) + 1;
         SAFE_NEW_VEC(size, char, mEnv[i]);
-        ::memcpy(mEnv[i], environ[i], size);
+        memcpy(mEnv[i], environ[i], size);
     }
     environ = mEnv;
-
-    return mStatus;
+    return 0;
 }
 
-const wStatus& wProcTitle::Setproctitle(const char *title, const char *pretitle, bool attach) {
+int wProcTitle::Setproctitle(const char *title, const char *pretitle, bool attach) {
     if (pretitle == NULL) {
     	pretitle = "HNET: ";
     }
@@ -79,7 +70,7 @@ const wStatus& wProcTitle::Setproctitle(const char *title, const char *pretitle,
         	p = misc::Cpystrn(p, mArgv[i], size -= strlen(mArgv[i]));
         }
     }
-    return mStatus;
+    return 0;
 }
 
 }   // namespace hnet

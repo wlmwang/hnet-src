@@ -10,7 +10,6 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wNoncopyable.h"
 
 namespace hnet {
@@ -54,7 +53,6 @@ protected:
 	size_t mSize;
 	struct Shmhead_t *mShmhead;
 	std::string mFilename;
-	wStatus mStatus;
 };
 
 }	// namespace hnet

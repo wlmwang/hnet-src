@@ -15,7 +15,6 @@
 #include <map>
 #include <vector>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wSlice.h"
 #include "wCommand.h"
 #include "wSignal.h"
@@ -134,7 +133,7 @@ unsigned GetIpByIF(const char* ifname);
 int SetBinPath(std::string bin_path = "", std::string self = "/proc/self/exe");
 
 // 创建守护进程
-wStatus InitDaemon(std::string lock_path, const char *prefix = NULL);
+int InitDaemon(std::string lock_path, const char *prefix = NULL);
 
 inline const char* IP2Text(u_long ip) {
     in_addr in;
