@@ -19,6 +19,7 @@
 #include "wTimer.h"
 #include "wConfig.h"
 #include "wMaster.h"
+#include "wAtomic.h"
 
 #ifdef _USE_PROTOBUF_
 #include <google/protobuf/message.h>
@@ -33,8 +34,9 @@ class wConfig;
 class wTask;
 class wMaster;
 class wWorker;
-class wSem;
 class wFileLock;
+class wSem;
+class wShm;
 
 // 服务基础类
 class wServer : private wNoncopyable {
@@ -179,6 +181,8 @@ protected:
     wMutex mTaskPoolMutex[kServerNumShard];
 
     // 惊群锁
+    wShm *mShm;
+    wAtomic<bool>* mAcceptAtomic;
     wFileLock* mAcceptFL;
     wSem *mAcceptSem;
     bool mUseAcceptTurn;

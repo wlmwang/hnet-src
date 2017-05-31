@@ -99,8 +99,8 @@ const uint8_t   kHeartbeat = 10;
 // 惊群锁开关
 const bool		kAcceptTurn = true;
 // 惊群锁实现可使用以下两种
-// 0:semaphore（信号量：需系统支持） 1:file（记录锁：稳定）
-const int8_t	kAcceptStuff = 1;
+// 0:atmoic（原子锁，共享内存支持） 1:semaphore（信号量，sem_open支持） 2:file（记录锁，多数POSIX平台均对flock支持）
+const int8_t	kAcceptStuff = 0;
 const char		kAcceptMutex[] = "accept.lock";
 
 // 消息协议

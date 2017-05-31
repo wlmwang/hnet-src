@@ -14,6 +14,7 @@
 #include "wServer.h"
 #include "wConfig.h"
 #include "wSem.h"
+#include "wShm.h"
 #include "wMaster.h"
 #include "wWorker.h"
 #include "wTcpSocket.h"
@@ -29,7 +30,7 @@
 namespace hnet {
 
 wServer::wServer(wConfig* config) : mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleTurn(kScheduleTurn), mScheduleOk(true), mEpollFD(kFDUnknown), mTimeout(10),
-mTask(NULL), mAcceptFL(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config) {
+mTask(NULL), mShm(NULL), mAcceptAtomic(NULL), mAcceptFL(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config) {
 	assert(mConfig != NULL);
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
@@ -37,6 +38,7 @@ mTask(NULL), mAcceptFL(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), mAc
 
 wServer::~wServer() {
     CleanTask();
+    SAFE_DELETE(mShm);
     SAFE_DELETE(mAcceptSem);
 }
 
@@ -94,8 +96,11 @@ const wStatus& wServer::WorkerStart(bool daemon) {
     // 进入服务主循环
     while (daemon) {
     	if (mExiting) {
-    	    if (mAcceptSem) {
+    	    if (kAcceptStuff == 1 && mAcceptSem) {
     	    	mAcceptSem->Destroy();
+    	    }
+    	    if (kAcceptStuff == 0 && mShm) {
+    	    	mShm->Destroy();
     	    }
     	   	ProcessExit();
 			CleanListenSock();
@@ -112,8 +117,11 @@ const wStatus& wServer::WorkerStart(bool daemon) {
 
 const wStatus& wServer::HandleSignal() {
     if (g_terminate) {
-	    if (mAcceptSem) {
+	    if (kAcceptStuff == 1 && mAcceptSem) {
 	    	mAcceptSem->Destroy();
+	    }
+	    if (kAcceptStuff == 0 && mShm) {
+	    	mShm->Destroy();
 	    }
 	   	ProcessExit();
 		exit(0);
@@ -206,14 +214,27 @@ void wServer::Unlocks(std::vector<int>* slot, std::vector<int>* blackslot) {
 
 const wStatus& wServer::InitAcceptMutex() {
 	if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
-    	if (kAcceptStuff == 0) {
-    		mStatus = wEnv::Default()->NewSem(kAcceptMutex, &mAcceptSem);
-    	} else if (kAcceptStuff == 1) {
+		if (kAcceptStuff == 0) {
+    		if ((mStatus = wEnv::Default()->NewShm(kAcceptMutex, &mShm, sizeof(wAtomic<bool>))).Ok()) {
+    			if (mShm->CreateShm() == 0) {
+    				void* ptr = mShm->AllocShm(sizeof(wAtomic<bool>));
+    				if (ptr) {
+    					SAFE_NEW((ptr)wAtomic<bool>, mAcceptAtomic);
+    				} else {
+    					mStatus = wStatus::IOError("wServer::InitAcceptMutex alloc shm failed", "");
+    				}
+    			} else {
+    				mStatus = wStatus::IOError("wServer::InitAcceptMutex create shm failed", "");
+    			}
+    		}
+		} else if (kAcceptStuff == 1) {
+			mStatus = wEnv::Default()->NewSem(kAcceptMutex, &mAcceptSem);
+		} else if (kAcceptStuff == 2) {
     		int fd;
     		if ((mStatus = wEnv::Default()->OpenFile(kAcceptMutex, fd)).Ok()) {
     			mStatus = wEnv::Default()->CloseFD(fd);
     		}
-    	}
+		}
 	} else if (mUseAcceptTurn == true) {
 		mUseAcceptTurn = false;
 	}
@@ -222,7 +243,9 @@ const wStatus& wServer::InitAcceptMutex() {
 
 const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {	// 争抢accept锁
-		if ((kAcceptStuff == 0 && mAcceptSem->TryWait().Ok()) || (kAcceptStuff == 1 && wEnv::Default()->LockFile(kAcceptMutex, &mAcceptFL).Ok())) {
+		if ((kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeStrong(false, true)) ||
+			(kAcceptStuff == 1 && mAcceptSem->TryWait().Ok()) || 
+			(kAcceptStuff == 2 && wEnv::Default()->LockFile(kAcceptMutex, &mAcceptFL).Ok())) {
 			Listener2Epoll(false);
 			mAcceptHeld = true;
 		}
@@ -274,11 +297,15 @@ const wStatus& wServer::Recv() {
 
 	if (mUseAcceptTurn == true && mAcceptHeld == true) {
 		RemoveListener(false);
-		if (kAcceptStuff == 0 && mAcceptSem) {	// 释放accept锁
+		
+		if (kAcceptStuff == 0) {
+			mAcceptAtomic->CompareExchangeStrong(true, false);
+		} else if (kAcceptStuff == 1) {
 			mAcceptSem->Post();
-		} else if (kAcceptStuff == 1 && mAcceptFL) {
+		} else if (kAcceptStuff == 2) {
 			wEnv::Default()->UnlockFile(mAcceptFL);
 		}
+
 		mAcceptHeld = false;
 	}
     return mStatus;
