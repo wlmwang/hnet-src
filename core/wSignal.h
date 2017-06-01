@@ -7,9 +7,8 @@
 #ifndef _W_SIGNAL_H_
 #define _W_SIGNAL_H_
 
-#include <signal.h>		//typedef void (*sighandler_t)(int);
+#include <signal.h>		// typedef void (*sighandler_t)(int);
 #include "wCore.h"
-#include "wStatus.h"
 #include "wNoncopyable.h"
 
 namespace hnet {
@@ -21,20 +20,19 @@ public:
     wSignal();
 
     // SIG_DFL(采用缺省的处理方式)，也可以为SIG_IGN
-    wSignal(__sighandler_t  func);
+    int EmptySet(__sighandler_t  func);
     
     // 添加信号处理
-    const wStatus& AddSigno(int signo, struct sigaction *oact = NULL);
+    int AddSigno(int signo, struct sigaction *oact = NULL);
 
-    const wStatus& AddHandler(const Signal_t *signal);
+    int AddHandler(const Signal_t *signal);
 
     // 添加屏蔽集
-    const wStatus& AddMaskSet(int signo);
+    int AddMaskSet(int signo);
 
     static void SignalHandler(int signo);
     
 protected:
-    wStatus mStatus;
     struct sigaction mSigAct;
 };
 

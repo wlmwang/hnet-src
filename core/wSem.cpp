@@ -10,7 +10,9 @@
 
 namespace hnet {
 
-wPosixSem::wPosixSem(const std::string& name) : mName(name) { }
+wPosixSem::wPosixSem(const std::string& name) : mName(name) {
+    memset(&mSem, 0, sizeof(mSem));
+}
 
 wPosixSem::~wPosixSem() {
 	Destroy();
@@ -34,26 +36,27 @@ int wPosixSem::Open(int oflag, mode_t mode, unsigned int value) {
 }
 
 int wPosixSem::Wait() {
-    if (sem_wait(&mSem) == -1) {
+    int ret = sem_wait(&mSem);
+    if (ret == -1) {
         LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixSem::Wait sem_wait() failed", error::Strerror(errno).c_str());
-        return -1;
     }
-    return 0;
+    return ret;
 }
 
 int wPosixSem::TryWait() {
-    if (sem_trywait(&mSem) == -1) {
-        return -1;
+    int ret = sem_trywait(&mSem);
+    if (ret == -1) {
+        //LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixSem::TryWait sem_trywait() failed", error::Strerror(errno).c_str());
     }
-    return 0;
+    return ret;
 }
 
 int wPosixSem::Post() {
-    if (sem_post(&mSem) == -1) {
+    int ret = sem_post(&mSem);
+    if (ret == -1) {
         LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixSem::Post sem_post() failed", error::Strerror(errno).c_str());
-        return -1;
     }
-    return 0;
+    return ret;
 }
 
 void wPosixSem::Destroy() {

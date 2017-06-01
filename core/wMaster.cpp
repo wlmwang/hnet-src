@@ -98,6 +98,7 @@ const wStatus& wMaster::MasterStart() {
 
     // 信号阻塞
     wSigSet ss;
+    ss.EmptySet();
     ss.AddSet(SIGCHLD);
     ss.AddSet(SIGALRM);
     ss.AddSet(SIGIO);
@@ -106,8 +107,8 @@ const wStatus& wMaster::MasterStart() {
     ss.AddSet(SIGTERM);	// 优雅退出
     ss.AddSet(SIGHUP);	// 重新读取配置
     ss.AddSet(SIGUSR1);	// 重启服务
-    if (!(mStatus = ss.Procmask()).Ok()) {
-        return mStatus;
+    if (ss.Procmask() == -1) {
+        return mStatus = wStatus::Corruption("wMaster::MasterStart, Procmask failed", "");
     }
     
     // 初始化惊群锁
@@ -287,6 +288,7 @@ const wStatus& wMaster::HandleSignal() {
 
 	// 阻塞方式等待信号量，定时器控制超时
 	wSigSet ss;
+	ss.EmptySet();
 	ss.Suspend();
 	
 	// SIGCHLD
@@ -491,14 +493,14 @@ const wStatus& wMaster::SignalProcess(const std::string& signal) {
 			}
 		}
 	}
-	return mStatus = wStatus::Corruption("wMaster::SignalProcess, signal failed", "cannot find signal");
+	return mStatus = wStatus::Corruption("wMaster::SignalProcess,signal failed.cannot find signal", "");
 }
 
 const wStatus& wMaster::InitSignals() {
 	wSignal signal;
 	for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
-		if (!(mStatus = signal.AddHandler(s)).Ok()) {
-			return mStatus;
+		if (signal.AddHandler(s) == -1) {
+			return mStatus = wStatus::Corruption("wMaster::InitSignals, AddHandler failed", "");
 		}
 	}
 	return mStatus;

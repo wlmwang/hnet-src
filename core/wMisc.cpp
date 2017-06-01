@@ -347,15 +347,16 @@ int InitDaemon(std::string lock_path, const char *prefix) {
     setsid();
     
     // 忽略以下信号
-    wSignal stSig(SIG_IGN);
-    stSig.AddSigno(SIGINT);
-    stSig.AddSigno(SIGHUP);
-    stSig.AddSigno(SIGQUIT);
-    stSig.AddSigno(SIGTERM);
-    stSig.AddSigno(SIGCHLD);
-    stSig.AddSigno(SIGPIPE);
-    stSig.AddSigno(SIGTTIN);
-    stSig.AddSigno(SIGTTOU);
+    wSignal s;
+    s.EmptySet(SIG_IGN);
+    s.AddSigno(SIGINT);
+    s.AddSigno(SIGHUP);
+    s.AddSigno(SIGQUIT);
+    s.AddSigno(SIGTERM);
+    s.AddSigno(SIGCHLD);
+    s.AddSigno(SIGPIPE);
+    s.AddSigno(SIGTTIN);
+    s.AddSigno(SIGTTOU);
 
     if (fork() != 0) {
         exit(-1);

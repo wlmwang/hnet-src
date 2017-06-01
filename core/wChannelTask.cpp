@@ -10,7 +10,6 @@
 #include "wCommand.h"
 #include "wMaster.h"
 #include "wWorker.h"
-#include "wSignal.h"
 #include "wChannelCmd.h"
 
 namespace hnet {

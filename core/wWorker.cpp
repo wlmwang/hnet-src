@@ -71,8 +71,9 @@ const wStatus& wWorker::PrepareStart() {
 const wStatus& wWorker::Start() {
 	// worker进程中重启所有信号处理器
 	wSigSet ss;
-	if (!(mStatus = ss.Procmask(SIG_SETMASK)).Ok()) {
-		return mStatus;
+    ss.EmptySet();
+	if (ss.Procmask(SIG_SETMASK) == -1) {
+        return mStatus = wStatus::Corruption("wWorker::Start, Procmask failed", "");
 	}
 
     if (!(mStatus = Run()).Ok()) {

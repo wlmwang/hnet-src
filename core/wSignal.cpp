@@ -6,6 +6,7 @@
 
 #include "wSignal.h"
 #include "wMisc.h"
+#include "wLogger.h"
 
 namespace hnet {
 
@@ -32,35 +33,43 @@ wSignal::Signal_t g_signals[] = {
     {0,         NULL,       "",         NULL}
 };
 
-wSignal::wSignal() { }
+wSignal::wSignal() {
+    memset(&mSigAct, 0, sizeof(mSigAct));
+}
 
-wSignal::wSignal(__sighandler_t  func) {
+int wSignal::EmptySet(__sighandler_t  func) {
     mSigAct.sa_handler = func;
     mSigAct.sa_flags = 0;
-    if (sigemptyset(&mSigAct.sa_mask) == -1) {
-        mStatus = wStatus::IOError("wSignal::wSignal, sigemptyset failed", error::Strerror(errno));
+    int ret = sigemptyset(&mSigAct.sa_mask);
+    if (ret == -1) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::wSignal sigemptyset() failed", error::Strerror(errno).c_str());
     }
+    return -1;
 }
 
-const wStatus& wSignal::AddMaskSet(int signo) {
-    if (sigaddset(&mSigAct.sa_mask, signo) == -1) {
-        return mStatus = wStatus::IOError("wSignal::wSignal, sigaddset failed", error::Strerror(errno));
+int wSignal::AddMaskSet(int signo) {
+    int ret = sigaddset(&mSigAct.sa_mask, signo);
+    if (ret == -1) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddMaskSet sigaddset() failed", error::Strerror(errno).c_str());
     }
-    return mStatus;
+    return ret;
 }
 
-const wStatus& wSignal::AddSigno(int signo, struct sigaction *oact) {
-    if (sigaction(signo, &mSigAct, oact) == -1) {
-        mStatus = wStatus::IOError("wSignal::wSignal, sigaction failed", error::Strerror(errno));
+int wSignal::AddSigno(int signo, struct sigaction *oact) {
+    int ret = sigaction(signo, &mSigAct, oact);
+    if (ret == -1) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddSigno sigaction() failed", error::Strerror(errno).c_str());
     }
-    return mStatus;
+    return ret;
 }
 
-const wStatus& wSignal::AddHandler(const Signal_t *signal) {
+int wSignal::AddHandler(const Signal_t *signal) {
     mSigAct.sa_handler = signal->mHandler;
     mSigAct.sa_flags = 0;
-    if (sigemptyset(&mSigAct.sa_mask) == -1) {
-        return mStatus = wStatus::IOError("wSignal::wSignal, sigemptyset failed", error::Strerror(errno));
+    int ret = sigemptyset(&mSigAct.sa_mask);
+    if (ret == -1) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddHandler sigemptyset() failed", error::Strerror(errno).c_str());
+        return ret;
     }
     return AddSigno(signal->mSigno);
 }
@@ -111,7 +120,6 @@ void wSignal::SignalHandler(int signo) {
         g_reap = 1;
         break;
     }
-    
     errno = err;
 }
 
