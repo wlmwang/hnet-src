@@ -15,7 +15,7 @@ wPosixSem::wPosixSem(const std::string& name) : mName(name) {
 }
 
 wPosixSem::~wPosixSem() {
-	Destroy();
+    Remove();
 }
 
 int wPosixSem::Open(int oflag, mode_t mode, unsigned int value) {
@@ -61,10 +61,8 @@ int wPosixSem::Post() {
 
 void wPosixSem::Destroy() {
 	if (mName.size() > 0) {
-        if (sem_close(&mSem) == -1) {	// 关闭当前进程中的互斥量句柄
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixSem::Destroy sem_close() failed", error::Strerror(errno).c_str());
-        }
-        if (sem_unlink(mName.c_str()) == -1) {	// 只有最后一个进程 sem_unlink 有效
+        // 只有最后一个进程 sem_unlink 有效
+        if (sem_unlink(mName.c_str()) == -1) {
         	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixSem::Destroy sem_unlink() failed", error::Strerror(errno).c_str());
         }
 	} else {
@@ -72,6 +70,15 @@ void wPosixSem::Destroy() {
             LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixSem::Destroy sem_destroy() failed", error::Strerror(errno).c_str());
         }
 	}
+}
+
+void wPosixSem::Remove() {
+    if (mName.size() > 0) {
+        // 关闭当前进程中的互斥量句柄
+        if (sem_close(&mSem) == -1) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixSem::Destroy sem_close() failed", error::Strerror(errno).c_str());
+        }
+    }
 }
 
 }	// namespace hnet

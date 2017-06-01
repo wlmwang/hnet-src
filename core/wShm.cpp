@@ -15,7 +15,7 @@ wPosixShm::wPosixShm(const std::string& filename, size_t size) : mShmId(-1), mSh
 }
 
 wPosixShm::~wPosixShm() {
-	Destroy();
+	Remove();
 }
 
 int wPosixShm::CreateShm(int pipeid) {
@@ -32,7 +32,7 @@ int wPosixShm::CreateShm(int pipeid) {
 		return -1;
 	}
 
-	mShmId = shmget(key, mSize, IPC_CREAT| IPC_EXCL| 0666);
+	mShmId = shmget(key, mSize, IPC_CREAT|IPC_EXCL|0666);
 	if (mShmId == -1) {
 		// 申请内存失败
 		if (errno != EEXIST) {
@@ -101,7 +101,6 @@ int wPosixShm::AttachShm(int pipeid) {
 		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixShm::AttachShm shmat() failed", error::Strerror(errno).c_str());
 		return -1;
     }
-
     // 存储头信息
 	mShmhead = reinterpret_cast<struct Shmhead_t*>(addr);
 	return 0;
@@ -118,11 +117,16 @@ void* wPosixShm::AllocShm(size_t size) {
 }
 
 void wPosixShm::Destroy() {
-    if (mShmhead && shmdt(reinterpret_cast<void*>(mShmhead->mStart)) == -1) {	// 关闭当前进程中的共享内存句柄
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixShm::Destroy shmdt() failed", error::Strerror(errno).c_str());
-    } 
-    if (mShmId > 0 && shmctl(mShmId, IPC_RMID, NULL) == -1) {	// 只有最后一个进程 shmctl() IPC_RMID 有效
+	// 只有最后一个进程 shmctl() IPC_RMID 有效
+    if (mShmId > 0 && shmctl(mShmId, IPC_RMID, NULL) == -1) {
     	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixShm::Destroy shmctl() failed", error::Strerror(errno).c_str());
+    }
+}
+
+void wPosixShm::Remove() {
+	// 关闭当前进程中的共享内存句柄
+    if (mShmhead && shmdt(reinterpret_cast<void*>(mShmhead->mStart)) == -1) {
+    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixShm::Destroy shmdt() failed", error::Strerror(errno).c_str());
     }
 }
 

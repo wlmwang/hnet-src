@@ -203,7 +203,7 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
 
         // 进入worker主循环
         mWorker->Start();
-        exit(0);
+        exit(2);
     }
 
     // 主进程master

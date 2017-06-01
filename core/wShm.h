@@ -31,9 +31,19 @@ class wShm : private wNoncopyable {
 public:
 	virtual ~wShm() { }
 
+	// create创建shm
 	virtual int CreateShm(int pipeid = 'i') = 0;
+	
+	// attached已创建的shm
 	virtual int AttachShm(int pipeid = 'i') = 0;
+	
+	// alloc创建的shm
 	virtual void* AllocShm(size_t size = 0) = 0;
+	
+	// 关闭当前进程中的共享内存句柄
+	virtual void Remove() = 0;
+
+	// 删除系统中的shm
 	virtual void Destroy() = 0;
 };
 
@@ -46,6 +56,7 @@ public:
 	virtual int CreateShm(int pipeid = 'i');
 	virtual int AttachShm(int pipeid = 'i');
 	virtual void* AllocShm(size_t size = 0);
+	virtual void Remove();
 	virtual void Destroy();
 
 protected:

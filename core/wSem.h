@@ -30,8 +30,11 @@ public:
 
 	// 发出信号即释放拥有权（V操作）
 	virtual int Post() = 0;
+		
+	// 关闭当前进程中的互斥量句柄
+	virtual void Remove() = 0;
 
-	// 删除系统中的信号量（一定要清除，否则即使进程退出，系统也会占用该资源。/dev/shm中一个文件）
+	// 删除系统中的信号量
 	virtual void Destroy() = 0;
 };
 
@@ -46,6 +49,7 @@ public:
 	virtual int Wait();
 	virtual int TryWait();
 	virtual int Post();
+	virtual void Remove();
 	virtual void Destroy();
 
 protected:

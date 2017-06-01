@@ -96,11 +96,10 @@ const wStatus& wServer::WorkerStart(bool daemon) {
     // 进入服务主循环
     while (daemon) {
     	if (mExiting) {
-    	    if (kAcceptStuff == 1 && mAcceptSem) {
-    	    	mAcceptSem->Destroy();
-    	    }
     	    if (kAcceptStuff == 0 && mShm) {
-    	    	mShm->Destroy();
+    	    	mShm->Remove();
+    	    } else if (kAcceptStuff == 1 && mAcceptSem) {
+    	    	mAcceptSem->Remove();
     	    }
     	   	ProcessExit();
 			CleanListenSock();
@@ -117,11 +116,10 @@ const wStatus& wServer::WorkerStart(bool daemon) {
 
 const wStatus& wServer::HandleSignal() {
     if (g_terminate) {
-	    if (kAcceptStuff == 1 && mAcceptSem) {
-	    	mAcceptSem->Destroy();
-	    }
 	    if (kAcceptStuff == 0 && mShm) {
-	    	mShm->Destroy();
+	    	mShm->Remove();
+	    } else if (kAcceptStuff == 1 && mAcceptSem) {
+	    	mAcceptSem->Remove();
 	    }
 	   	ProcessExit();
 		exit(0);
@@ -210,6 +208,28 @@ void wServer::Unlocks(std::vector<int>* slot, std::vector<int>* blackslot) {
 	        mTaskPoolMutex[i].Unlock();
 	    }
 	}
+}
+const wStatus& wServer::AttachAcceptMutex() {
+	if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
+		if (kAcceptStuff == 0) {
+			if (mShm) {
+				SAFE_DELETE(mShm);
+			}
+    		if ((mStatus = wEnv::Default()->NewShm(kAcceptMutex, &mShm, sizeof(wAtomic<bool>))).Ok()) {
+    			if (mShm->AttachShm() == 0) {
+    				void* ptr = mShm->AllocShm(sizeof(wAtomic<bool>));
+    				if (ptr) {
+    					SAFE_NEW((ptr)wAtomic<bool>, mAcceptAtomic);
+    				} else {
+    					mStatus = wStatus::IOError("wServer::InitAcceptMutex alloc shm failed", "");
+    				}
+    			} else {
+    				mStatus = wStatus::IOError("wServer::InitAcceptMutex create shm failed", "");
+    			}
+    		}
+		}
+	}
+	return mStatus;
 }
 
 const wStatus& wServer::InitAcceptMutex() {
@@ -686,6 +706,11 @@ const wStatus& wServer::CleanListenSock() {
 }
 
 const wStatus& wServer::DeleteAcceptFile() {
+    if (kAcceptStuff == 0 && mShm) {
+    	mShm->Destroy();
+    } else if (kAcceptStuff == 1 && mAcceptSem) {
+    	mAcceptSem->Destroy();
+    }
 	return mStatus = wEnv::Default()->DeleteFile(kAcceptMutex);
 }
 

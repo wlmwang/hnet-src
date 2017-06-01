@@ -49,8 +49,9 @@ public:
     // single模式启动服务
     const wStatus& SingleStart(bool daemon = true);
 
-    // 初始化惊群锁
+    // 创建惊群锁
     const wStatus& InitAcceptMutex();
+    const wStatus& AttachAcceptMutex();
 
     // master-worker多进程架构
     // PrepareMaster 需在master进程中调用
