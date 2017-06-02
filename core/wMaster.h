@@ -13,6 +13,7 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
+#include "wEnv.h"
 
 namespace hnet {
 
@@ -86,8 +87,8 @@ protected:
     // 如果所有的worker都退出了，则mLive = 0
     const wStatus& ReapChildren();
 
-    const wStatus& CreatePidFile();
-    const wStatus& DeletePidFile();
+    int CreatePidFile();
+    int DeletePidFile();
     
     // 给所有worker进程发送信号
     void SignalWorker(int signo);
@@ -112,6 +113,7 @@ protected:
 
     wServer* mServer;
     wWorker* mWorker;	// 当前worker进程
+    wEnv* mEnv;
 
     wStatus mStatus;
 };

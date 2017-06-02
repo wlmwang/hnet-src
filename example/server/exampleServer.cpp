@@ -165,21 +165,22 @@ public:
 };
 
 int main(int argc, const char *argv[]) {
+	// 设置运行目录
+	if (misc::SetBinPath() == -1) {
+		std::cout << "set bin path failed" << std::endl;
+	}
+
 	// 创建配置对象
 	wConfig* config;
 	SAFE_NEW(wConfig, config);
 	if (config == NULL) {
 		return -1;
 	}
-	wStatus s;
 
 	// 解析命令行
-	s = config->GetOption(argc, argv);
-	if (!s.Ok()) {
+	if (config->GetOption(argc, argv) == -1) {
+		std::cout << "get configure failed" << std::endl;
 		return -1;
-	}
-	if (misc::SetBinPath() == -1) {
-		std::cout << "set bin path failed" << std::endl;
 	}
 
 	// 版本输出 && 守护进程创建
@@ -217,7 +218,7 @@ int main(int argc, const char *argv[]) {
 	    	}
 	    } else {
 	    	// 准备服务器
-			s = master->PrepareStart();
+			wStatus s = master->PrepareStart();
 			if (s.Ok()) {
 				// Master-Worker方式开启服务器
 				master->MasterStart();

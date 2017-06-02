@@ -10,7 +10,6 @@
 #include <set>
 #include <vector>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wSlice.h"
 #include "wNoncopyable.h"
 #include "wMutex.h"
@@ -26,11 +25,11 @@ public:
 
     // 读取n字节到result中，scratch为用户传入缓冲区
     // 要求：外部实现同步操作
-    virtual const wStatus& Read(size_t n, wSlice* result, char* scratch) = 0;
+    virtual int Read(size_t n, wSlice* result, char* scratch) = 0;
 
     // 跳过n字节
     // 要求：外部实现同步操作
-    virtual const wStatus& Skip(uint64_t n) = 0;
+    virtual int Skip(uint64_t n) = 0;
 };
 
 // 随机访问文件接口
@@ -41,7 +40,7 @@ public:
 
     // offset处读取n字节字符到result中，scratch为用户传入缓冲区
     // 要求：外部实现同步操作
-    virtual const wStatus& Read(uint64_t offset, size_t n, wSlice* result, char* scratch) = 0;
+    virtual int Read(uint64_t offset, size_t n, wSlice* result, char* scratch) = 0;
 };
 
 // 写文件类
@@ -50,10 +49,10 @@ public:
     wWritableFile() { }
     virtual ~wWritableFile() { }
 
-    virtual const wStatus& Append(const wSlice& data) = 0;
-    virtual const wStatus& Close() = 0;
-    virtual const wStatus& Flush() = 0;
-    virtual const wStatus& Sync() = 0;
+    virtual int Append(const wSlice& data) = 0;
+    virtual int Close() = 0;
+    virtual int Flush() = 0;
+    virtual int Sync() = 0;
 };
 
 // 文件锁接口
@@ -76,15 +75,14 @@ public:
     }
 
     // 要求：外部保证为同步操作
-    virtual const wStatus& Read(size_t n, wSlice* result, char* scratch);
+    virtual int Read(size_t n, wSlice* result, char* scratch);
 
     // 跳过指定字节
-    virtual const wStatus& Skip(uint64_t n);
+    virtual int Skip(uint64_t n);
 
 private:
     std::string mFilename;
     FILE* mFile;
-    wStatus mStatus;
 };
 
 // 随机访问文件实现类
@@ -97,12 +95,11 @@ public:
     }
 
     // 要求：外部保证同步操作
-    virtual const wStatus& Read(uint64_t offset, size_t n, wSlice* result, char* scratch);
+    virtual int Read(uint64_t offset, size_t n, wSlice* result, char* scratch);
 
 private:
     std::string mFilename;
     int mFD;
-    wStatus mStatus;
 };
 
 // 优化存取文件时，可一次性映射到内存中。64-bit说明共享内存足够大（虚址空间）
@@ -137,20 +134,19 @@ private:
 class wPosixMmapReadableFile: public wRandomAccessFile {
 public:
     // base[0,length-1] contains the mmapped contents of the file.
-    wPosixMmapReadableFile(const std::string& fname, void* base, size_t length, wMmapLimiter* limiter)
-    : mFilename(fname), mMmappedRegion(base), mLength(length),mLimiter(limiter) { }
+    wPosixMmapReadableFile(const std::string& fname, void* base, size_t length, wMmapLimiter* limiter):
+    mFilename(fname), mMmappedRegion(base), mLength(length),mLimiter(limiter) { }
 
     virtual ~wPosixMmapReadableFile();
 
     // 要求：外部保证同步操作
-    virtual const wStatus& Read(uint64_t offset, size_t n, wSlice* result, char* scratch);
+    virtual int Read(uint64_t offset, size_t n, wSlice* result, char* scratch);
 
 private:
     std::string mFilename;  // 文件名
     void* mMmappedRegion;  // 共享内存起始地址
     size_t mLength;         // 共享内存（文件）长度
     wMmapLimiter* mLimiter; // CPU平台
-    wStatus mStatus;
 };
 
 // 写文件类
@@ -165,19 +161,18 @@ public:
     }
 
     // 要求：外部保证同步操作
-    virtual const wStatus& Append(const wSlice& data);
+    virtual int Append(const wSlice& data);
 
-    virtual const wStatus& Close();
+    virtual int Close();
 
-    virtual const wStatus& Flush();
+    virtual int Flush();
 
     // 刷新数据到文件
-    virtual const wStatus& Sync();
+    virtual int Sync();
 
 private:
     std::string mFilename;
     FILE* mFile;
-    wStatus mStatus;
 };
 
 // 文件锁句柄

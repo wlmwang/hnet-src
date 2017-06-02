@@ -10,7 +10,6 @@
 #include <netinet/tcp.h>
 #include <poll.h>
 #include <algorithm>
-#include "wEnv.h"
 #include "wServer.h"
 #include "wConfig.h"
 #include "wSem.h"
@@ -29,8 +28,9 @@
 
 namespace hnet {
 
-wServer::wServer(wConfig* config) : mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleTurn(kScheduleTurn), mScheduleOk(true), mEpollFD(kFDUnknown), mTimeout(10),
-mTask(NULL), mShm(NULL), mAcceptAtomic(NULL), mAcceptFL(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config) {
+wServer::wServer(wConfig* config) : mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleTurn(kScheduleTurn), mScheduleOk(true), 
+mEpollFD(kFDUnknown), mTimeout(10),mTask(NULL), mShm(NULL), mAcceptAtomic(NULL), mAcceptFL(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), 
+mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config),mEnv(wEnv::Default()) {
 	assert(mConfig != NULL);
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
@@ -215,7 +215,7 @@ const wStatus& wServer::AttachAcceptMutex() {
 			if (mShm) {
 				SAFE_DELETE(mShm);
 			}
-    		if ((mStatus = wEnv::Default()->NewShm(kAcceptMutex, &mShm, sizeof(wAtomic<bool>))).Ok()) {
+    		if (mEnv->NewShm(kAcceptMutex, &mShm, sizeof(wAtomic<bool>)) == 0) {
     			if (mShm->AttachShm() == 0) {
     				void* ptr = mShm->AllocShm(sizeof(wAtomic<bool>));
     				if (ptr) {
@@ -235,7 +235,7 @@ const wStatus& wServer::AttachAcceptMutex() {
 const wStatus& wServer::InitAcceptMutex() {
 	if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
 		if (kAcceptStuff == 0) {
-    		if ((mStatus = wEnv::Default()->NewShm(kAcceptMutex, &mShm, sizeof(wAtomic<bool>))).Ok()) {
+    		if (mEnv->NewShm(kAcceptMutex, &mShm, sizeof(wAtomic<bool>)) == 0) {
     			if (mShm->CreateShm() == 0) {
     				void* ptr = mShm->AllocShm(sizeof(wAtomic<bool>));
     				if (ptr) {
@@ -248,15 +248,15 @@ const wStatus& wServer::InitAcceptMutex() {
     			}
     		}
 		} else if (kAcceptStuff == 1) {
-			if ((mStatus = wEnv::Default()->NewSem(kAcceptMutex, &mAcceptSem)).Ok()) {
+			if (mEnv->NewSem(kAcceptMutex, &mAcceptSem) == 0) {
 				if (mAcceptSem->Open() == -1) {
 					mStatus = wStatus::IOError("wServer::InitAcceptMutex open sem failed", "");
 				}
 			}
 		} else if (kAcceptStuff == 2) {
     		int fd;
-    		if ((mStatus = wEnv::Default()->OpenFile(kAcceptMutex, fd)).Ok()) {
-    			mStatus = wEnv::Default()->CloseFD(fd);
+    		if (mEnv->OpenFile(kAcceptMutex, fd) == 0) {
+    			mEnv->CloseFD(fd);
     		}
 		}
 	} else if (mUseAcceptTurn == true) {
@@ -269,7 +269,7 @@ const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {	// 争抢accept锁
 		if ((kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeStrong(false, true)) ||
 			(kAcceptStuff == 1 && mAcceptSem->TryWait() == 0) || 
-			(kAcceptStuff == 2 && wEnv::Default()->LockFile(kAcceptMutex, &mAcceptFL).Ok())) {
+			(kAcceptStuff == 2 && mEnv->LockFile(kAcceptMutex, &mAcceptFL) == 0)) {
 			Listener2Epoll(false);
 			mAcceptHeld = true;
 		}
@@ -327,7 +327,7 @@ const wStatus& wServer::Recv() {
 		} else if (kAcceptStuff == 1) {
 			mAcceptSem->Post();
 		} else if (kAcceptStuff == 2) {
-			wEnv::Default()->UnlockFile(mAcceptFL);
+			mEnv->UnlockFile(mAcceptFL);
 		}
 
 		mAcceptHeld = false;
@@ -711,7 +711,8 @@ const wStatus& wServer::DeleteAcceptFile() {
     } else if (kAcceptStuff == 1 && mAcceptSem) {
     	mAcceptSem->Destroy();
     }
-	return mStatus = wEnv::Default()->DeleteFile(kAcceptMutex);
+    mEnv->DeleteFile(kAcceptMutex);
+	return mStatus;
 }
 
 void wServer::CheckTick() {
@@ -725,7 +726,7 @@ void wServer::CheckTick() {
 		if (mScheduleMutex.TryLock() == 0) {
 		    if (mScheduleOk == true) {
 		    	mScheduleOk = false;
-		    	wEnv::Default()->Schedule(wServer::ScheduleRun, this);
+		    	mEnv->Schedule(wServer::ScheduleRun, this);
 		    }
 		    mScheduleMutex.Unlock();
 		}

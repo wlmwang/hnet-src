@@ -9,7 +9,6 @@
 
 #include <map>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wNoncopyable.h"
 #include "wProcTitle.h"
 #include "wMemPool.h"
@@ -20,7 +19,7 @@ class wConfig : private wNoncopyable {
 public:
     wConfig();
     virtual ~wConfig();
-    virtual const wStatus& GetOption(int argc, const char *argv[]);
+    virtual int GetOption(int argc, const char *argv[]);
 
     inline int Setproctitle(const char* pretitle, const char* title, bool attach = true) {
         return mProcTitle->Setproctitle(pretitle, title, attach);
@@ -49,7 +48,6 @@ protected:
     std::map<std::string, void*> mConf;
     wMemPool *mPool;
     wProcTitle *mProcTitle;
-    wStatus mStatus;
 };
 
 }    // namespace hnet

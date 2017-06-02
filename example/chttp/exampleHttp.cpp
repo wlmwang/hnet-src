@@ -6,6 +6,7 @@
 
 #include "wCore.h"
 #include "wStatus.h"
+#include "wMisc.h"
 #include "wConfig.h"
 #include "wSingleClient.h"
 #include "exampleCmd.h"
@@ -13,6 +14,11 @@
 using namespace hnet;
 
 int main(int argc, const char *argv[]) {
+	// 设置运行目录
+	if (misc::SetBinPath() == -1) {
+		std::cout << "set bin path failed" << std::endl;
+		return -1;
+	}
 
 	// 创建配置对象
 	wConfig* config;
@@ -20,16 +26,11 @@ int main(int argc, const char *argv[]) {
 	if (config == NULL) {
 		return -1;
 	}
-	wStatus s;
 
 	// 解析命令行
-	s = config->GetOption(argc, argv);
-	if (!s.Ok()) {
-		std::cout << "get configure:" << s.ToString() << std::endl;
+	if (config->GetOption(argc, argv) == -1) {
+		std::cout << "get configure failed" << std::endl;
 		return -1;
-	}
-	if (misc::SetBinPath() == -1) {
-		std::cout << "set bin path failed" << std::endl;
 	}
 
 	// 版本输出
@@ -53,6 +54,7 @@ int main(int argc, const char *argv[]) {
         return -1;
     }
 
+    wStatus s;
     // 连接服务器
     s = client->Connect(host, port, "HTTP");
     if (!s.Ok()) {

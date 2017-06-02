@@ -6,7 +6,6 @@
 
 #include "wMaster.h"
 #include "wServer.h"
-#include "wEnv.h"
 #include "wLogger.h"
 #include "wSlice.h"
 #include "wMisc.h"
@@ -18,7 +17,8 @@
 
 namespace hnet {
 
-wMaster::wMaster(const std::string& title, wServer* server) : mPid(getpid()), mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0), mLive(1), mServer(server), mWorker(NULL) {
+wMaster::wMaster(const std::string& title, wServer* server) : mPid(getpid()), mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0),
+mLive(1), mServer(server), mWorker(NULL),mEnv(wEnv::Default()) {
 	assert(mServer != NULL);
 	srand(misc::GetTimeofday());
     std::string pid_path;
@@ -72,8 +72,8 @@ const wStatus& wMaster::PrepareStart() {
 }
 
 const wStatus& wMaster::SingleStart() {
-    if (!CreatePidFile().Ok()) {
-		return mStatus;
+    if (CreatePidFile() == -1) {
+		return mStatus = wStatus::Corruption("wMaster::SingleStart, CreatePidFile failed", "");
     } else if (!InitSignals().Ok()) {
         return mStatus;
     }
@@ -90,8 +90,8 @@ const wStatus& wMaster::MasterStart() {
     }
 
     // 创建pid && 初始化信号处理器
-    if (!CreatePidFile().Ok()) {
-		return mStatus;
+    if (CreatePidFile() == -1) {
+		return mStatus = wStatus::Corruption("wMaster::MasterStart, CreatePidFile failed", "");
     } else if (!InitSignals().Ok()) {
         return mStatus;
     }
@@ -466,19 +466,19 @@ void wMaster::SignalWorker(int signo) {
     }
 }
 
-const wStatus& wMaster::CreatePidFile() {
+int wMaster::CreatePidFile() {
 	std::string pidstr = logging::NumberToString(mPid);
-	return mStatus = WriteStringToFile(wEnv::Default(), pidstr, mPidPath);
+	return WriteStringToFile(mEnv, pidstr, mPidPath);
 }
 
-const wStatus& wMaster::DeletePidFile() {
-	return mStatus = wEnv::Default()->DeleteFile(mPidPath);
+int wMaster::DeletePidFile() {
+	return mEnv->DeleteFile(mPidPath);
 }
 
 const wStatus& wMaster::SignalProcess(const std::string& signal) {
 	std::string str;
-	if (!(mStatus = ReadFileToString(wEnv::Default(), mPidPath, &str)).Ok()) {
-		return mStatus;
+	if (ReadFileToString(mEnv, mPidPath, &str) != 0) {
+		return mStatus = wStatus::Corruption("wMaster::SignalProcess, ReadFileToString() failed", error::Strerror(errno));
 	}
 
 	uint64_t pid = 0;

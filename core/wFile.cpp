@@ -9,35 +9,39 @@
 #include "wEnv.h"
 #include "wMutex.h"
 #include "wAtomic.h"
+#include "wLogger.h"
 
 namespace hnet {
 
-const wStatus& wPosixSequentialFile::Read(size_t n, wSlice* result, char* scratch) {
+int wPosixSequentialFile::Read(size_t n, wSlice* result, char* scratch) {
     size_t r = fread(scratch, 1, n, mFile);
     *result = wSlice(scratch, r);
     if (r < n) {
         if (!feof(mFile)) {
-        	return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixSequentialFile::Read feof() failed", error::Strerror(errno).c_str());
+            return -1;
         }
     }
-    return mStatus;
+    return 0;
 }
 
-const wStatus& wPosixSequentialFile::Skip(uint64_t n) {
-    if (fseek(mFile, n, SEEK_CUR)) {
-        return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
+int wPosixSequentialFile::Skip(uint64_t n) {
+    int ret = fseek(mFile, n, SEEK_CUR);
+    if (ret != 0) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixSequentialFile::Skip fseek() failed", error::Strerror(errno).c_str());
     }
-    return mStatus;
+    return ret;
 }
 
 
-const wStatus& wPosixRandomAccessFile::Read(uint64_t offset, size_t n, wSlice* result, char* scratch) {
+int wPosixRandomAccessFile::Read(uint64_t offset, size_t n, wSlice* result, char* scratch) {
     ssize_t r = pread(mFD, scratch, n, static_cast<off_t>(offset));
     *result = wSlice(scratch, (r < 0) ? 0 : r);
     if (r < 0) {
-    	return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixRandomAccessFile::Read pread() failed", error::Strerror(errno).c_str());
+        return -1;
     }
-    return mStatus;
+    return 0;
 }
 
 bool wMmapLimiter::Acquire() {
@@ -59,88 +63,94 @@ wPosixMmapReadableFile::~wPosixMmapReadableFile() {
     mLimiter->Release();
 }
 
-const wStatus& wPosixMmapReadableFile::Read(uint64_t offset, size_t n, wSlice* result, char* scratch) {
+int wPosixMmapReadableFile::Read(uint64_t offset, size_t n, wSlice* result, char* scratch) {
     if (offset + n > mLength) {
         *result = wSlice();
-        return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixMmapReadableFile::Read n failed", error::Strerror(errno).c_str());
+        return -1;
     } else {
         *result = wSlice(reinterpret_cast<char*>(mMmappedRegion) + offset, n);
     }
-    return mStatus;
+    return 0;
 }
 
 
-const wStatus& wPosixWritableFile::Append(const wSlice& data) {
+int wPosixWritableFile::Append(const wSlice& data) {
     size_t r = fwrite(data.data(), 1, data.size(), mFile);
     if (r != data.size()) {
-        return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixWritableFile::Append fwrite() failed", error::Strerror(errno).c_str());
+        return -1;
     }
-    return mStatus;
+    return 0;
 }
 
-const wStatus& wPosixWritableFile::Close() {
-    if (fclose(mFile) != 0) {
-        return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
+int wPosixWritableFile::Close() {
+    int ret = fclose(mFile);
+    if (ret != 0) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixWritableFile::Close fclose() failed", error::Strerror(errno).c_str());
+        return ret;
     }
     mFile = NULL;
-    return mStatus;
+    return ret;
 }
 
-const wStatus& wPosixWritableFile::Flush() {
-    if (fflush(mFile) != 0) {
-    	return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
+int wPosixWritableFile::Flush() {
+    int ret = fflush(mFile);
+    if (ret != 0) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixWritableFile::Close fflush() failed", error::Strerror(errno).c_str());
     }
-    return mStatus;
+    return ret;
 }
 
 // 刷新数据到文件
-const wStatus& wPosixWritableFile::Sync() {
+int wPosixWritableFile::Sync() {
     if (fflush(mFile) != 0 || fdatasync(fileno(mFile)) != 0) {
-    	return mStatus = wStatus::IOError(mFilename, error::Strerror(errno));
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixWritableFile::Close fflush() or fdatasync() failed", error::Strerror(errno).c_str());
+        return -1;
     }
-    return mStatus;
+    return 0;
 }
 
 // 写字符到文件接口
-static wStatus DoWriteStringToFile(wEnv* env, const wSlice& data, const std::string& fname, bool should_sync) {
+static int DoWriteStringToFile(wEnv* env, const wSlice& data, const std::string& fname, bool should_sync) {
     wWritableFile* file;
-    wStatus s = env->NewWritableFile(fname, &file);
-    if (!s.Ok()) {
-        return s;
+    int ret = env->NewWritableFile(fname, &file);
+    if (ret == -1) {
+        return ret;
     }
-    s = file->Append(data);
+    ret = file->Append(data);
 
-    if (s.Ok() && should_sync) {
-        s = file->Sync();
+    if (ret == 0 && should_sync) {
+        ret = file->Sync();
     }
-    if (s.Ok()) {
-        s = file->Close();
+    if (ret == 0) {
+        ret = file->Close();
     }
     SAFE_DELETE(file);
 
-    if (!s.Ok()) {
+    if (ret != 0) {
         env->DeleteFile(fname);
     }
-    return s;
+    return ret;
 }
 
 // 异步写字符到文件
-wStatus WriteStringToFile(wEnv* env, const wSlice& data, const std::string& fname) {
+int WriteStringToFile(wEnv* env, const wSlice& data, const std::string& fname) {
     return DoWriteStringToFile(env, data, fname, false);
 }
 
 // 同步写入字符到文件
-wStatus WriteStringToFileSync(wEnv* env, const wSlice& data, const std::string& fname) {
+int WriteStringToFileSync(wEnv* env, const wSlice& data, const std::string& fname) {
     return DoWriteStringToFile(env, data, fname, true);
 }
 
 // 顺序读文件到data中
-wStatus ReadFileToString(wEnv* env, const std::string& fname, std::string* data) {
+int ReadFileToString(wEnv* env, const std::string& fname, std::string* data) {
     data->clear();
     wSequentialFile* file;
-    wStatus s = env->NewSequentialFile(fname, &file);
-    if (!s.Ok()) {
-        return s;
+    int ret = env->NewSequentialFile(fname, &file);
+    if (ret != 0) {
+        return ret;
     }
 
     static const int kBufferSize = 8192;
@@ -148,8 +158,8 @@ wStatus ReadFileToString(wEnv* env, const std::string& fname, std::string* data)
     SAFE_NEW_VEC(kBufferSize, char, space);
     while (true) {
         wSlice fragment;
-        s = file->Read(kBufferSize, &fragment, space);
-        if (!s.Ok()) {
+        ret = file->Read(kBufferSize, &fragment, space);
+        if (ret != 0) {
             break;
         }
         data->append(fragment.data(), fragment.size());
@@ -159,7 +169,7 @@ wStatus ReadFileToString(wEnv* env, const std::string& fname, std::string* data)
     }
     SAFE_DELETE_VEC(space);
     SAFE_DELETE(file);
-    return s;
+    return ret;
 }
 
 // 文件加/解独占锁

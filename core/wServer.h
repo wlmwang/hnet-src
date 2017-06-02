@@ -14,6 +14,7 @@
 #include "wStatus.h"
 #include "wNoncopyable.h"
 #include "wMutex.h"
+#include "wEnv.h"
 #include "wMisc.h"
 #include "wSocket.h"
 #include "wTimer.h"
@@ -192,6 +193,7 @@ protected:
 
     wMaster* mMaster;	// 引用进程表
     wConfig* mConfig;
+    wEnv* mEnv;
 
     wStatus mStatus;
 };

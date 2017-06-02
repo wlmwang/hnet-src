@@ -22,12 +22,12 @@ wPosixLogger::wPosixLogger(const std::string& fname, uint64_t (*getpid)(), off_t
 void wPosixLogger::ArchiveLog() {
 	wEnv* env = wEnv::Default();
 	uint64_t filesize = 0;
-	if (env->GetFileSize(mFname, &filesize).Ok() && filesize >= static_cast<uint64_t>(mMaxsize)) {
+	if (env->GetFileSize(mFname, &filesize) == 0 && filesize >= static_cast<uint64_t>(mMaxsize)) {
 		// 日志大小操作限制
 		CloseLog(mFile);
 
 		std::string realpath, dir;
-		if (env->GetRealPath(mFname, &realpath).Ok()) {
+		if (env->GetRealPath(mFname, &realpath) == 0) {
 			// 获取目录名
 			const std::string::size_type pos = realpath.find_last_of("/");
 			if (pos != std::string::npos) {
@@ -36,7 +36,7 @@ void wPosixLogger::ArchiveLog() {
 				dir = realpath;
 			}
 			std::vector<std::string> children;	// 文件列表
-			if (env->GetChildren(dir, &children).Ok() && children.size() > 0) {
+			if (env->GetChildren(dir, &children) == 0 && children.size() > 0) {
 				// 获取日志最大id
 				uint64_t maxid = 0;
 				for (std::vector<std::string>::iterator it = children.begin(); it != children.end(); it++) {
@@ -54,7 +54,7 @@ void wPosixLogger::ArchiveLog() {
 				std::string src = mFname + ".", target = mFname + ".";
 				if (maxid >= kLoggerNum) {
 					logging::AppendNumberTo(&src, maxid);
-					env->FileExists(src) && env->DeleteFile(src).Ok();
+					env->FileExists(src) && env->DeleteFile(src);
 					maxid = kLoggerNum - 1;
 				}
 				for (uint64_t id = maxid; id >= 1; id--) {
@@ -62,15 +62,15 @@ void wPosixLogger::ArchiveLog() {
 					logging::AppendNumberTo(&src, id);
 					logging::AppendNumberTo(&target, id + 1);
 					if (env->FileExists(src)) {
-						env->FileExists(target) && env->DeleteFile(target).Ok();
-						env->FileExists(src) && env->RenameFile(src, target).Ok();
+						env->FileExists(target) && env->DeleteFile(target);
+						env->FileExists(src) && env->RenameFile(src, target);
 					}
 				}
 			}
 		}
 		std::string target = mFname + ".1";
-		env->FileExists(target) && env->DeleteFile(target).Ok();
-		env->FileExists(mFname) && env->RenameFile(mFname, target).Ok();
+		env->FileExists(target) && env->DeleteFile(target);
+		env->FileExists(mFname) && env->RenameFile(mFname, target);
 		mFile = OpenCreatLog(mFname, "a+");
 	}
 }
@@ -142,7 +142,7 @@ static wLogger* Logger(const std::string& logpath) {
 	std::map<std::string, wLogger*>::iterator it = g_logger.find(logpath);
 	if (it == g_logger.end()) {
 		wLogger* l = NULL;
-		if (wEnv::Default()->NewLogger(logpath, &l).Ok()) {
+		if (wEnv::Default()->NewLogger(logpath, &l) == 0) {
 			g_logger.insert(std::pair<std::string, wLogger*>(logpath, l));
 			return l;
 		}

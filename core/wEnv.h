@@ -9,7 +9,6 @@
 
 #include <vector>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wSlice.h"
 #include "wNoncopyable.h"
 
@@ -33,57 +32,57 @@ public:
     static wEnv* Default();
 
     // 创建顺序文件访问对象
-    virtual const wStatus& NewSequentialFile(const std::string& fname, wSequentialFile** result) = 0;
+    virtual int NewSequentialFile(const std::string& fname, wSequentialFile** result) = 0;
 
     // 创建随机访问文件对象
-    virtual const wStatus& NewRandomAccessFile(const std::string& fname, wRandomAccessFile** result) = 0;
+    virtual int NewRandomAccessFile(const std::string& fname, wRandomAccessFile** result) = 0;
 
     // 创建写入文件对象
-    virtual const wStatus& NewWritableFile(const std::string& fname, wWritableFile** result) = 0;
+    virtual int NewWritableFile(const std::string& fname, wWritableFile** result) = 0;
 
     // 返回日志对象
-    virtual const wStatus& NewLogger(const std::string& fname, wLogger** result, off_t maxsize = kMaxLoggerSize) = 0;
+    virtual int NewLogger(const std::string& fname, wLogger** result, off_t maxsize = kMaxLoggerSize) = 0;
 
     // 返回信号量对象
-    virtual const wStatus& NewSem(const std::string& name, wSem** result) = 0;
+    virtual int NewSem(const std::string& name, wSem** result) = 0;
 
     // 返回共享内存对象
-    virtual const wStatus& NewShm(const std::string& filename, wShm** result, size_t size = kMsgQueueLen) = 0;
+    virtual int NewShm(const std::string& filename, wShm** result, size_t size = kMsgQueueLen) = 0;
 
     // 锁文件
-    virtual const wStatus& LockFile(const std::string& fname, wFileLock** lock) = 0;
+    virtual int LockFile(const std::string& fname, wFileLock** lock) = 0;
 
     // 解锁文件
     // 要求：先调用 LockFile 成功
     // 要求：锁住还未锁定成功
-    virtual const wStatus& UnlockFile(wFileLock* lock) = 0;
+    virtual int UnlockFile(wFileLock* lock) = 0;
 
     // 返回目录下所有文件、目录名
-    virtual const wStatus& GetChildren(const std::string& dir, std::vector<std::string>* result, bool fullname = true) = 0;
+    virtual int GetChildren(const std::string& dir, std::vector<std::string>* result, bool fullname = true) = 0;
 
-    virtual const wStatus& GetBinPath(std::string* result, std::string self = "/proc/self/exe") = 0;
+    virtual int GetBinPath(std::string* result, std::string self = "/proc/self/exe") = 0;
 
-    virtual const wStatus& GetRealPath(const std::string& fname, std::string* result) = 0;
+    virtual int GetRealPath(const std::string& fname, std::string* result) = 0;
 
     // 打开文件
-    virtual const wStatus& OpenFile(const std::string& fname, int& fd, int oflag = O_RDWR | O_CREAT, mode_t mode= 0644) = 0;
+    virtual int OpenFile(const std::string& fname, int& fd, int oflag = O_RDWR | O_CREAT, mode_t mode= 0644) = 0;
 
     // 关闭fd文件描述符
-    virtual const wStatus& CloseFD(int fd) = 0;
+    virtual int CloseFD(int fd) = 0;
 
-    virtual const wStatus& DeleteFile(const std::string& fname) = 0;
+    virtual int DeleteFile(const std::string& fname) = 0;
 
     // 创建目录
-    virtual const wStatus& CreateDir(const std::string& dirname) = 0;
+    virtual int CreateDir(const std::string& dirname) = 0;
 
     // 删除目录
-    virtual const wStatus& DeleteDir(const std::string& dirname) = 0;
+    virtual int DeleteDir(const std::string& dirname) = 0;
 
     // 文件大小
-    virtual const wStatus& GetFileSize(const std::string& fname, uint64_t* file_size) = 0;
+    virtual int GetFileSize(const std::string& fname, uint64_t* file_size) = 0;
 
     // 重命名文件名
-    virtual const wStatus& RenameFile(const std::string& src, const std::string& target) = 0;
+    virtual int RenameFile(const std::string& src, const std::string& target) = 0;
 
     virtual bool FileExists(const std::string& fname) = 0;
 
@@ -100,8 +99,8 @@ public:
     virtual void SleepForMicroseconds(int micros) = 0;
 };
 
-extern wStatus WriteStringToFile(wEnv* env, const wSlice& data, const std::string& fname);
-extern wStatus ReadFileToString(wEnv* env, const std::string& fname, std::string* data);
+extern int WriteStringToFile(wEnv* env, const wSlice& data, const std::string& fname);
+extern int ReadFileToString(wEnv* env, const std::string& fname, std::string* data);
 
 }	// namespace hnet
 
