@@ -4,6 +4,7 @@
  * Copyright (C) Hupu, Inc.
  */
 
+#include <algorithm>
 #include "wMaster.h"
 #include "wServer.h"
 #include "wLogger.h"
@@ -66,6 +67,7 @@ const wStatus& wMaster::PrepareStart() {
     if (!mServer->Config()->GetConf("protocol", &protocol)) {
     	mStatus = mServer->PrepareStart(host, port);
     } else {
+    	std::transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
     	mStatus = mServer->PrepareStart(host, port, protocol);
     }
     return mStatus;
