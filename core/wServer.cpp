@@ -42,7 +42,7 @@ wServer::~wServer() {
     SAFE_DELETE(mAcceptSem);
 }
 
-const wStatus& wServer::PrepareStart(const std::string& ipaddr, uint16_t port, std::string protocol) {
+const wStatus& wServer::PrepareStart(const std::string& ipaddr, uint16_t port, const std::string& protocol) {
 	// 创建非阻塞listen socket
     if (!AddListener(ipaddr, port, protocol).Ok()) {
 		return mStatus;
@@ -511,8 +511,7 @@ const wStatus& wServer::Send(wTask *task, const google::protobuf::Message* msg) 
 }
 #endif
 
-const wStatus& wServer::AddListener(const std::string& ipaddr, uint16_t port, std::string protocol) {
-	std::transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
+const wStatus& wServer::AddListener(const std::string& ipaddr, uint16_t port, const std::string& protocol) {
     wSocket *socket;
     if (protocol == "UDP") {
 		SAFE_NEW(wUdpSocket(kStConnect), socket);	// udp无 listen socket

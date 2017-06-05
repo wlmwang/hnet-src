@@ -40,7 +40,7 @@ public:
     virtual ~wMultiClient();
 
     // 添加连接
-    const wStatus& AddConnect(int type, const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
+    const wStatus& AddConnect(int type, const std::string& ipaddr, uint16_t port, const std::string& protocol = "TCP");
 
     // 重连
     const wStatus& ReConnect(wTask* task);

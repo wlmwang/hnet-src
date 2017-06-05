@@ -17,9 +17,7 @@ wSingleClient::~wSingleClient() {
     SAFE_DELETE(mTask);
 }
 
-const wStatus& wSingleClient::Connect(const std::string& ipaddr, uint16_t port, std::string protocol) {
-    std::transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
-
+const wStatus& wSingleClient::Connect(const std::string& ipaddr, uint16_t port, const std::string& protocol) {
     wSocket *socket;
     if (protocol == "TCP") {
        SAFE_NEW(wTcpSocket(kStConnect), socket);

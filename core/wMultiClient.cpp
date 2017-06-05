@@ -26,12 +26,11 @@ wMultiClient::~wMultiClient() {
     CleanTask();
 }
 
-const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port, std::string protocol) {
+const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port, const std::string& protocol) {
     if (type >= kClientNumShard) {
         return mStatus = wStatus::Corruption("wMultiClient::AddConnect failed", "overload type");
     }
-    std::transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
-
+    
     wSocket *socket;
     if (protocol == "TCP") {
        SAFE_NEW(wTcpSocket(kStConnect), socket);

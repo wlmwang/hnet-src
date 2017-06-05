@@ -45,7 +45,7 @@ public:
     explicit wServer(wConfig* config);
     virtual ~wServer();
 
-    const wStatus& PrepareStart(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
+    const wStatus& PrepareStart(const std::string& ipaddr, uint16_t port, const std::string& protocol = "TCP");
 
     // single模式启动服务
     const wStatus& SingleStart(bool daemon = true);
@@ -135,7 +135,7 @@ protected:
     const wStatus& AcceptConn(wTask *task);
 
     const wStatus& InitEpoll();
-    const wStatus& AddListener(const std::string& ipaddr, uint16_t port, std::string protocol = "TCP");
+    const wStatus& AddListener(const std::string& ipaddr, uint16_t port, const std::string& protocol = "TCP");
 
     // 添加channel socket到epoll侦听事件队列
     const wStatus& Channel2Epoll(bool addpool = true);

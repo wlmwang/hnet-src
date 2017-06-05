@@ -26,15 +26,16 @@ inline uint16_t CmdId(uint8_t cmd, uint8_t para) {
 }
 
 struct wNull_t {
+public:
     wNull_t(const uint8_t cmd, const uint8_t para): mCmd(cmd), mPara(para) { }
 
-    uint16_t GetId() const {
+    inline uint16_t GetId() const {
         return mId;
     }
-    uint8_t GetCmd() const {
+    inline uint8_t GetCmd() const {
         return mCmd;
     }
-    uint8_t GetPara() const {
+    inline uint8_t GetPara() const {
         return mPara;
     }
     
@@ -48,6 +49,7 @@ struct wNull_t {
 };
 
 struct wCommand : public wNull_t {
+public:
     wCommand(const uint8_t cmd = kCmdNull, const uint8_t para = kParaNull): wNull_t(cmd, para) { }
 
     inline void ParseFromArray(char* buf, uint32_t len) {
