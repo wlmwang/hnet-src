@@ -218,8 +218,7 @@ int main(int argc, const char *argv[]) {
 	    	}
 	    } else {
 	    	// 准备服务器
-			wStatus s = master->PrepareStart();
-			if (s.Ok()) {
+			if (master->PrepareStart().Ok()) {
 				// Master-Worker方式开启服务器
 				master->MasterStart();
 			} else {

@@ -147,11 +147,9 @@ int main(int argc, const char *argv[]) {
 	}
 
 	// 准备客户端
-	wStatus s = client->PrepareStart();
-	if (s.Ok()) {
+	if (client->PrepareStart().Ok()) {
 		/** 阻塞服务方式运行*/
-		//s = client->Start();
-		//std::cout << "start end:" << s.ToString() << std::endl;
+		//client->Start();
 
 		/** 守护线程方式运行*/
 		std::cout << "thread start" << std::endl;

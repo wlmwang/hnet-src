@@ -54,9 +54,8 @@ int main(int argc, const char *argv[]) {
         return -1;
     }
 
-    wStatus s;
     // 连接服务器
-    s = client->Connect(host, port, "HTTP");
+    wStatus s = client->Connect(host, port, "HTTP");
     if (!s.Ok()) {
     	std::cout << "client connect failed" << s.ToString() << std::endl;
     	return -1;
