@@ -22,9 +22,9 @@ wPing::~wPing() {
 
 const wStatus& wPing::Close() {
     if (close(mFD) != 0) {
-        return mStatus = wStatus::IOError("wPing::Close, close failed", error::Strerror(errno));
+        mStatus = wStatus::IOError("wPing::Close, close failed", error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wPing::Open() {
@@ -36,9 +36,9 @@ const wStatus& wPing::Open() {
     // 若无意中ping一个广播地址或多播地址，将会引来大量应答
     const int size = 50*1024;
     if (setsockopt(mFD, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) != 0) {
-        return mStatus = wStatus::IOError("wPing::open, set socket receive buf failed", error::Strerror(errno));
+        mStatus = wStatus::IOError("wPing::open, set socket receive buf failed", error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wPing::SetTimeout(float timeout) {
@@ -57,9 +57,9 @@ const wStatus& wPing::SetSendTimeout(float timeout) {
         tv.tv_usec = 700000;
     }
     if (setsockopt(mFD, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) == -1) {
-        return mStatus = wStatus::IOError("wPing::SetSendTimeout, setsockopt SO_SNDTIMEO failed", error::Strerror(errno));
+        mStatus = wStatus::IOError("wPing::SetSendTimeout, setsockopt SO_SNDTIMEO failed", error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wPing::SetRecvTimeout(float timeout) {
@@ -71,9 +71,9 @@ const wStatus& wPing::SetRecvTimeout(float timeout) {
         tv.tv_usec = 700000;
     }
     if (setsockopt(mFD, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
-        return mStatus = wStatus::IOError("wPing::SetRecvTimeout, setsockopt SO_RCVTIMEO failed", error::Strerror(errno));
+        mStatus = wStatus::IOError("wPing::SetRecvTimeout, setsockopt SO_RCVTIMEO failed", error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 const wStatus& wPing::Ping(const char *ip) {
@@ -86,13 +86,6 @@ const wStatus& wPing::Ping(const char *ip) {
     mDestAddr.sin_family = AF_INET;
     unsigned long inaddr = 0l;
     if ((inaddr = inet_addr(mStrIp.c_str())) == INADDR_NONE) {
-        /*
-        struct hostent *host;
-        if ((host = gethostbyname(mStrIp.c_str())) == NULL) {
-            return -1;
-        }
-        memcpy((char *)&mDestAddr.sin_addr, host->h_addr, host->h_length);
-        */
         return mStatus = wStatus::IOError("wPing::Ping, inet_addr failed, ip: " + std::string(ip), error::Strerror(errno));
     } else {
         mDestAddr.sin_addr.s_addr = inaddr;
@@ -112,9 +105,9 @@ const wStatus& wPing::SendPacket() {
     int len = Pack();
 
     if (sendto(mFD, mSendpacket, len, 0, reinterpret_cast<struct sockaddr *>(&mDestAddr), sizeof(mDestAddr)) < len) {
-        return mStatus = wStatus::IOError("wPing::Ping, sendto ping error", error::Strerror(errno));
+        mStatus = wStatus::IOError("wPing::Ping, sendto ping error", error::Strerror(errno));
     }
-    return mStatus.Clear();
+    return mStatus;
 }
 
 // 接收所有ICMP报文
@@ -164,7 +157,7 @@ const wStatus& wPing::RecvPacket() {
         return mStatus = wStatus::Corruption("wPing::Ping, parse error, ip: ", mStrIp);
     }
     
-    return mStatus.Clear();
+    return mStatus;
 }
 
 // 设置ICMP请求报头

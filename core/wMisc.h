@@ -126,7 +126,8 @@ std::vector<std::string> SplitString(const std::string& src, const std::string& 
 int FastUnixSec2Tm(time_t unix_sec, struct tm* tm, int time_zone = 8);
 
 // 网卡获取地址
-unsigned GetIpByIF(const char* ifname);
+int GetIpList(std::vector<unsigned int>& iplist);
+unsigned int GetIpByIF(const char* ifname);
 
 // 切换进程工作目录
 // 行成功则返回0, 失败返回-1, errno 为错误代码

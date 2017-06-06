@@ -237,8 +237,32 @@ uint64_t Ngcd(uint64_t *arr, size_t n) {
     return Gcd(arr[n-1], Ngcd(arr, n-1));
 }
 
-unsigned GetIpByIF(const char* ifname) {
-    unsigned ip = 0;
+int GetIpList(std::vector<unsigned int>& iplist) {
+    unsigned int ip = 0;
+    ssize_t fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd >= 0) {
+        struct ifconf ifc = {0, {0}};
+        struct ifreq buf[64];
+        memset(buf, 0, sizeof(buf));
+        ifc.ifc_len = sizeof(buf);
+        ifc.ifc_buf = reinterpret_cast<caddr_t>(buf);
+        if (!ioctl(fd, SIOCGIFCONF, (char*)&ifc)) {
+            size_t interface = ifc.ifc_len / sizeof(struct ifreq); 
+            while (interface-- > 0) {
+                if (!ioctl(fd, SIOCGIFADDR, reinterpret_cast<char*>(&buf[interface]))) {
+                    ip = reinterpret_cast<unsigned>((reinterpret_cast<struct sockaddr_in*>(&buf[interface].ifr_addr))->sin_addr.s_addr);
+                    iplist.push_back(ip);
+                }
+            }
+        }
+        close(fd);
+        return 0;
+    }
+    return -1;
+}
+
+unsigned int GetIpByIF(const char* ifname) {
+    unsigned int ip = 0;
     ssize_t fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd >= 0) {
         struct ifconf ifc = {0, {0}};
@@ -250,7 +274,7 @@ unsigned GetIpByIF(const char* ifname) {
             size_t interface = ifc.ifc_len / sizeof(struct ifreq); 
             while (interface-- > 0) {
                 if (strcmp(buf[interface].ifr_name, ifname) == 0) {
-                    if (!ioctl(fd, SIOCGIFADDR, reinterpret_cast<char *>(&buf[interface]))) {
+                    if (!ioctl(fd, SIOCGIFADDR, reinterpret_cast<char*>(&buf[interface]))) {
                         ip = reinterpret_cast<unsigned>((reinterpret_cast<struct sockaddr_in*>(&buf[interface].ifr_addr))->sin_addr.s_addr);
                     }
                     break;  
