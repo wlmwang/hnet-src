@@ -36,11 +36,15 @@ public:
     virtual ~wTask();
 
     virtual const wStatus& Connect() {
-        return mStatus.Clear();
+        return mStatus;
+    }
+    
+    virtual const wStatus& DisConnect() {
+        return mStatus;
     }
 
     virtual const wStatus& ReConnect() {
-        return mStatus.Clear();
+        return mStatus;
     }
 
     // 处理接受到数据，转发给业务处理函数 Handlemsg 处理。每条消息大小[1b,512k]

@@ -424,7 +424,10 @@ void wMultiClient::CheckHeartBeat() {
         			} else { // 心跳检测
                         (*it)->HeartbeatSend(); // 发送心跳
                         if ((*it)->HeartbeatOut()) {    // 心跳超限
+
+                            (*it)->DisConnect();
                             (*it)->Socket()->SS() = kSsUnconnect;
+                            
                             RemoveTask(*it, NULL, false);
                         }
         			}

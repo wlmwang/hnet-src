@@ -270,6 +270,7 @@ const wStatus& wServer::Recv() {
 		if (mScheduleTurn) Unlocks(NULL, &slot);
 
 		if (task->Socket()->FD() == kFDUnknown || evt[i].events & (EPOLLERR | EPOLLPRI)) {
+			task->DisConnect();
 			RemoveTask(task);
 		} else if (task->Socket()->ST() == kStListen && task->Socket()->SS() == kSsListened) {
 			if (evt[i].events & EPOLLIN) {	// 套接口准备好了接受新连接
@@ -281,6 +282,7 @@ const wStatus& wServer::Recv() {
 			if (evt[i].events & EPOLLIN) {	// 套接口准备好了读取操作（udp无需删除task）
 				ssize_t size;
 				if (!(mStatus = task->TaskRecv(&size)).Ok() && task->Socket()->SP() != kSpUdp) {
+					task->DisConnect();
 					RemoveTask(task);
 				}
 			} else if (evt[i].events & EPOLLOUT) {
@@ -291,6 +293,7 @@ const wStatus& wServer::Recv() {
 					// 写入失败，半连接，对端读关闭（udp无需删除task）
 					ssize_t size;
 					if (!(mStatus = task->TaskSend(&size)).Ok() && task->Socket()->SP() != kSpUdp) {
+						task->DisConnect();
 						RemoveTask(task);
 					}
 				}
@@ -734,13 +737,19 @@ void wServer::CheckHeartBeat() {
 	    	while (it != mTaskPool[i].end()) {
 	    		if ((*it)->Socket()->ST() == kStConnect && ((*it)->Socket()->SP() == kSpTcp || (*it)->Socket()->SP() == kSpUnix)) {
 	    			if ((*it)->Socket()->SS() == kSsUnconnect) {	// 断线连接
+	    				
+	    				(*it)->DisConnect();
 	    				RemoveTask(*it, &it);
+
 	    				if (mScheduleTurn) Unlocks(&slot);
 	    				continue;
 	    			} else {	// 心跳检测
 						(*it)->HeartbeatSend();	// 发送心跳
 						if ((*it)->HeartbeatOut()) {	// 心跳超限
+							
+							(*it)->DisConnect();
 							RemoveTask(*it, &it);
+
 							if (mScheduleTurn) Unlocks(&slot);
 							continue;
 						}
