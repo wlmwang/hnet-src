@@ -97,6 +97,7 @@ const wStatus& wServer::WorkerStart(bool daemon) {
     while (daemon) {
     	if (mExiting) {
     	    if (kAcceptStuff == 0 && mShm) {
+    	    	mAcceptAtomic->CompareExchangeWeak(true, false);
     	    	mShm->Remove();
     	    } else if (kAcceptStuff == 1 && mAcceptSem) {
     	    	mAcceptSem->Remove();
@@ -117,6 +118,7 @@ const wStatus& wServer::WorkerStart(bool daemon) {
 const wStatus& wServer::HandleSignal() {
     if (g_terminate) {
 	    if (kAcceptStuff == 0 && mShm) {
+	    	mAcceptAtomic->CompareExchangeWeak(true, false);
 	    	mShm->Remove();
 	    } else if (kAcceptStuff == 1 && mAcceptSem) {
 	    	mAcceptSem->Remove();
@@ -209,28 +211,6 @@ void wServer::Unlocks(std::vector<int>* slot, std::vector<int>* blackslot) {
 	    }
 	}
 }
-const wStatus& wServer::AttachAcceptMutex() {
-	if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
-		if (kAcceptStuff == 0) {
-			if (mShm) {
-				SAFE_DELETE(mShm);
-			}
-    		if (mEnv->NewShm(kAcceptMutex, &mShm, sizeof(wAtomic<bool>)) == 0) {
-    			if (mShm->AttachShm() == 0) {
-    				void* ptr = mShm->AllocShm(sizeof(wAtomic<bool>));
-    				if (ptr) {
-    					SAFE_NEW((ptr)wAtomic<bool>, mAcceptAtomic);
-    				} else {
-    					mStatus = wStatus::IOError("wServer::InitAcceptMutex alloc shm failed", "");
-    				}
-    			} else {
-    				mStatus = wStatus::IOError("wServer::InitAcceptMutex create shm failed", "");
-    			}
-    		}
-		}
-	}
-	return mStatus;
-}
 
 const wStatus& wServer::InitAcceptMutex() {
 	if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
@@ -240,6 +220,7 @@ const wStatus& wServer::InitAcceptMutex() {
     				void* ptr = mShm->AllocShm(sizeof(wAtomic<bool>));
     				if (ptr) {
     					SAFE_NEW((ptr)wAtomic<bool>, mAcceptAtomic);
+    					mAcceptAtomic->Exchange(false);
     				} else {
     					mStatus = wStatus::IOError("wServer::InitAcceptMutex alloc shm failed", "");
     				}
@@ -267,7 +248,7 @@ const wStatus& wServer::InitAcceptMutex() {
 
 const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {	// 争抢accept锁
-		if ((kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeStrong(false, true)) ||
+		if ((kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeWeak(false, true)) ||
 			(kAcceptStuff == 1 && mAcceptSem->TryWait() == 0) || 
 			(kAcceptStuff == 2 && mEnv->LockFile(kAcceptMutex, &mAcceptFL) == 0)) {
 			Listener2Epoll(false);
@@ -320,17 +301,16 @@ const wStatus& wServer::Recv() {
 	}
 
 	if (mUseAcceptTurn == true && mAcceptHeld == true) {
-		RemoveListener(false);
-		
-		if (kAcceptStuff == 0) {
-			mAcceptAtomic->CompareExchangeStrong(true, false);
-		} else if (kAcceptStuff == 1) {
-			mAcceptSem->Post();
-		} else if (kAcceptStuff == 2) {
-			mEnv->UnlockFile(mAcceptFL);
+		if (kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeWeak(true, false)) {
+			RemoveListener(false);
+			mAcceptHeld = false;
+		} else if (kAcceptStuff == 1 && mAcceptSem->Post() == 0) {
+			RemoveListener(false);
+			mAcceptHeld = false;
+		} else if (kAcceptStuff == 2 && mEnv->UnlockFile(mAcceptFL) == 0) {
+			RemoveListener(false);
+			mAcceptHeld = false;
 		}
-
-		mAcceptHeld = false;
 	}
     return mStatus;
 }

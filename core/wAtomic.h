@@ -47,15 +47,16 @@ public:
     // 调用该函数之后，如果被该原子对象封装的值与参数 expected 所指定的值不相等，expected 中的内容就是原子对象的旧值。
     // 整个操作是原子的，当前线程读取和修改该原子对象时，别的线程不能对读取和修改该原子对象。
     // 
-    // 与compare_exchange_strong不同, weak版本的compare-and-exchange操作允许spuriously 返回 false，
-    // 即原子对象所封装的值与参数 expected 的物理内容相同，但却仍然返回 false，这在使用循环操作的算法下是可以接受的，并且在一些平台下weak版本的性能更好
-    inline bool CompareExchangeWeak(T expected, T v) {
-        return mRep.compare_exchange_weak(expected, v, std::memory_order_seq_cst);
+    // 与compare_exchange_strong不同, weak版本的compare-and-exchange操作允许spuriously 返回 false。
+    // 即原子对象所封装的值与参数 expected 的物理内容相同，但却仍然返回 false，因为把desired赋值给对象会失败（特别是对于没有compare/exchange指令的CPU），失败的情况下不会更新std::atomic对象的值。
+    // 这在使用循环操作的算法下是可以接受的，并且在一些平台下weak版本的性能更好。
+    inline bool CompareExchangeWeak(T expected, T desired) {
+        return mRep.compare_exchange_weak(expected, desired, std::memory_order_seq_cst);
     }
 
     // 与weak版本的差别在于，如果原子对象所封装的值与参数 expected 的物理内容相同，比较操作一定会为 true
-    inline bool CompareExchangeStrong(T expected, T v) {
-        return mRep.compare_exchange_strong(expected, v, std::memory_order_seq_cst);
+    inline bool CompareExchangeStrong(T expected, T desired) {
+        return mRep.compare_exchange_strong(expected, desired, std::memory_order_seq_cst);
     }
 
 protected:

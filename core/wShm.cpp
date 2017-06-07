@@ -108,7 +108,7 @@ int wPosixShm::AttachShm(int pipeid) {
 
 void* wPosixShm::AllocShm(size_t size) {
 	if (mShmhead->mUsedOff + static_cast<uintptr_t>(size) < mShmhead->mEnd) {
-		void* ptr = (void*)(mShmhead->mUsedOff);
+		void* ptr = reinterpret_cast<void*>(mShmhead->mUsedOff);
 		mShmhead->mUsedOff += static_cast<uintptr_t>(size);
 		return ptr;
 	}

@@ -45,6 +45,8 @@ public:
 
 	// 删除系统中的shm
 	virtual void Destroy() = 0;
+
+	virtual struct Shmhead_t* ShmHead() = 0;
 };
 
 // 共享内存实现类
@@ -58,11 +60,12 @@ public:
 	virtual void* AllocShm(size_t size = 0);
 	virtual void Remove();
 	virtual void Destroy();
-
+	virtual struct Shmhead_t* ShmHead() { return mShmhead;}
+	
 protected:
 	int mShmId;
 	size_t mSize;
-	struct Shmhead_t *mShmhead;
+	struct Shmhead_t* mShmhead;
 	std::string mFilename;
 };
 

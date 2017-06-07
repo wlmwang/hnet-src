@@ -52,8 +52,7 @@ public:
 
     // 创建惊群锁
     const wStatus& InitAcceptMutex();
-    const wStatus& AttachAcceptMutex();
-
+    
     // master-worker多进程架构
     // PrepareMaster 需在master进程中调用
     // WorkerStart在worker进程提供服务

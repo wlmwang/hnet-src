@@ -28,8 +28,11 @@ wSignal::Signal_t g_signals[] = {
     {SIGALRM,   "SIGALRM",  "",         &wSignal::SignalHandler},
     {SIGIO,     "SIGIO",    "",         &wSignal::SignalHandler},
     {SIGCHLD,   "SIGCHLD",  "",         &wSignal::SignalHandler},
+    {SIGABRT,   "SIGABRT",  "",         &wSignal::SignalHandler},
+
     {SIGSYS,    "SIGSYS",   "",         SIG_IGN},
     {SIGPIPE,   "SIGPIPE",  "",         SIG_IGN},
+    {SIGTSTP,   "SIGTSTP",  "",         SIG_IGN},   // Ctrl-Z
     {0,         NULL,       "",         NULL}
 };
 
@@ -91,7 +94,8 @@ void wSignal::SignalHandler(int signo) {
         g_quit = 1;
         action = ", shutting down";
         break;
-
+        
+    case SIGABRT:
     case SIGTERM:
     case SIGINT:
         g_terminate = 1;
