@@ -50,9 +50,6 @@ public:
     // single模式启动服务
     const wStatus& SingleStart(bool daemon = true);
 
-    // 创建惊群锁
-    const wStatus& InitAcceptMutex();
-    
     // master-worker多进程架构
     // PrepareMaster 需在master进程中调用
     // WorkerStart在worker进程提供服务
@@ -127,6 +124,11 @@ protected:
     }
     void Locks(std::vector<int>* slot = NULL, std::vector<int>* blackslot = NULL);
     void Unlocks(std::vector<int>* slot = NULL, std::vector<int>* blackslot = NULL);
+    
+    // 创建惊群锁（master调用）
+    const wStatus& InitAcceptMutex();
+    // 释放惊群锁（master调用）
+    const wStatus& ReleaseAcceptMutex(int pid);
 
     // 事件读写主调函数
     const wStatus& Recv();
@@ -183,9 +185,11 @@ protected:
 
     // 惊群锁
     wShm *mShm;
-    wAtomic<bool>* mAcceptAtomic;
+
+    wAtomic<int>* mAcceptAtomic;
     wFileLock* mAcceptFL;
     wSem *mAcceptSem;
+
     bool mUseAcceptTurn;
     bool mAcceptHeld;
     int64_t mAcceptDisabled;

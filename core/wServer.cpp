@@ -30,7 +30,7 @@ namespace hnet {
 
 wServer::wServer(wConfig* config) : mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleTurn(kScheduleTurn), mScheduleOk(true), 
 mEpollFD(kFDUnknown), mTimeout(10),mTask(NULL), mShm(NULL), mAcceptAtomic(NULL), mAcceptFL(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), 
-mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config),mEnv(wEnv::Default()) {
+mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config), mEnv(wEnv::Default()) {
 	assert(mConfig != NULL);
     mLatestTm = misc::GetTimeofday();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
@@ -97,7 +97,7 @@ const wStatus& wServer::WorkerStart(bool daemon) {
     while (daemon) {
     	if (mExiting) {
     	    if (kAcceptStuff == 0 && mShm) {
-    	    	mAcceptAtomic->CompareExchangeWeak(true, false);
+    	    	mAcceptAtomic->CompareExchangeWeak(mMaster->mWorker->mPid, -1);
     	    	mShm->Remove();
     	    } else if (kAcceptStuff == 1 && mAcceptSem) {
     	    	mAcceptSem->Remove();
@@ -118,7 +118,7 @@ const wStatus& wServer::WorkerStart(bool daemon) {
 const wStatus& wServer::HandleSignal() {
     if (g_terminate) {
 	    if (kAcceptStuff == 0 && mShm) {
-	    	mAcceptAtomic->CompareExchangeWeak(true, false);
+	    	mAcceptAtomic->CompareExchangeWeak(mMaster->mWorker->mPid, -1);
 	    	mShm->Remove();
 	    } else if (kAcceptStuff == 1 && mAcceptSem) {
 	    	mAcceptSem->Remove();
@@ -215,12 +215,12 @@ void wServer::Unlocks(std::vector<int>* slot, std::vector<int>* blackslot) {
 const wStatus& wServer::InitAcceptMutex() {
 	if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
 		if (kAcceptStuff == 0) {
-    		if (mEnv->NewShm(kAcceptMutex, &mShm, sizeof(wAtomic<bool>)) == 0) {
+    		if (mEnv->NewShm(kAcceptMutex, &mShm, sizeof(wAtomic<int>)) == 0) {
     			if (mShm->CreateShm() == 0) {
-    				void* ptr = mShm->AllocShm(sizeof(wAtomic<bool>));
+    				void* ptr = mShm->AllocShm(sizeof(wAtomic<int>));
     				if (ptr) {
-    					SAFE_NEW((ptr)wAtomic<bool>, mAcceptAtomic);
-    					mAcceptAtomic->Exchange(false);
+    					SAFE_NEW((ptr)wAtomic<int>, mAcceptAtomic);
+    					mAcceptAtomic->Exchange(-1);
     				} else {
     					mStatus = wStatus::IOError("wServer::InitAcceptMutex alloc shm failed", "");
     				}
@@ -246,9 +246,16 @@ const wStatus& wServer::InitAcceptMutex() {
 	return mStatus;
 }
 
+const wStatus& wServer::ReleaseAcceptMutex(int pid) {
+	if (kAcceptStuff == 0 && mShm) {
+		mAcceptAtomic->CompareExchangeWeak(pid, -1);
+	}
+	return mStatus;
+}
+
 const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {	// 争抢accept锁
-		if ((kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeWeak(false, true)) ||
+		if ((kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeWeak(-1, mMaster->mWorker->mPid)) ||
 			(kAcceptStuff == 1 && mAcceptSem->TryWait() == 0) || 
 			(kAcceptStuff == 2 && mEnv->LockFile(kAcceptMutex, &mAcceptFL) == 0)) {
 			Listener2Epoll(false);
@@ -304,7 +311,7 @@ const wStatus& wServer::Recv() {
 	}
 
 	if (mUseAcceptTurn == true && mAcceptHeld == true) {
-		if (kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeWeak(true, false)) {
+		if (kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeWeak(mMaster->mWorker->mPid, -1)) {
 			RemoveListener(false);
 			mAcceptHeld = false;
 		} else if (kAcceptStuff == 1 && mAcceptSem->Post() == 0) {

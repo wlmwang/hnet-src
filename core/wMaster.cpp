@@ -19,7 +19,7 @@
 namespace hnet {
 
 wMaster::wMaster(const std::string& title, wServer* server) : mPid(getpid()), mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0),
-mLive(1), mServer(server), mWorker(NULL),mEnv(wEnv::Default()) {
+mLive(1), mServer(server), mWorker(NULL), mEnv(wEnv::Default()) {
 	assert(mServer != NULL);
 	srand(misc::GetTimeofday());
     std::string pid_path;
@@ -373,7 +373,6 @@ const wStatus& wMaster::ReapChildren() {
         // 进程已退出
 		if (mWorkerPool[i]->mExited) {
 			if (!mWorkerPool[i]->mDetached) {
-
 				// 关闭channel && 释放进程表项
 				mWorkerPool[i]->Channel()->Close();
 
@@ -531,6 +530,9 @@ void wMaster::WorkerExitStat() {
 			if (mWorkerPool[i]->mPid == pid) {	// 设置退出状态
                 mWorkerPool[i]->mStat = status;
                 mWorkerPool[i]->mExited = 1;
+                
+				// 释放已停止进程，惊群锁
+				mServer->ReleaseAcceptMutex(pid);
                 break;
 			}
 		}
