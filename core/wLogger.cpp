@@ -126,7 +126,9 @@ void wPosixLogger::Logv(const char* format, va_list ap) {
 
 		assert(p <= limit);
 		fwrite(base, 1, p - base, mFile);
-		fflush(mFile);
+		if (!kFFlushPerLog) {
+			fflush(mFile);
+		}
 
 		// 如果是new申请的缓冲地址，则它不会等于buffer的栈地址
 		if (base != buffer) {
