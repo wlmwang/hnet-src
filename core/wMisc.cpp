@@ -537,13 +537,14 @@ std::string UrlDecode(const std::string& str) {
 }   // namespace http
 
 namespace soft {
-uid_t	gDeamonUser = kDeamonUser;
-gid_t	gDeamonGroup = kDeamonGroup;
-std::string	gSoftwareName = kSoftwareName;
-std::string	gSoftwareVer = kSoftwareVer;
-std::string	gLockPath = kLockPath;
-std::string	gPidPath = kPidPath;
-std::string	gLogPath = kLogPath;
+static uid_t gDeamonUser = kDeamonUser;
+static gid_t gDeamonGroup = kDeamonGroup;
+static std::string	gSoftwareName = kSoftwareName;
+static std::string	gSoftwareVer = kSoftwareVer;
+static std::string	gLockPath = kLockPath;
+static std::string	gPidPath = kPidPath;
+static std::string	gLogPath = kLogPath;
+static std::string gAcceptmtxPath = kAcceptmtxPath;
 
 uid_t GetUser() { return gDeamonUser;}
 gid_t GetGroup() { return gDeamonGroup;}
@@ -552,6 +553,7 @@ const std::string& GetSoftVer() { return gSoftwareVer;}
 const std::string& GetLockPath() { return gLockPath;}
 const std::string& GetPidPath() { return gPidPath;}
 const std::string& GetLogPath() { return gLogPath;}
+const std::string& GetAcceptmtxPath() { return gAcceptmtxPath;}
 
 uid_t SetUser(uid_t uid) { return gDeamonUser = uid;}
 gid_t SetGroup(gid_t gid) { return gDeamonGroup = gid;}
@@ -560,6 +562,7 @@ const std::string& SetSoftVer(const std::string& ver) { return gSoftwareVer = ve
 const std::string& SetLockPath(const std::string& path) { return gLockPath = path;}
 const std::string& SetPidPath(const std::string& path) { return gPidPath = path;}
 const std::string& SetLogPath(const std::string& path) { return gLogPath = path;}
+const std::string& SetAcceptmtxPath(const std::string& path) { return gAcceptmtxPath = path;}
 
 }	// namespace hnet
 

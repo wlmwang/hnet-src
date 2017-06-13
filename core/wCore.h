@@ -97,19 +97,6 @@ const bool		kScheduleTurn = false;
 const bool		kHeartbeatTurn = true;
 const uint8_t   kHeartbeat = 10;
 
-// 惊群锁开关
-const bool		kAcceptTurn = true;
-// 惊群锁实现可使用以下三种
-// 0:atmoic（原子锁，c++11、共享内存支持） 
-// 1:semaphore（信号量，sem_open支持。TODO 测试情况跨进程极其不稳定，会引起bug） 
-// 2:file（记录锁，多数POSIX平台均对flock支持。性能最差）
-const int8_t	kAcceptStuff = 0;
-const char		kAcceptMutex[] = "accept.lock";
-
-// 消息协议
-const int8_t	kMpCommand = 1;
-const int8_t	kMpProtobuf = 2;
-
 // 进程相关
 const uint32_t	kMaxProcess = 1024;
 const int8_t    kProcessNoRespawn = -1;		// 子进程退出时，父进程不再创建
@@ -118,17 +105,31 @@ const int8_t    kProcessRespawn = -3;     	// 子进程异常退出时，父进�
 const int8_t    kProcessJustRespawn = -4;	// 子进程正在重启，该进程创建之后，再次退出时，父进程会重新创建它
 const int8_t    kProcessDetached = -5;		// 分离进程
 
-// 项目相关
+// 消息协议
+const int8_t	kMpCommand = 1;
+const int8_t	kMpProtobuf = 2;
+
+// 执行用户
 const uid_t     kDeamonUser = 0;
 const gid_t     kDeamonGroup = 0;
 
-const char      kSoftwareName[]   = "HNET";
-const char      kSoftwareVer[]    = "0.0.15";
+/**
+ * 惊群锁实现可使用以下三种
+ * 0:atmoic（原子锁，c++11、共享内存支持） 
+ * 1:semaphore（信号量，sem_open支持。@TODO 测试情况跨进程极其不稳定，会引起bug） 
+ * 2:file（记录锁，多数POSIX平台均对flock提供支持。但性能相对最低）
+ */
+const bool		kAcceptTurn = true;
+const int8_t	kAcceptStuff = 0;	// atmoic
+const char		kAcceptmtxPath[] = "hnet.mtx";
 
-const char		kBinPath[] = "./";
 const char      kLockPath[] = "hnet.lock";
 const char      kPidPath[] = "hnet.pid";
 const char      kLogPath[] = "hnet.log";
+const char		kBinPath[] = "./";
+
+const char      kSoftwareName[]   = "HNET";
+const char      kSoftwareVer[]    = "0.0.15";
 
 }   // namespace hnet
 

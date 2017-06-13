@@ -215,7 +215,7 @@ void wServer::Unlocks(std::vector<int>* slot, std::vector<int>* blackslot) {
 const wStatus& wServer::InitAcceptMutex() {
 	if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
 		if (kAcceptStuff == 0) {
-    		if (mEnv->NewShm(kAcceptMutex, &mShm, sizeof(wAtomic<int>)) == 0) {
+    		if (mEnv->NewShm(soft::GetAcceptmtxPath(), &mShm, sizeof(wAtomic<int>)) == 0) {
     			if (mShm->CreateShm() == 0) {
     				void* ptr = mShm->AllocShm(sizeof(wAtomic<int>));
     				if (ptr) {
@@ -229,14 +229,14 @@ const wStatus& wServer::InitAcceptMutex() {
     			}
     		}
 		} else if (kAcceptStuff == 1) {
-			if (mEnv->NewSem(kAcceptMutex, &mAcceptSem) == 0) {
+			if (mEnv->NewSem(soft::GetAcceptmtxPath(), &mAcceptSem) == 0) {
 				if (mAcceptSem->Open() == -1) {
 					mStatus = wStatus::IOError("wServer::InitAcceptMutex open sem failed", "");
 				}
 			}
 		} else if (kAcceptStuff == 2) {
     		int fd;
-    		if (mEnv->OpenFile(kAcceptMutex, fd) == 0) {
+    		if (mEnv->OpenFile(soft::GetAcceptmtxPath(), fd) == 0) {
     			mEnv->CloseFD(fd);
     		}
 		}
@@ -257,7 +257,7 @@ const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {	// 争抢accept锁
 		if ((kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeWeak(-1, mMaster->mWorker->mPid)) ||
 			(kAcceptStuff == 1 && mAcceptSem->TryWait() == 0) || 
-			(kAcceptStuff == 2 && mEnv->LockFile(kAcceptMutex, &mAcceptFL) == 0)) {
+			(kAcceptStuff == 2 && mEnv->LockFile(soft::GetAcceptmtxPath(), &mAcceptFL) == 0)) {
 			Listener2Epoll(false);
 			mAcceptHeld = true;
 		}
@@ -700,7 +700,7 @@ const wStatus& wServer::DeleteAcceptFile() {
     } else if (kAcceptStuff == 1 && mAcceptSem) {
     	mAcceptSem->Destroy();
     }
-    mEnv->DeleteFile(kAcceptMutex);
+    mEnv->DeleteFile(soft::GetAcceptmtxPath());
 	return mStatus;
 }
 
