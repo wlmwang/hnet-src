@@ -26,6 +26,7 @@ int wChannelTask::ChannelOpen(struct Request_t *request) {
 	open.ParseFromArray(request->mBuf, request->mLen);
 	mMaster->Worker(open.slot())->Pid() = open.pid();
 	mMaster->Worker(open.slot())->ChannelFD(0) = open.fd();
+	mMaster->Worker(open.slot())->Timeline() = misc::GetTimeofday()/1000000;
 	return 0;
 }
 

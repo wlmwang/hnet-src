@@ -40,8 +40,15 @@ public:
 	const wStatus& Start();
 
 	inline wMaster* Master() { return mMaster;}
-
+	inline std::string& Title() { return mTitle;}
 	inline pid_t& Pid() { return mPid;}
+	inline int& Priority() { return mPriority;}
+	inline int& Respawn() { return mRespawn;}
+	inline int& Detached() { return mDetached;}
+	inline int& Exited() { return mExited;}
+	inline int& Exiting() { return mExiting;}
+	inline int& Stat() { return mStat;}
+	inline uint32_t& Timeline() { return mTimeline;}
 	inline uint32_t& Slot() { return mSlot;}
 
 	inline wChannelSocket* Channel() { return mChannel;}
@@ -70,6 +77,7 @@ protected:
 	int mStat;		// waitpid子进程退出状态
 	int mRespawn;	// worker启动模式。退出是否重启
 	int mJustSpawn;
+	uint32_t mTimeline;
 
 	uint32_t mSlot;	// 进程表中索引
 	wChannelSocket* mChannel;	// worker进程channel

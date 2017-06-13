@@ -211,7 +211,8 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
     // 主进程master
     mWorker->mPid = pid;
     mWorker->mExited = 0;
-
+    mWorker->mTimeline = misc::GetTimeofday()/1000000;
+    
 	if (type >= 0) {
 		return mStatus;
 	}
