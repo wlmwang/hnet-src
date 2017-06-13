@@ -57,6 +57,8 @@ public:
     virtual void ProcessExit();
 
     inline uint32_t& WorkerNum() { return mWorkerNum;}
+    inline pid_t& Pid() { return mPid;}
+    inline std::string& Title() { return mTitle;}
 
     template<typename T = wServer*>
     inline T Server() { return reinterpret_cast<T>(mServer);}
