@@ -40,7 +40,7 @@ const wStatus& wUdpSocket::Listen(const std::string& host, uint16_t port) {
 }
 
 const wStatus& wUdpSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
-	mRecvTm = misc::GetTimeofday();
+	mRecvTm = soft::TimeNow();
     if (mClientHost.size() == 0 || mClientPort == 0) {
         struct sockaddr_in socketAddr;
         socklen_t addrLen;
@@ -59,7 +59,7 @@ const wStatus& wUdpSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
 }
 
 const wStatus& wUdpSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
-	mSendTm = misc::GetTimeofday();
+	mSendTm = soft::TimeNow();
 	if (mClientHost.size() != 0 && mClientPort != 0) {
 		struct sockaddr_in socketAddr;
 		socketAddr.sin_family = AF_INET;

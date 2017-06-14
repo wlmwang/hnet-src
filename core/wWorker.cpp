@@ -16,7 +16,7 @@
 namespace hnet {
 
 wWorker::wWorker(std::string title, uint32_t slot, wMaster* master) : mMaster(master), mTitle(title), mPid(-1), mPriority(0), mRlimitCore(kRlimitCore), 
-mDetached(0), mExited(0), mExiting(0), mStat(0), mRespawn(1), mJustSpawn(0), mTimeline(misc::GetTimeofday()/1000000), mSlot(slot) {
+mDetached(0), mExited(0), mExiting(0), mStat(0), mRespawn(1), mJustSpawn(0), mTimeline(soft::TimeNow()/1000000), mSlot(slot) {
 	SAFE_NEW(wChannelSocket(kStConnect), mChannel);
 }
 
@@ -25,6 +25,8 @@ wWorker::~wWorker() {
 }
 
 const wStatus& wWorker::PrepareStart() {
+    soft::TimeUpdate();
+    
 	// 设置当前进程优先级。进程默认优先级为0
 	// -20 -> 20 高 -> 低。只有root可提高优先级，即可减少priority值
 	if (mSlot < kMaxProcess && mPriority != 0) {
@@ -56,7 +58,7 @@ const wStatus& wWorker::PrepareStart() {
     if (mMaster->Worker(mSlot)->ChannelClose(0) == -1) {
     	return mStatus = wStatus::IOError("wWorker::PrepareStart, channel[0] close() failed", error::Strerror(errno));
     }
-    mTimeline = misc::GetTimeofday()/1000000;
+    mTimeline = soft::TimeNow()/1000000;
 
 	if (!(mStatus = PrepareRun()).Ok()) {
 		return mStatus;

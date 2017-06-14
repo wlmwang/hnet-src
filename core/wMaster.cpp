@@ -21,7 +21,6 @@ namespace hnet {
 wMaster::wMaster(const std::string& title, wServer* server) : mPid(getpid()), mTitle(title), mSlot(kMaxProcess), mDelay(0), mSigio(0),
 mLive(1), mServer(server), mWorker(NULL), mEnv(wEnv::Default()) {
 	assert(mServer != NULL);
-	srand(misc::GetTimeofday());
     std::string pid_path;
 	if (mServer->Config()->GetConf("pid_path", &pid_path) && pid_path.size() > 0) {
 		mPidPath = pid_path;
@@ -41,6 +40,8 @@ wMaster::~wMaster() {
 }
 
 const wStatus& wMaster::PrepareStart() {
+	soft::TimeUpdate();
+	
     std::string host;
     int16_t port = 0;
     if (!mServer->Config()->GetConf("host", &host) || !mServer->Config()->GetConf("port", &port)) {
@@ -132,6 +133,7 @@ const wStatus& wMaster::MasterStart() {
 
     // 主进程监听信号
     while (true) {
+    	soft::TimeUpdate();
 		HandleSignal();
 		Run();
     }
@@ -211,7 +213,7 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
     // 主进程master
     mWorker->mPid = pid;
     mWorker->mExited = 0;
-    mWorker->mTimeline = misc::GetTimeofday()/1000000;
+    mWorker->mTimeline = soft::TimeNow()/1000000;
     
 	if (type >= 0) {
 		return mStatus;

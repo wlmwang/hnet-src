@@ -10,7 +10,7 @@
 namespace hnet {
 
 wSocket::wSocket(SockType type, SockProto proto, SockFlag flag) : mFD(kFDUnknown), mPort(0), mRecvTm(0), mSendTm(0), 
-mMakeTm(misc::GetTimeofday()), mSockType(type), mSockProto(proto), mSockFlag(flag) { }
+mMakeTm(soft::TimeNow()), mSockType(type), mSockProto(proto), mSockFlag(flag) { }
 
 wSocket::~wSocket() {
     Close();
@@ -32,7 +32,7 @@ const wStatus& wSocket::SetFL(bool nonblock) {
 }
 
 const wStatus& wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
-    mRecvTm = misc::GetTimeofday();
+    mRecvTm = soft::TimeNow();
     while (true) {
         *size = recv(mFD, reinterpret_cast<void*>(buf), len, 0);
         if (*size > 0) {
@@ -55,7 +55,7 @@ const wStatus& wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
 }
 
 const wStatus& wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
-    mSendTm = misc::GetTimeofday();
+    mSendTm = soft::TimeNow();
     ssize_t sendedlen = 0, leftlen = len;
     while (true) {
         *size = send(mFD, reinterpret_cast<void*>(buf + sendedlen), leftlen, 0);

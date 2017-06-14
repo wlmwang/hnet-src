@@ -18,7 +18,7 @@ namespace hnet {
 wMultiClient::wMultiClient(wConfig* config, wServer* server) : mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleTurn(kScheduleTurn), mScheduleOk(true),
 mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mConfig(config), mServer(server) {
 	assert(mConfig != NULL);
-    mLatestTm = misc::GetTimeofday();
+    mLatestTm = soft::TimeNow();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
 
@@ -110,6 +110,8 @@ const wStatus& wMultiClient::DisConnect(wTask* task) {
 }
 
 const wStatus& wMultiClient::PrepareStart() {
+    soft::TimeUpdate();
+
     if (!InitEpoll().Ok()) {
        return mStatus;
     }
@@ -119,6 +121,8 @@ const wStatus& wMultiClient::PrepareStart() {
 const wStatus& wMultiClient::Start() {
     // 进入服务主服务
     while (true) {
+        soft::TimeUpdate();
+
         Recv();
         Run();
         CheckTick();
@@ -379,7 +383,7 @@ const wStatus& wMultiClient::CleanTaskPool(std::vector<wTask*> pool) {
 }
 
 void wMultiClient::CheckTick() {
-	mTick = misc::GetTimeofday() - mLatestTm;
+	mTick = soft::TimeNow() - mLatestTm;
 	if (mTick < 10*1000) {
 		return;
 	}

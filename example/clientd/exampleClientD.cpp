@@ -172,7 +172,7 @@ int main(int argc, const char *argv[]) {
 		client->JoinThread();
 		std::cout << "thread end" << std::endl;
 	} else {
-		std::cout << "prepare error:" << s.ToString() << std::endl;
+		std::cout << "prepare error" << std::endl;
 		return -1;
 	}
 

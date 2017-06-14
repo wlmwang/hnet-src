@@ -198,6 +198,9 @@ std::string UrlDecode(const std::string& str);
 
 namespace soft {
 
+void TimeUpdate();
+uint64_t TimeNow();
+
 uid_t GetUser();
 gid_t GetGroup();
 const std::string& GetSoftName();

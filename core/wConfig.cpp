@@ -11,7 +11,8 @@
 
 namespace hnet {
 
-wConfig::wConfig() : mPool(NULL), mProcTitle(NULL) {
+wConfig::wConfig(): mPool(NULL), mProcTitle(NULL) {
+    soft::TimeUpdate(); // 时间初始化
 	error::StrerrorInit(); // 初始化错误列表
     http::StatusCodeInit(); // 初始化http状态码
 	SAFE_NEW(wMemPool, mPool); // 初始化内存池

@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <algorithm>
 #include "wMisc.h"
+#include "wAtomic.h"
 #include "wLogger.h"
 
 namespace hnet {
@@ -537,6 +538,11 @@ std::string UrlDecode(const std::string& str) {
 }   // namespace http
 
 namespace soft {
+static wAtomic<uint64_t> gCurrentTime(0);
+
+void TimeUpdate() { return gCurrentTime.ReleaseStore(misc::GetTimeofday());}
+uint64_t TimeNow() { return gCurrentTime.AcquireLoad();}
+
 static uid_t gDeamonUser = kDeamonUser;
 static gid_t gDeamonGroup = kDeamonGroup;
 static std::string	gSoftwareName = kSoftwareName;

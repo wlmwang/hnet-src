@@ -80,6 +80,8 @@ int wSignal::AddHandler(const Signal_t *signal) {
 // 信号处理入口函数
 // 对于SIGCHLD信号，由自定义函数处理g_reap时调用waitpid
 void wSignal::SignalHandler(int signo) {
+    soft::TimeUpdate();
+    
     int err = errno;
     wSignal::Signal_t *signal;
     for (signal = g_signals; signal->mSigno != 0; signal++) {

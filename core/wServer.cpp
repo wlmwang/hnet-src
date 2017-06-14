@@ -32,7 +32,7 @@ wServer::wServer(wConfig* config) : mExiting(false), mTick(0), mHeartbeatTurn(kH
 mEpollFD(kFDUnknown), mTimeout(10),mTask(NULL), mShm(NULL), mAcceptAtomic(NULL), mAcceptFL(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), 
 mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config), mEnv(wEnv::Default()) {
 	assert(mConfig != NULL);
-    mLatestTm = misc::GetTimeofday();
+    mLatestTm = soft::TimeNow();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
 
@@ -43,6 +43,8 @@ wServer::~wServer() {
 }
 
 const wStatus& wServer::PrepareStart(const std::string& ipaddr, uint16_t port, const std::string& protocol) {
+	soft::TimeUpdate();
+
 	// 创建非阻塞listen socket
     if (!AddListener(ipaddr, port, protocol).Ok()) {
 		return mStatus;
@@ -62,6 +64,8 @@ const wStatus& wServer::SingleStart(bool daemon) {
 
     // 进入服务主循环
     while (daemon) {
+    	soft::TimeUpdate();
+
     	if (mExiting) {
 		    ProcessExit();
 		    CleanListenSock();
@@ -95,6 +99,8 @@ const wStatus& wServer::WorkerStart(bool daemon) {
 
     // 进入服务主循环
     while (daemon) {
+    	soft::TimeUpdate();
+    	
     	if (mExiting) {
     	    if (kAcceptStuff == 0 && mShm) {
     	    	mAcceptAtomic->CompareExchangeWeak(mMaster->mWorker->mPid, -1);
@@ -705,7 +711,7 @@ const wStatus& wServer::DeleteAcceptFile() {
 }
 
 void wServer::CheckTick() {
-	mTick = misc::GetTimeofday() - mLatestTm;
+	mTick = soft::TimeNow() - mLatestTm;
 	if (mTick < 10*1000) {
 		return;
 	}
