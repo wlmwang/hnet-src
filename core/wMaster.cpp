@@ -213,7 +213,7 @@ const wStatus& wMaster::SpawnWorker(int64_t type) {
     // 主进程master
     mWorker->mPid = pid;
     mWorker->mExited = 0;
-    mWorker->mTimeline = soft::TimeNow()/1000000;
+    mWorker->mTimeline = soft::TimeUnix();
     
 	if (type >= 0) {
 		return mStatus;

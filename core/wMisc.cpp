@@ -541,7 +541,8 @@ namespace soft {
 static wAtomic<uint64_t> gCurrentTime(0);
 
 void TimeUpdate() { return gCurrentTime.ReleaseStore(misc::GetTimeofday());}
-uint64_t TimeNow() { return gCurrentTime.AcquireLoad();}
+uint64_t TimeUsec() { return gCurrentTime.AcquireLoad();}
+time_t TimeUnix() { return static_cast<time_t>(gCurrentTime.AcquireLoad()/1000000);}
 
 static uid_t gDeamonUser = kDeamonUser;
 static gid_t gDeamonGroup = kDeamonGroup;

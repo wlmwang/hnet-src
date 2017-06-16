@@ -136,14 +136,16 @@ int SetBinPath(std::string bin_path = "", std::string self = "/proc/self/exe");
 // 创建守护进程
 int InitDaemon(std::string lock_path, const char *prefix = NULL);
 
-inline const char* IP2Text(u_long ip) {
-    in_addr in;
+// 错误返回NULL
+inline const char* IP2Text(uint32_t ip) {
+    struct in_addr in;
     in.s_addr = ip;
     return inet_ntoa(in);
 }
 
-inline uint32_t Text2IP(const char* cp) {
-    return static_cast<uint32_t>(inet_addr(cp));    // typedef in_addr_t u_long
+// 正确返回32无符号，错误返回：INADDR_NONE
+inline in_addr_t Text2IP(const char* cp) {
+    return inet_addr(cp);    // typedef uint32_t in_addr_t
 }
 
 inline void GetTimeofday(struct timeval* pVal) {
@@ -199,7 +201,8 @@ std::string UrlDecode(const std::string& str);
 namespace soft {
 
 void TimeUpdate();
-uint64_t TimeNow();
+uint64_t TimeUsec();
+time_t TimeUnix();
 
 uid_t GetUser();
 gid_t GetGroup();

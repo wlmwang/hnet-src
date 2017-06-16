@@ -32,7 +32,7 @@ wServer::wServer(wConfig* config) : mExiting(false), mTick(0), mHeartbeatTurn(kH
 mEpollFD(kFDUnknown), mTimeout(10),mTask(NULL), mShm(NULL), mAcceptAtomic(NULL), mAcceptFL(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), 
 mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config), mEnv(wEnv::Default()) {
 	assert(mConfig != NULL);
-    mLatestTm = soft::TimeNow();
+    mLatestTm = soft::TimeUsec();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
 }
 
@@ -711,7 +711,7 @@ const wStatus& wServer::DeleteAcceptFile() {
 }
 
 void wServer::CheckTick() {
-	mTick = soft::TimeNow() - mLatestTm;
+	mTick = soft::TimeUsec() - mLatestTm;
 	if (mTick < 10*1000) {
 		return;
 	}

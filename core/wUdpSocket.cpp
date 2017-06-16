@@ -23,7 +23,7 @@ const wStatus& wUdpSocket::Bind(const std::string& host, uint16_t port) {
 	struct sockaddr_in socketAddr;
 	socketAddr.sin_family = AF_INET;
 	socketAddr.sin_port = htons(static_cast<short int>(port));
-	socketAddr.sin_addr.s_addr = inet_addr(host.c_str());
+	socketAddr.sin_addr.s_addr = misc::Text2IP(host.c_str());
 	if (bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr)) == -1) {
 		return mStatus = wStatus::IOError("wUdpSocket::Bind bind failed", error::Strerror(errno));
 	}
@@ -40,7 +40,7 @@ const wStatus& wUdpSocket::Listen(const std::string& host, uint16_t port) {
 }
 
 const wStatus& wUdpSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
-	mRecvTm = soft::TimeNow();
+	mRecvTm = soft::TimeUsec();
     if (mClientHost.size() == 0 || mClientPort == 0) {
         struct sockaddr_in socketAddr;
         socklen_t addrLen;
@@ -59,12 +59,12 @@ const wStatus& wUdpSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
 }
 
 const wStatus& wUdpSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
-	mSendTm = soft::TimeNow();
+	mSendTm = soft::TimeUsec();
 	if (mClientHost.size() != 0 && mClientPort != 0) {
 		struct sockaddr_in socketAddr;
 		socketAddr.sin_family = AF_INET;
 		socketAddr.sin_port = htons((short)mClientPort);
-		socketAddr.sin_addr.s_addr = inet_addr(mClientHost.c_str());
+		socketAddr.sin_addr.s_addr = misc::Text2IP(mClientHost.c_str());
 		*size = sendto(mFD, reinterpret_cast<void*>(buf), len, 0, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr));
 	    if (*size >= 0) {
 	        //mStatus.Clear();

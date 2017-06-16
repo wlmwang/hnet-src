@@ -16,7 +16,7 @@
 namespace hnet {
 
 wWorker::wWorker(std::string title, uint32_t slot, wMaster* master) : mMaster(master), mTitle(title), mPid(-1), mPriority(0), mRlimitCore(kRlimitCore), 
-mDetached(0), mExited(0), mExiting(0), mStat(0), mRespawn(1), mJustSpawn(0), mTimeline(soft::TimeNow()/1000000), mSlot(slot) {
+mDetached(0), mExited(0), mExiting(0), mStat(0), mRespawn(1), mJustSpawn(0), mTimeline(soft::TimeUnix()), mSlot(slot) {
 	SAFE_NEW(wChannelSocket(kStConnect), mChannel);
 }
 
@@ -58,7 +58,7 @@ const wStatus& wWorker::PrepareStart() {
     if (mMaster->Worker(mSlot)->ChannelClose(0) == -1) {
     	return mStatus = wStatus::IOError("wWorker::PrepareStart, channel[0] close() failed", error::Strerror(errno));
     }
-    mTimeline = soft::TimeNow()/1000000;
+    mTimeline = soft::TimeUnix();
 
 	if (!(mStatus = PrepareRun()).Ok()) {
 		return mStatus;

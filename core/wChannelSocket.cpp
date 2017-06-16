@@ -48,7 +48,7 @@ const wStatus& wChannelSocket::Close() {
 }
 
 const wStatus& wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
-    mSendTm = soft::TimeNow();
+    mSendTm = soft::TimeUsec();
     // msghdr.msg_control 缓冲区必须与 cmsghdr 结构对齐
     union {
         struct cmsghdr  cm;
@@ -110,7 +110,7 @@ const wStatus& wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) 
 }
 
 const wStatus& wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
-    mRecvTm = soft::TimeNow();
+    mRecvTm = soft::TimeUsec();
     // msghdr.msg_control 缓冲区必须与 cmsghdr 结构对齐
     union {
         struct cmsghdr  cm;

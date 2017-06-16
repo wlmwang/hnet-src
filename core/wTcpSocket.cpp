@@ -39,7 +39,7 @@ const wStatus& wTcpSocket::Bind(const std::string& host, uint16_t port) {
 	struct sockaddr_in socketAddr;
 	socketAddr.sin_family = AF_INET;
 	socketAddr.sin_port = htons(static_cast<short int>(port));
-	socketAddr.sin_addr.s_addr = inet_addr(host.c_str());
+	socketAddr.sin_addr.s_addr = misc::Text2IP(host.c_str());
 	if (bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr)) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Bind bind failed", error::Strerror(errno));
 	}
@@ -79,7 +79,7 @@ const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16
 	memset(&stSockAddr, 0, sizeof(sockaddr_in));
 	stSockAddr.sin_family = AF_INET;
 	stSockAddr.sin_port = htons(static_cast<unsigned short>(port));
-	stSockAddr.sin_addr.s_addr = inet_addr(host.c_str());
+	stSockAddr.sin_addr.s_addr = misc::Text2IP(host.c_str());
 	*ret = static_cast<int64_t>(connect(mFD, reinterpret_cast<const struct sockaddr *>(&stSockAddr), sizeof(stSockAddr)));
 	if (*ret == -1 && timeout > 0) {
 		if (errno == EINPROGRESS) {

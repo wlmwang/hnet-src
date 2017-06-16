@@ -9,7 +9,6 @@
 
 #include <sys/socket.h>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wNoncopyable.h"
 
 namespace hnet {
@@ -26,17 +25,18 @@ const int8_t    kIcmpData = 4;
 class wPing : private wNoncopyable {
 public:
     wPing();
+    wPing(const std::string sip);
     ~wPing();
-    const wStatus& Open();
-    const wStatus& Close();
-    const wStatus& SetTimeout(float timeout = 0.1);
-    const wStatus& Ping(const char *ip);
+    int Open();
+    int Close();
+    int SetTimeout(float timeout = 0.1);
+    int Ping(const char *ip);
 
 protected:
-    const wStatus& SetSendTimeout(float timeout = 0.1);
-    const wStatus& SetRecvTimeout(float timeout = 0.1);
-    const wStatus& SendPacket();
-    const wStatus& RecvPacket();
+    int SetSendTimeout(float timeout = 0.1);
+    int SetRecvTimeout(float timeout = 0.1);
+    int SendPacket();
+    int RecvPacket();
     int Pack();
     int Unpack(char *buf, int len);
     unsigned short CalChksum(unsigned short *addr, int len);
@@ -45,14 +45,13 @@ protected:
     int mSeqNum;
     pid_t mPid;
 
-    std::string mStrIp;
+    std::string mLocalIp;
     struct sockaddr_in mDestAddr;	//目的地址
     struct sockaddr_in mFromAddr;	//返回地址
 
     char mSendpacket[kPacketSize];
     char mRecvpacket[kPacketSize];
     char mCtlpacket[kPacketSize];
-    wStatus mStatus;
 };
 
 }   // namespace hnet
