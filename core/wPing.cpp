@@ -29,12 +29,10 @@ int wPing::Open() {
         LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::Open socket() failed", error::Strerror(errno).c_str());
         return ret;
     }
-
     // 扩大套接字接收缓冲区到50k，主要为了减小接收缓冲区溢出的的可能性
     // 若无意中ping一个广播地址或多播地址，将会引来大量应答
     const int size = 50*1024;
-    ret = setsockopt(mFD, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size));
-    if (ret == -1) {
+    if (setsockopt(ret, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) == -1) {
         LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::Open setsockopt() failed", error::Strerror(errno).c_str());
     }
     mFD = ret;
@@ -88,10 +86,10 @@ int wPing::SetRecvTimeout(float timeout) {
 }
 
 int wPing::Ping(const char* ip) {
-    bzero(&mDestAddr, sizeof(mDestAddr));
+    memset(&mDestAddr, 0, sizeof(mDestAddr));
     mDestAddr.sin_family = AF_INET;
-    unsigned long inaddr = 0l;
-    if ((inaddr = misc::Text2IP(ip)) == INADDR_NONE) {
+    in_addr_t inaddr = misc::Text2IP(ip);
+    if (inaddr == INADDR_NONE) {
         LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::Ping Text2IP() failed", error::Strerror(errno).c_str());
         return -1;
     } else {
