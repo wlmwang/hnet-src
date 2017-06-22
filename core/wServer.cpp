@@ -726,7 +726,9 @@ void wServer::CheckTick() {
 		    mScheduleMutex.Unlock();
 		}
 	} else {
-		CheckHeartBeat();
+		if (mHeartbeatTimer.CheckTimer(mTick/1000)) {
+			CheckHeartBeat();
+		}
 	}
 }
 

@@ -96,9 +96,10 @@ int wPing::Ping(const char* ip) {
         mDestAddr.sin_addr.s_addr = inaddr;
     }
 
+    // 本机ping直接返回正确
     if (mLocalIp == ip) {
         LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::Ping ip failed", "localip == ip");
-        return -1;
+        return 0;
     }
 
     // 发送所有ICMP报文
