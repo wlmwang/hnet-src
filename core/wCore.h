@@ -129,7 +129,7 @@ const char      kLogPath[] = "hnet.log";
 const char		kBinPath[] = "./";
 
 const char      kSoftwareName[]   = "HNET";
-const char      kSoftwareVer[]    = "0.0.15";
+const char      kSoftwareVer[]    = "0.0.16";
 
 }   // namespace hnet
 
