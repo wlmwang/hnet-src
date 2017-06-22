@@ -63,8 +63,9 @@ const wStatus& wUnixSocket::Connect(int64_t *ret, const std::string& host, uint1
 		return mStatus;
 	}
 	
-	// 超时设置
-	if (timeout > 0) {
+	// 设置非阻塞标志
+	int oldfl = GetNonblock();
+	if (timeout > 0 && oldfl == 0) {
 		if (SetNonblock() == -1) {
 			*ret = -1;
 			return mStatus = wStatus::IOError("wUnixSocket::Connect SetNonblock() failed", "");
@@ -110,6 +111,20 @@ const wStatus& wUnixSocket::Connect(int64_t *ret, const std::string& host, uint1
 			return mStatus = wStatus::IOError("wUnixSocket::Connect connect directly failed", error::Strerror(errno));
 		}
 	}
+
+	// 还原阻塞标志
+	if (timeout > 0 && oldfl == 0) {
+		if (SetNonblock(false) == -1) {
+			*ret = -1;
+			return mStatus = wStatus::IOError("wUnixSocket::Connect SetNonblock() failed", "");
+		}
+	}
+
+	socklen_t optVal = 100*1024;
+	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void *>(&optVal), sizeof(socklen_t)) == -1) {
+		*ret = -1;
+		return mStatus = wStatus::IOError("wUnixSocket::Connect setsockopt() SO_SNDBUF failed", error::Strerror(errno));
+	}
 	return mStatus;
 }
 
@@ -139,6 +154,44 @@ const wStatus& wUnixSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, soc
 		mStatus = wStatus::IOError("wUnixSocket::Accept accept() failed", "");
 	}
 	return mStatus;
+}
+
+
+const wStatus& wUnixSocket::SetTimeout(float timeout) {
+	if (SetSendTimeout(timeout).Ok()) {
+		return mStatus;
+	}
+	return SetRecvTimeout(timeout);
+}
+
+const wStatus& wUnixSocket::SetSendTimeout(float timeout) {
+	struct timeval tv;
+	tv.tv_sec = (int)timeout>=0 ? (int)timeout : 0;
+	tv.tv_usec = (int)((timeout - (int)timeout) * 1000000);
+	if (tv.tv_usec < 0 || tv.tv_usec >= 1000000 || (tv.tv_sec == 0 && tv.tv_usec == 0)) {
+		tv.tv_sec = 30;
+		tv.tv_usec = 0;
+	}
+
+	if (setsockopt(mFD, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const void*>(&tv), sizeof(tv)) == -1) {
+		return mStatus = wStatus::IOError("wUnixSocket::SetSendTimeout setsockopt() SO_SNDTIMEO failed", error::Strerror(errno));
+	}
+	return mStatus.Clear();
+}
+
+const wStatus& wUnixSocket::SetRecvTimeout(float timeout) {
+	struct timeval tv;
+	tv.tv_sec = static_cast<int>(timeout) >= 0? static_cast<int>(timeout): 0;
+	tv.tv_usec = static_cast<int>((timeout - static_cast<int>(timeout)) * 1000000);
+	if (tv.tv_usec < 0 || tv.tv_usec >= 1000000 || (tv.tv_sec == 0 && tv.tv_usec == 0)) {
+		tv.tv_sec = 30;
+		tv.tv_usec = 0;
+	}
+	
+	if (setsockopt(mFD, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const void*>(&tv), sizeof(tv)) == -1) {
+		return mStatus = wStatus::IOError("wUnixSocket::SetRecvTimeout setsockopt() SO_RCVTIMEO failed", error::Strerror(errno));
+	}
+	return mStatus.Clear();
 }
 
 }	// namespace hnet

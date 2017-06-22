@@ -72,8 +72,9 @@ const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16
 	mHost = host;
 	mPort = port;
 
-	// 超时设置
-	if (timeout > 0) {
+	// 设置非阻塞标志
+	int oldfl = GetNonblock();
+	if (timeout > 0 && oldfl == 0) {
 		if (SetNonblock() == -1) {
 			*ret = -1;
 			return mStatus = wStatus::IOError("wTcpSocket::Connect SetNonblock() failed", "");
@@ -121,6 +122,14 @@ const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16
 		}
 	}
 	
+	// 还原阻塞标志
+	if (timeout > 0 && oldfl == 0) {
+		if (SetNonblock(false) == -1) {
+			*ret = -1;
+			return mStatus = wStatus::IOError("wTcpSocket::Connect SetNonblock() failed", "");
+		}
+	}
+
 	socklen_t optVal = 100*1024;
 	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void *>(&optVal), sizeof(socklen_t)) == -1) {
 		*ret = -1;
@@ -180,7 +189,7 @@ const wStatus& wTcpSocket::SetSendTimeout(float timeout) {
 	}
 
 	if (setsockopt(mFD, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const void*>(&tv), sizeof(tv)) == -1) {
-		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_SNDTIMEO failed", error::Strerror(errno));
+		return mStatus = wStatus::IOError("wTcpSocket::SetSendTimeout setsockopt() SO_SNDTIMEO failed", error::Strerror(errno));
 	}
 	return mStatus.Clear();
 }
@@ -195,7 +204,7 @@ const wStatus& wTcpSocket::SetRecvTimeout(float timeout) {
 	}
 	
 	if (setsockopt(mFD, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const void*>(&tv), sizeof(tv)) == -1) {
-		return mStatus = wStatus::IOError("wTcpSocket::Connect setsockopt() SO_RCVTIMEO failed", error::Strerror(errno));
+		return mStatus = wStatus::IOError("wTcpSocket::SetRecvTimeout setsockopt() SO_RCVTIMEO failed", error::Strerror(errno));
 	}
 	return mStatus.Clear();
 }

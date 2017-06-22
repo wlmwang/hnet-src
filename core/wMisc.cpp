@@ -540,9 +540,19 @@ std::string UrlDecode(const std::string& str) {
 namespace soft {
 static wAtomic<uint64_t> gCurrentTime(0);
 
-void TimeUpdate() { return gCurrentTime.ReleaseStore(misc::GetTimeofday());}
-uint64_t TimeUsec() { return gCurrentTime.AcquireLoad();}
-time_t TimeUnix() { return static_cast<time_t>(gCurrentTime.AcquireLoad()/1000000);}
+uint64_t TimeUpdate() {
+    uint64_t tm = misc::GetTimeofday();
+    gCurrentTime.ReleaseStore(tm);
+    return tm;
+}
+
+uint64_t TimeUsec() {
+    return gCurrentTime.AcquireLoad();
+}
+
+time_t TimeUnix() {
+    return static_cast<time_t>(gCurrentTime.AcquireLoad()/1000000);
+}
 
 static uid_t gDeamonUser = kDeamonUser;
 static gid_t gDeamonGroup = kDeamonGroup;

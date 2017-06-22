@@ -94,15 +94,13 @@ int main(int argc, const char *argv[]) {
 		return -1;
 	}
 #else
-	char buf[512];
-	s = client->SyncRecv(buf, &size);
+	example::ExampleResEcho_t res;
+	s = client->SyncRecv(reinterpret_cast<char*>(&res), &size, sizeof(res));
 
 	if (!s.Ok()) {
 		std::cout << "client receive failed" << s.ToString() << std::endl;
 		return -1;
 	}
-	example::ExampleResEcho_t res;
-	res.ParseFromArray(buf, size);
 #endif
 	std::cout << res.cmd() << "|" << res.ret() << std::endl;
 

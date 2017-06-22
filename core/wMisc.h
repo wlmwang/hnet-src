@@ -200,7 +200,7 @@ std::string UrlDecode(const std::string& str);
 
 namespace soft {
 
-void TimeUpdate();
+uint64_t TimeUpdate();
 uint64_t TimeUsec();
 time_t TimeUnix();
 

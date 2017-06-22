@@ -86,15 +86,15 @@ public:
     const wStatus& AsyncSend(const google::protobuf::Message* msg);
 #endif
 
-    // 同步接受一条合法的、非心跳消息
+    // 同步接受一条合法的、非心跳消息 或 接受一条指定长度合法的、非心跳消息（该消息必须为一条即将接受的消息）
     // 调用者：保证此sock未加入epoll中，否则出现事件竞争！另外也要确保buf有足够长的空间接受自此同步消息
     // wStatus返回不为空，则socket被关闭
     // size = -1 对端发生错误|稍后重试
     // size = 0  对端关闭
     // size > 0  接受字符
-    const wStatus& SyncRecv(char cmd[], ssize_t *size, uint32_t timeout = 30);
+    const wStatus& SyncRecv(char cmd[], ssize_t *size, size_t msglen = 0, uint32_t timeout = 30);
 #ifdef _USE_PROTOBUF_
-    const wStatus& SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t timeout = 30);
+    const wStatus& SyncRecv(google::protobuf::Message* msg, ssize_t *size, size_t msglen = 0, uint32_t timeout = 30);
 #endif
 
     // 同步广播其他worker进程

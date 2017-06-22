@@ -36,12 +36,12 @@ public:
     }
 #endif
 
-    inline const wStatus& SyncRecv(char cmd[], ssize_t *size, uint32_t timeout = 30) {
-    	return mStatus = mTask->SyncRecv(cmd, size, timeout);
+    inline const wStatus& SyncRecv(char cmd[], ssize_t *size, size_t msglen = 0, uint32_t timeout = 30) {
+    	return mStatus = mTask->SyncRecv(cmd, size, msglen, timeout);
     }
 #ifdef _USE_PROTOBUF_
-    inline const wStatus& SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t timeout = 30) {
-    	return mStatus = mTask->SyncRecv(msg, size, timeout);
+    inline const wStatus& SyncRecv(google::protobuf::Message* msg, ssize_t *size, size_t msglen = 0, uint32_t timeout = 30) {
+    	return mStatus = mTask->SyncRecv(msg, size, msglen, timeout);
     }
 #endif
 

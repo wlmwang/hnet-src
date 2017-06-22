@@ -348,115 +348,149 @@ const wStatus& wTask::SyncSend(const google::protobuf::Message* msg, ssize_t *si
 }
 #endif
 
-const wStatus& wTask::SyncRecv(char cmd[], ssize_t *size, uint32_t timeout) {
-	// 包长度 + 数据协议 + 消息协议头
-	size_t headlen = sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t);
-	size_t recvheadlen = 0, recvbodylen = 0;
-	for (uint64_t step = 1, usc = 1, timeline = timeout * 1000000; usc <= timeline; step <<= 1, usc += step) {
-		// 头信息
-		if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen, headlen - recvheadlen, size)).Ok()) {
-			return mStatus;
-        } else if (*size > 0) {
-        	recvheadlen += *size;
+const wStatus& wTask::SyncRecv(char cmd[], ssize_t *size, size_t msglen, uint32_t timeout) {
+    static const size_t kCmdHeadLen = sizeof(uint32_t) + sizeof(uint8_t); // 包长度 + 数据协议
+
+	size_t recvheadlen = 0, recvbodylen = 0, headlen = 0;
+    uint64_t now = soft::TimeUsec();
+    if (msglen > 0) {
+        headlen = kCmdHeadLen + msglen;
+    } else {
+        headlen = kCmdHeadLen + sizeof(uint16_t);  // 至少有一条消息
+    }
+
+    while (true) {
+        // 超时时间设置
+        if (timeout > 0) {
+            double tmleft = static_cast<uint64_t>(timeout*1000000) - (soft::TimeUpdate() - now);
+            if (tmleft > 0) {
+                mStatus = mSocket->SetRecvTimeout(tmleft/1000000);
+                if (!mStatus.Ok()) {
+                    return mStatus;
+                }
+            } else {
+                return mStatus = wStatus::Corruption("wTask::SyncRecv () failed", "timeout");
+            }
         }
-        if (recvheadlen != headlen) {
-        	usleep(step);
-        	continue;
+
+        // 接受消息
+        if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen, headlen - recvheadlen, size)).Ok()) {
+            return mStatus;
+        } else if (*size > 0) {
+            recvheadlen += *size;
+        }
+        if (recvheadlen < headlen) {
+            continue;
         }
 
         // 忽略心跳包干扰
-        struct wCommand* nullcmd = reinterpret_cast<struct wCommand*>(mTempBuff + sizeof(uint32_t) + sizeof(uint8_t));
+        struct wCommand* nullcmd = reinterpret_cast<struct wCommand*>(mTempBuff + kCmdHeadLen);
         if (nullcmd->GetId() == CmdId(kCmdNull, kParaNull)) {
-        	recvheadlen = 0;
-        	recvbodylen = 0;
+            recvheadlen -= kCmdHeadLen + sizeof(struct wCommand);
+            memmove(mTempBuff, mTempBuff + kCmdHeadLen + sizeof(struct wCommand), recvheadlen);
             continue;
+        }
+
+        // 指定长度消息直接返回
+        if (msglen > 0 || recvheadlen != headlen) {
+            break;
         }
 
         // 接受消息体
         uint32_t reallen = static_cast<size_t>(coding::DecodeFixed32(mTempBuff) - sizeof(uint8_t) - sizeof(uint16_t));
-        timeline -= usc;
-        for (step = 1; usc <= timeline; step <<= 1, usc += step) {
-            if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen + recvbodylen, reallen - recvbodylen, size)).Ok()) {
-                return mStatus;
-            } else if (*size > 0) {
-            	recvbodylen += *size;
-            }
-            if (recvbodylen == reallen) {
-            	break;
-            } else {
-            	usleep(step);
-            	continue;
-            }
+        if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen + recvbodylen, reallen - recvbodylen, size)).Ok()) {
+            return mStatus;
+        } else if (*size > 0) {
+            recvbodylen += *size;
         }
         break;
-	}
+    }
 
-    uint32_t msglen = coding::DecodeFixed32(mTempBuff);
-    if (msglen < kMinPackageSize || msglen > kMaxPackageSize) {
+    uint32_t len = coding::DecodeFixed32(mTempBuff);
+    if (len < kMinPackageSize || len > kMaxPackageSize) {
         return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "out range");
-    } else if (msglen + sizeof(uint32_t) != recvheadlen + recvbodylen) {
+    } else if (len + sizeof(uint32_t) != recvheadlen + recvbodylen) {
     	return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "illegal message");
     }
 
-    *size = msglen - sizeof(uint8_t);
-    memcpy(cmd, mTempBuff + sizeof(uint32_t) + sizeof(uint8_t), *size);
+    *size = len - sizeof(uint8_t);
+    if (msglen > 0 && msglen != static_cast<size_t>(*size)) {
+        return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "error message");
+    }
+    memcpy(cmd, mTempBuff + kCmdHeadLen, *size);
     return mStatus.Clear();
 }
 
 #ifdef _USE_PROTOBUF_
-const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, uint32_t timeout) {
-	// 包长度 + 数据协议 + 消息协议头
-	size_t headlen = sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t);
-	size_t recvheadlen = 0, recvbodylen = 0;
-	for (uint64_t step = 1, usc = 1, timeline = timeout * 1000000; usc <= timeline; step <<= 1, usc += step) {
-		// 头信息
-        if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen, headlen - recvheadlen, size)).Ok()) {
-            return mStatus;
-        }
-        if (*size > 0) {
-        	recvheadlen += *size;
-        }
-        if (recvheadlen != headlen) {
-        	usleep(step);
-        	continue;
+const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, size_t msglen, uint32_t timeout) {
+    static const size_t kCmdHeadLen = sizeof(uint32_t) + sizeof(uint8_t); // 包长度 + 数据协议
+
+    size_t recvheadlen = 0, recvbodylen = 0, headlen = 0;
+    uint64_t now = soft::TimeUsec();
+    if (msglen > 0) {
+        headlen = kCmdHeadLen + msglen + sizeof(uint16_t) + msg->GetTypeName().size();  // 类名协议
+    } else {
+        headlen = kCmdHeadLen + sizeof(uint16_t);  // 至少有一条消息
+    }
+
+    while (true) {
+        // 超时时间设置
+        if (timeout > 0) {
+            double tmleft = static_cast<uint64_t>(timeout*1000000) - (soft::TimeUpdate() - now);
+            if (tmleft > 0) {
+                mStatus = mSocket->SetRecvTimeout(tmleft/1000000);
+                if (!mStatus.Ok()) {
+                    return mStatus;
+                }
+            } else {
+                return mStatus = wStatus::Corruption("wTask::SyncRecv () failed", "timeout");
+            }
         }
 
-        // 忽略心跳包干扰
-        struct wCommand* nullcmd = reinterpret_cast<struct wCommand*>(mTempBuff + sizeof(uint32_t) + sizeof(uint8_t));
-        if (nullcmd->GetId() == CmdId(kCmdNull, kParaNull)) {
-        	recvheadlen = 0;
+        if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen, headlen - recvheadlen, size)).Ok()) {
+            return mStatus;
+        } else if (*size > 0) {
+            recvheadlen += *size;
+        }
+        if (recvheadlen < headlen) {
             continue;
         }
 
-        // 接受消息体
+        // 忽略心跳包干扰
+        struct wCommand* nullcmd = reinterpret_cast<struct wCommand*>(mTempBuff + kCmdHeadLen);
+        if (nullcmd->GetId() == CmdId(kCmdNull, kParaNull)) {
+            recvheadlen -= kCmdHeadLen + sizeof(struct wCommand);
+            memmove(mTempBuff, mTempBuff + kCmdHeadLen + sizeof(struct wCommand), recvheadlen);
+            continue;
+        }
+
+        // 指定长度消息直接返回
+        if (msglen > 0 || recvheadlen != headlen) {
+            break;
+        }
+
         uint32_t reallen = static_cast<size_t>(coding::DecodeFixed32(mTempBuff) - sizeof(uint8_t) - sizeof(uint16_t));
-        timeline -= usc;
-        for (step = 1; usc <= timeline; step <<= 1, usc += step) {
-            if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen + recvbodylen, reallen - recvbodylen, size)).Ok()) {
-                return mStatus;
-            }
-            if (*size > 0) {
-            	recvbodylen += *size;
-            }
-            if (recvbodylen == reallen) {
-            	break;
-            } else {
-            	usleep(step);
-            	continue;
-            }
+        if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen + recvbodylen, reallen - recvbodylen, size)).Ok()) {
+            return mStatus;
+        } else if (*size > 0) {
+            recvbodylen += *size;
         }
         break;
-	}
+    }
 
-    uint32_t msglen = coding::DecodeFixed32(mTempBuff);
-    if (msglen < kMinPackageSize || msglen > kMaxPackageSize) {
+    uint32_t len = coding::DecodeFixed32(mTempBuff);
+    if (len < kMinPackageSize || len > kMaxPackageSize) {
         return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "out range");
-    } else if (msglen + sizeof(uint32_t) != recvheadlen + recvbodylen) {
+    } else if (len + sizeof(uint32_t) != recvheadlen + recvbodylen) {
     	return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "illegal message");
     }
 
-    uint16_t n = coding::DecodeFixed16(mTempBuff + sizeof(uint32_t) + sizeof(uint8_t));
-    msg->ParseFromArray(mTempBuff + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t) + n, msglen - sizeof(uint8_t) - sizeof(uint16_t) - n);
+    uint32_t n = sizeof(uint16_t) + coding::DecodeFixed16(mTempBuff + kCmdHeadLen); // 类名长度
+    *size = len - sizeof(uint8_t) - n;
+    if (msglen > 0 && msglen != static_cast<size_t>(*size)) {
+        return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "error message");
+    }
+    msg->ParseFromArray(mTempBuff + kCmdHeadLen + n, *size);
     return mStatus.Clear();
 }
 #endif
