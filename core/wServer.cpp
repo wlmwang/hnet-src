@@ -347,8 +347,8 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		socket->Host() = sockAddr.sun_path;
 		socket->Port() = 0;
 		socket->SS() = kSsConnected;
-		if (!(mStatus = socket->SetFL()).Ok()) {
-		    return mStatus;
+		if (socket->SetNonblock() == -1) {
+		    return mStatus = wStatus::IOError("wServer::AcceptConn SetNonblock() failed", "");
 		}
 		NewUnixTask(socket, &mTask);
     } else if (task->Socket()->SP() == kSpTcp) {
@@ -366,8 +366,8 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		socket->Host() = inet_ntoa(sockAddr.sin_addr);
 		socket->Port() = sockAddr.sin_port;
 		socket->SS() = kSsConnected;
-		if (!(mStatus = socket->SetFL()).Ok()) {
-		    return mStatus;
+		if (socket->SetNonblock() == -1) {
+		    return mStatus = wStatus::IOError("wServer::AcceptConn SetNonblock() failed", "");
 		}
 		NewTcpTask(socket, &mTask);
 	} else if (task->Socket()->SP() == kSpHttp) {
@@ -385,8 +385,8 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		socket->Host() = inet_ntoa(sockAddr.sin_addr);
 		socket->Port() = sockAddr.sin_port;
 		socket->SS() = kSsConnected;
-		if (!(mStatus = socket->SetFL()).Ok()) {
-		    return mStatus;
+		if (socket->SetNonblock() == -1) {
+		    return mStatus = wStatus::IOError("wServer::AcceptConn SetNonblock() failed", "");
 		}
 		NewHttpTask(socket, &mTask);
     } else {
@@ -726,7 +726,7 @@ void wServer::CheckTick() {
 		    mScheduleMutex.Unlock();
 		}
 	} else {
-		if (mHeartbeatTimer.CheckTimer(mTick/1000)) {
+		if (mHeartbeatTurn && mHeartbeatTimer.CheckTimer(mTick/1000)) {
 			CheckHeartBeat();
 		}
 	}

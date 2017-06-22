@@ -11,6 +11,7 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wNoncopyable.h"
+#include "wLogger.h"
 
 namespace hnet {
 
@@ -61,7 +62,7 @@ public:
     virtual const wStatus& Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *addrsize) {
         return mStatus = wStatus::IOError("wSocket::Accept failed", "method should be inherit");
     }
-    
+
     // 连接服务器
     // ret = -1 发生错误
     // ret = 0 连接成功
@@ -76,22 +77,30 @@ public:
     virtual const wStatus& Open() {
         return mStatus = wStatus::IOError("wSocket::Open failed", "method should be inherit");
     }
+    
+    virtual int Close();
+    
+    virtual int SetNonblock(bool nonblock = true);
+    virtual int GetNonblock();
 
     virtual const wStatus& SetTimeout(float fTimeout = 30) {
-        return mStatus = wStatus::IOError("wSocket::SetTimeout failed", "method should be inherit");
+        //LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetTimeout () failed", "method should be inherit");
+        //return -1;
+        return mStatus = wStatus::IOError("wSocket::SetTimeout () failed", "method should be inherit");
     }
 
     virtual const wStatus& SetSendTimeout(float fTimeout = 30) {
-        return mStatus = wStatus::IOError("wSocket::SetSendTimeout failed", "method should be inherit");
+        //LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetSendTimeout () failed", "method should be inherit");
+        //return -1;
+        return mStatus = wStatus::IOError("wSocket::SetSendTimeout () failed", "method should be inherit");
     }
 
     virtual const wStatus& SetRecvTimeout(float fTimeout = 30) {
-        return mStatus = wStatus::IOError("wSocket::SetRecvTimeout failed", "method should be inherit");
+        //LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetRecvTimeout () failed", "method should be inherit");
+        //return -1;
+        return mStatus = wStatus::IOError("wSocket::SetRecvTimeout () failed", "method should be inherit");
     }
 
-    virtual const wStatus& Close();
-    virtual const wStatus& SetFL(bool nonblock = true);
-    
     inline int64_t& FD() { return mFD;}
     inline std::string& Host() { return mHost;}
     inline uint16_t& Port() { return mPort;}

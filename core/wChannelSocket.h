@@ -30,7 +30,7 @@ public:
 
     virtual const wStatus& SendBytes(char buf[], size_t len, ssize_t *size);
 
-    virtual const wStatus& Close();
+    virtual int Close();
 
     inline int& operator[](uint8_t i) {
         assert(i == 0 || i == 1);

@@ -44,7 +44,11 @@ const wStatus& wUnixSocket::Listen(const std::string& host, uint16_t port) {
 	if (listen(mFD, kListenBacklog) < 0) {
 		return mStatus = wStatus::IOError("wUnixSocket::Listen listen failed", error::Strerror(errno));
 	}
-	return SetFL();
+	
+	if (SetNonblock() == -1) {
+		return mStatus = wStatus::IOError("wUnixSocket::Listen SetNonblock() failed", "");
+	}
+	return mStatus.Clear();
 }
 
 const wStatus& wUnixSocket::Connect(int64_t *ret, const std::string& host, uint16_t port, float timeout) {
@@ -61,12 +65,12 @@ const wStatus& wUnixSocket::Connect(int64_t *ret, const std::string& host, uint1
 	
 	// 超时设置
 	if (timeout > 0) {
-		if (!SetFL().Ok()) {
+		if (SetNonblock() == -1) {
 			*ret = -1;
-			return mStatus;
+			return mStatus = wStatus::IOError("wUnixSocket::Connect SetNonblock() failed", "");
 		}
 	}
-	
+
 	struct sockaddr_un socketAddr;
 	memset(&socketAddr, 0, sizeof(socketAddr));
 	socketAddr.sun_family = AF_UNIX;

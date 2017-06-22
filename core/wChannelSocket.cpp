@@ -40,11 +40,11 @@ const wStatus& wChannelSocket::Open() {
     return mStatus;
 }
 
-const wStatus& wChannelSocket::Close() {
+int wChannelSocket::Close() {
 	close(mChannel[0]);
 	close(mChannel[1]);
 	mFD = kFDUnknown;
-    return mStatus;
+    return 0;
 }
 
 const wStatus& wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {

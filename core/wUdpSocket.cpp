@@ -36,7 +36,11 @@ const wStatus& wUdpSocket::Listen(const std::string& host, uint16_t port) {
 	if (!Bind(mHost, port).Ok()) {
 		return mStatus;
 	}
-	return SetFL();
+
+	if (SetNonblock() == -1) {
+		return mStatus = wStatus::IOError("wUdpSocket::Listen SetNonblock() failed", "");
+	}
+	return mStatus.Clear();
 }
 
 const wStatus& wUdpSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {

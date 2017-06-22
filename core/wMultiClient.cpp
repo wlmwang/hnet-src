@@ -399,7 +399,7 @@ void wMultiClient::CheckTick() {
 		    mScheduleMutex.Unlock();
 		}
 	} else {
-        if (mHeartbeatTimer.CheckTimer(mTick/1000)) {
+        if (mHeartbeatTurn && mHeartbeatTimer.CheckTimer(mTick/1000)) {
             CheckHeartBeat();
         }
 	}

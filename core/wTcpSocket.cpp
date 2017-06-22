@@ -61,17 +61,22 @@ const wStatus& wTcpSocket::Listen(const std::string& host, uint16_t port) {
 	if (listen(mFD, kListenBacklog) == -1) {
 		return mStatus = wStatus::IOError("wTcpSocket::Listen listen failed", error::Strerror(errno));
 	}
-	return SetFL();
+	
+	if (SetNonblock() == -1) {
+		return mStatus = wStatus::IOError("wTcpSocket::Listen SetNonblock() failed", "");
+	}
+	return mStatus.Clear();
 }
 
 const wStatus& wTcpSocket::Connect(int64_t *ret, const std::string& host, uint16_t port, float timeout) {
 	mHost = host;
 	mPort = port;
+
 	// 超时设置
 	if (timeout > 0) {
-		if (!SetFL().Ok()) {
+		if (SetNonblock() == -1) {
 			*ret = -1;
-			return mStatus;
+			return mStatus = wStatus::IOError("wTcpSocket::Connect SetNonblock() failed", "");
 		}
 	}
 	

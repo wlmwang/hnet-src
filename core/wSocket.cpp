@@ -16,21 +16,6 @@ wSocket::~wSocket() {
     Close();
 }
 
-const wStatus& wSocket::Close() {
-    if (mFD != kFDUnknown && close(mFD) == -1) {
-        return mStatus = wStatus::IOError("wSocket::Close failed", error::Strerror(errno));
-    }
-    mFD = kFDUnknown;
-    return mStatus;
-}
-
-const wStatus& wSocket::SetFL(bool nonblock) {
-    if (fcntl(mFD, F_SETFL, (nonblock == true ? fcntl(mFD, F_GETFL, 0) | O_NONBLOCK : fcntl(mFD, F_GETFL, 0) & ~O_NONBLOCK)) == -1) {
-        return mStatus = wStatus::IOError("wSocket::SetFL F_SETFL failed", error::Strerror(errno));
-    }
-    return mStatus;
-}
-
 const wStatus& wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     mRecvTm = soft::TimeUsec();
     while (true) {
@@ -77,6 +62,31 @@ const wStatus& wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
         }
     }
     return mStatus;
+}
+
+int wSocket::Close() {
+    int ret = close(mFD);
+    if (ret == -1) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Close close() failed", error::Strerror(errno).c_str());
+    }
+    mFD = kFDUnknown;
+    return ret;
+}
+
+int wSocket::GetNonblock() {
+    int ret = fcntl(mFD, F_GETFL, 0);
+    if (ret == -1) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::GetNonblock fcntl() failed", error::Strerror(errno).c_str());
+    }
+    return ret & O_NONBLOCK;
+}
+
+int wSocket::SetNonblock(bool nonblock) {
+    int ret = fcntl(mFD, F_SETFL, (nonblock==true? fcntl(mFD, F_GETFL, 0) | O_NONBLOCK : fcntl(mFD, F_GETFL, 0) & ~O_NONBLOCK));
+    if (ret == -1) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetNonblock fcntl() O_NONBLOCK failed", error::Strerror(errno).c_str());
+    }
+    return ret;
 }
 
 }   // namespace hnet
