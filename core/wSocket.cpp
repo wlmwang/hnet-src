@@ -42,7 +42,7 @@ const wStatus& wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
 const wStatus& wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     mSendTm = soft::TimeUsec();
     ssize_t sendedlen = 0, leftlen = len;
-    while (true) {
+    while (leftlen > 0) {
         *size = send(mFD, reinterpret_cast<void*>(buf + sendedlen), leftlen, 0);
         if (*size >= 0) {
             sendedlen += *size;

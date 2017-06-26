@@ -50,8 +50,9 @@ const wStatus& wSingleClient::Connect(const std::string& ipaddr, uint16_t port, 
         SAFE_NEW(wHttpTask(socket), mTask);
     } else if (protocol == "UNIX") {
         SAFE_NEW(wUnixTask(socket), mTask);
+    } else {
+        mTask = NULL;
     }
-
     if (mTask == NULL) {
 	   return mStatus = wStatus::IOError("wSingleClient::Connect", "task new failed");
     }

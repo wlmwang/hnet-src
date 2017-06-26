@@ -180,6 +180,7 @@ int main(int argc, const char *argv[]) {
 	// 解析命令行
 	if (config->GetOption(argc, argv) == -1) {
 		std::cout << "get configure failed" << std::endl;
+		SAFE_DELETE(config);
 		return -1;
 	}
 
@@ -187,12 +188,14 @@ int main(int argc, const char *argv[]) {
 	bool version, daemon;
 	if (config->GetConf("version", &version) && version == true) {
 		std::cout << soft::SetSoftName("example server -") << soft::GetSoftVer() << std::endl;
+		SAFE_DELETE(config);
 		return -1;
 	} else if (config->GetConf("daemon", &daemon) && daemon == true) {
 		std::string lock_path;
 		config->GetConf("lock_path", &lock_path);
 		if (misc::InitDaemon(lock_path) == -1) {
 			std::cout << "create daemon failed" << std::endl;
+			SAFE_DELETE(config);
 			return -1;
 		}
 	}
@@ -201,6 +204,8 @@ int main(int argc, const char *argv[]) {
 	ExampleServer* server;
 	SAFE_NEW(ExampleServer(config), server);
 	if (server == NULL) {
+		SAFE_DELETE(config);
+		LOG_FREE();
 		return -1;
 	}
 
@@ -214,6 +219,8 @@ int main(int argc, const char *argv[]) {
 	    	if (master->SignalProcess(signal).Ok()) {
 	    		return 0;
 	    	} else {
+	    		SAFE_DELETE(master);
+	    		LOG_FREE();
 	    		return -1;
 	    	}
 	    } else {
@@ -222,10 +229,14 @@ int main(int argc, const char *argv[]) {
 				// Master-Worker方式开启服务器
 				master->MasterStart();
 			} else {
+				SAFE_DELETE(master);
+				LOG_FREE();
 				return -1;
 			}
 	    }
 	}
+	SAFE_DELETE(master);
+	LOG_FREE();
 
 	return 0;
 }

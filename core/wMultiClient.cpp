@@ -24,6 +24,8 @@ mEpollFD(kFDUnknown), mTimeout(10), mTask(NULL), mConfig(config), mServer(server
 
 wMultiClient::~wMultiClient() {
     CleanTask();
+    SAFE_DELETE(mConfig);
+    SAFE_DELETE(mServer);
 }
 
 const wStatus& wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port, const std::string& protocol) {

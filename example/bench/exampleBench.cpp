@@ -147,7 +147,7 @@ int exampleEchoWR() {
     wStatus s = client->Connect(gHost, gPort);
     if (!s.Ok()) {
     	SAFE_DELETE(client);
-    	//std::cout << "client connect failed" << s.ToString() << std::endl;
+    	LOG_FREE();
     	return -1;
     }
 
@@ -169,7 +169,7 @@ int exampleEchoWR() {
 
 	if (!s.Ok()) {
 		SAFE_DELETE(client);
-		//std::cout << "client send failed" << s.ToString() << std::endl;
+		LOG_FREE();
 		return -1;
 	}
 
@@ -180,7 +180,7 @@ int exampleEchoWR() {
 
 	if (!s.Ok()) {
 		SAFE_DELETE(client);
-		//std::cout << "client receive failed" << s.ToString() << std::endl;
+		LOG_FREE();
 		return -1;
 	}
 #else
@@ -189,12 +189,12 @@ int exampleEchoWR() {
 
 	if (!s.Ok()) {
 		SAFE_DELETE(client);
-		//std::cout << "client receive failed" << s.ToString() << std::endl;
+		LOG_FREE();
 		return -1;
 	}
 #endif
-	//std::cout << res.cmd() << "|" << res.ret() << std::endl;
-	
 	SAFE_DELETE(client);
+	LOG_FREE();
+	
 	return 0;
 }

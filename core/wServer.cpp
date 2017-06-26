@@ -40,6 +40,7 @@ wServer::~wServer() {
     CleanTask();
     SAFE_DELETE(mShm);
     SAFE_DELETE(mAcceptSem);
+    SAFE_DELETE(mConfig);
 }
 
 const wStatus& wServer::PrepareStart(const std::string& ipaddr, uint16_t port, const std::string& protocol) {

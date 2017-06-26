@@ -37,6 +37,7 @@ wMaster::~wMaster() {
     for (uint32_t i = 0; i < kMaxProcess; ++i) {
 		SAFE_DELETE(mWorkerPool[i]);
     }
+    SAFE_DELETE(mServer);
 }
 
 const wStatus& wMaster::PrepareStart() {

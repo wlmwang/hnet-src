@@ -14,13 +14,17 @@
 #include "wNoncopyable.h"
 
 #ifdef _USE_LOGGER_
-#	define  LOG_ERROR(logpath, fmt, ...)	hnet::Log(logpath, fmt, ##__VA_ARGS__)
+#	define  LOG_INIT()
+#	define  LOG_FREE()	hnet::Logd()
+#	define  LOG_ERROR(logpath, fmt, ...) hnet::Logv(logpath, fmt, ##__VA_ARGS__)
 #	ifndef _DEBUG_
 #		define  LOG_DEBUG(logpath, fmt, ...)
 #	else
-#		define  LOG_DEBUG(logpath, fmt, ...)	hnet::Log(logpath, fmt, ##__VA_ARGS__)
+#		define  LOG_DEBUG(logpath, fmt, ...) hnet::Logv(logpath, fmt, ##__VA_ARGS__)
 #	endif
 #else
+#	define  LOG_INIT()
+#	define  LOG_FREE()
 #	define  LOG_ERROR(logpath, fmt, ...)
 #	define  LOG_DEBUG(logpath, fmt, ...)
 #endif
@@ -68,8 +72,11 @@ private:
 	uint64_t (*mGetpid)();	// 获取当前进程id函数指针
 };
 
-// 写日志函数接口
-extern void Log(const std::string& logpath, const char* format, ...);
+// 写log接口
+void Logv(const std::string& logpath, const char* format, ...);
+
+// 释放log接口
+void Logd();
 
 }	// namespace hnet
 

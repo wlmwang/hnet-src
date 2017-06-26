@@ -13,9 +13,9 @@
 namespace hnet {
 
 wPosixLogger::wPosixLogger(const std::string& fname, uint64_t (*getpid)(), off_t maxsize) : mMaxsize(maxsize), mGetpid(getpid) {
-	char dir_path[256];
-	if (realpath(fname.c_str(), dir_path) == NULL) { }
-	mFname = dir_path;
+	char resolved_path[PATH_MAX];
+	realpath(fname.c_str(), resolved_path);
+	mFname = resolved_path;
 	mFile = OpenCreatLog(mFname, "a+");
 }
 
@@ -139,13 +139,13 @@ void wPosixLogger::Logv(const char* format, va_list ap) {
 }
 
 // 日志对象
-static std::map<std::string, wLogger*> g_logger;
-static wLogger* Logger(const std::string& logpath) {
-	std::map<std::string, wLogger*>::iterator it = g_logger.find(logpath);
-	if (it == g_logger.end()) {
+static std::map<std::string, wLogger*> gLogger;
+static wLogger* LoggerEntry(const std::string& logpath) {
+	std::map<std::string, wLogger*>::iterator it = gLogger.find(logpath);
+	if (it == gLogger.end()) {
 		wLogger* l = NULL;
 		if (wEnv::Default()->NewLogger(logpath, &l) == 0) {
-			g_logger.insert(std::pair<std::string, wLogger*>(logpath, l));
+			gLogger.insert(std::pair<std::string, wLogger*>(logpath, l));
 			return l;
 		}
 	} else {
@@ -153,18 +153,29 @@ static wLogger* Logger(const std::string& logpath) {
 	}
 	return NULL;
 }
+static void LoggerFree() {
+	for (std::map<std::string, wLogger*>::iterator it = gLogger.begin(); it != gLogger.end(); it++) {
+		SAFE_DELETE(it->second);
+	}
+	gLogger.clear();
+}
 
 // 写日志函数接口
 static wMutex g_logger_mutex;
-void Log(const std::string& logpath, const char* format, ...) {
+void Logv(const std::string& logpath, const char* format, ...) {
 	g_logger_mutex.Lock();
-	wLogger* l = Logger(logpath);
+	wLogger* l = LoggerEntry(logpath);
 	if (l != NULL) {
 		va_list ap;
 		va_start(ap, format);
 		l->Logv(format, ap);
 		va_end(ap);
 	}
+	g_logger_mutex.Unlock();
+}
+void Logd() {
+	g_logger_mutex.Lock();
+	LoggerFree();
 	g_logger_mutex.Unlock();
 }
 
