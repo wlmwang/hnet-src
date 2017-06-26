@@ -40,6 +40,7 @@ int main(int argc, const char *argv[]) {
 	// 解析命令行
 	if (config->GetOption(argc, argv) == -1) {
 		std::cout << "get configure failed" << std::endl;
+		SAFE_DELETE(config);
 		return -1;
 	}
 
@@ -47,12 +48,14 @@ int main(int argc, const char *argv[]) {
 	bool version;
 	if (config->GetConf("version", &version) && version == true) {
 		std::cout << soft::SetSoftName("example client -") << soft::GetSoftVer() << std::endl;
+		SAFE_DELETE(config);
 		return -1;
 	}
 
 	// 命令行-h、-p解析
     if (!config->GetConf("host", &gHost) || !config->GetConf("port", &gPort)) {
     	std::cout << "host or port error" << std::endl;
+    	SAFE_DELETE(config);
     	return -1;
     }
 
@@ -99,7 +102,6 @@ int main(int argc, const char *argv[]) {
 	std::cout << "[success]	:	" << request*worker - error << std::endl;
 	std::cout << "[second]	:	" << total_usec << "s" << std::endl;
 	std::cout << "[qps]		:	" << request*worker/total_usec << "req/s" << std::endl;
-
 	return 0;
 }
 
@@ -147,7 +149,6 @@ int exampleEchoWR() {
     wStatus s = client->Connect(gHost, gPort);
     if (!s.Ok()) {
     	SAFE_DELETE(client);
-    	LOG_FREE();
     	return -1;
     }
 
@@ -169,7 +170,6 @@ int exampleEchoWR() {
 
 	if (!s.Ok()) {
 		SAFE_DELETE(client);
-		LOG_FREE();
 		return -1;
 	}
 
@@ -180,7 +180,6 @@ int exampleEchoWR() {
 
 	if (!s.Ok()) {
 		SAFE_DELETE(client);
-		LOG_FREE();
 		return -1;
 	}
 #else
@@ -189,12 +188,10 @@ int exampleEchoWR() {
 
 	if (!s.Ok()) {
 		SAFE_DELETE(client);
-		LOG_FREE();
 		return -1;
 	}
 #endif
 	SAFE_DELETE(client);
-	LOG_FREE();
 	
 	return 0;
 }

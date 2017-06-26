@@ -205,38 +205,29 @@ int main(int argc, const char *argv[]) {
 	SAFE_NEW(ExampleServer(config), server);
 	if (server == NULL) {
 		SAFE_DELETE(config);
-		LOG_FREE();
 		return -1;
 	}
 
 	// 创建master对象
+	int ret = 0;
 	wMaster* master;
 	SAFE_NEW(wMaster("EXAMPLE", server), master);
 	if (master != NULL) {
-		// 接受命令信号
 	    std::string signal;
-	    if (config->GetConf("signal", &signal) && signal.size() > 0) {
-	    	if (master->SignalProcess(signal).Ok()) {
-	    		return 0;
-	    	} else {
-	    		SAFE_DELETE(master);
-	    		LOG_FREE();
-	    		return -1;
+	    if (config->GetConf("signal", &signal) && signal.size() > 0) {	// 接受命令信号
+	    	if (!master->SignalProcess(signal).Ok()) {
+	    		ret = -1;
 	    	}
 	    } else {
 	    	// 准备服务器
 			if (master->PrepareStart().Ok()) {
-				// Master-Worker方式开启服务器
-				master->MasterStart();
-			} else {
-				SAFE_DELETE(master);
-				LOG_FREE();
-				return -1;
+				master->MasterStart();	// Master-Worker方式开启服务器
 			}
 	    }
 	}
+	SAFE_DELETE(config);
+	SAFE_DELETE(server);
 	SAFE_DELETE(master);
-	LOG_FREE();
-
-	return 0;
+	
+	return ret;
 }

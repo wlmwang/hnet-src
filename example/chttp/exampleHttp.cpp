@@ -54,6 +54,7 @@ int main(int argc, const char *argv[]) {
 	wSingleClient *client;
 	SAFE_NEW(wSingleClient, client);
     if (client == NULL) {
+    	SAFE_DELETE(config);
         return -1;
     }
 
@@ -63,7 +64,6 @@ int main(int argc, const char *argv[]) {
     	std::cout << "client connect failed" << s.ToString() << std::endl;
     	SAFE_DELETE(config);
     	SAFE_DELETE(client);
-    	LOG_FREE();
     	return -1;
     }
 
@@ -77,8 +77,9 @@ int main(int argc, const char *argv[]) {
     }
     usleep(1000);
     std::cout << "response:" << res << std::endl;
+    
+    SAFE_DELETE(config);
 	SAFE_DELETE(client);
-	LOG_FREE();
 	
 	return 0;
 }

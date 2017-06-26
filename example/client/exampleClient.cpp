@@ -65,7 +65,6 @@ int main(int argc, const char *argv[]) {
     	std::cout << "client connect failed" << s.ToString() << std::endl;
     	SAFE_DELETE(config);
     	SAFE_DELETE(client);
-    	LOG_FREE();
     	return -1;
     }
 
@@ -89,7 +88,6 @@ int main(int argc, const char *argv[]) {
 		std::cout << "client send failed" << s.ToString() << std::endl;
     	SAFE_DELETE(config);
     	SAFE_DELETE(client);
-    	LOG_FREE();
 		return -1;
 	}
 
@@ -102,7 +100,6 @@ int main(int argc, const char *argv[]) {
 		std::cout << "client receive failed" << s.ToString() << std::endl;
     	SAFE_DELETE(config);
     	SAFE_DELETE(client);
-    	LOG_FREE();
 		return -1;
 	}
 #else
@@ -113,14 +110,12 @@ int main(int argc, const char *argv[]) {
 		std::cout << "client receive failed" << s.ToString() << std::endl;
     	SAFE_DELETE(config);
     	SAFE_DELETE(client);
-    	LOG_FREE();
 		return -1;
 	}
 #endif
 	std::cout << res.cmd() << "|" << res.ret() << std::endl;
     SAFE_DELETE(config);
     SAFE_DELETE(client);
-    LOG_FREE();
     
 	return 0;
 }

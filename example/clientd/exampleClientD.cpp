@@ -147,10 +147,10 @@ int main(int argc, const char *argv[]) {
 	SAFE_NEW(ExampleClient(config), client);
 	if (client == NULL) {
 		SAFE_DELETE(config);
-		LOG_FREE();
 		return -1;
 	}
 
+	int ret = 0;
 	// 准备客户端
 	if (client->PrepareStart().Ok()) {
 		/** 阻塞服务方式运行*/
@@ -173,17 +173,14 @@ int main(int argc, const char *argv[]) {
 #else
 		client->Broadcast(reinterpret_cast<char*>(&req), sizeof(req), 1);
 #endif
-		// 等待连接结束
-		client->JoinThread();
+		client->JoinThread();	// 等待连接结束
 		std::cout << "thread end" << std::endl;
 	} else {
 		std::cout << "prepare error" << std::endl;
-		SAFE_DELETE(client);
-		LOG_FREE();
-		return -1;
+		ret = -1;
 	}
+	SAFE_DELETE(config);
 	SAFE_DELETE(client);
-	LOG_FREE();
 
-	return 0;
+	return ret;
 }
