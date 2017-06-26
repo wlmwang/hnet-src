@@ -103,6 +103,12 @@ public:
     const wStatus& SyncWorker(const google::protobuf::Message* msg);
 #endif
 
+    // 异步广播其他worker进程
+    const wStatus& AsyncWorker(char cmd[], size_t len);
+#ifdef _USE_PROTOBUF_
+    const wStatus& AsyncWorker(const google::protobuf::Message* msg);
+#endif
+
     virtual const wStatus& HttpGet(const std::string& url, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30) {
         return mStatus = wStatus::IOError("wTask::HttpGet failed", "method should be inherit");
     }

@@ -101,9 +101,9 @@ int ExampleTcpTask::ExampleEchoChannel(struct Request_t *request) {
 
 	// 同步所有worker进程
 #ifdef _USE_PROTOBUF_
-	SyncWorker(&req);
+	AsyncWorker(&req);
 #else
-	SyncWorker(request->mBuf, request->mLen);
+	AsyncWorker(request->mBuf, request->mLen);
 #endif
 	return 0;
 }

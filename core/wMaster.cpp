@@ -43,7 +43,7 @@ const wStatus& wMaster::PrepareStart() {
 	soft::TimeUpdate();
 	
     std::string host;
-    int16_t port = 0;
+    uint16_t port = 0;
     if (!mServer->Config()->GetConf("host", &host) || !mServer->Config()->GetConf("port", &port)) {
     	return mStatus = wStatus::Corruption("wMaster::PrepareStart failed, host or port is illegal", "");
     }

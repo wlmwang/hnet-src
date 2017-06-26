@@ -67,6 +67,12 @@ public:
     const wStatus& SyncWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
 #endif
 
+    // 同步广播消息至worker进程   blacksolt为黑名单
+    const wStatus& AsyncWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
+#ifdef _USE_PROTOBUF_
+    const wStatus& AsyncWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
+#endif
+
     // 异步发送消息
     const wStatus& Send(wTask *task, char *cmd, size_t len);
 #ifdef _USE_PROTOBUF_
@@ -112,13 +118,15 @@ public:
     inline T Worker() { return mMaster->Worker<T>();}
 
     const wStatus& AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
+    const wStatus& RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
+    const wStatus& FindTaskBySocket(wTask** task, const wSocket* sock);
     
 protected:
     friend class wMaster;
     friend class wWorker;
   
     // 散列到mTaskPool的某个分组中
-    static uint32_t Shard(wSocket* sock) {
+    static uint32_t Shard(const wSocket* sock) {
         uint32_t hash = misc::Hash(sock->Host().c_str(), sock->Host().size(), 0);
         return hash >> (32 - kServerNumShardBits);
     }
@@ -138,14 +146,13 @@ protected:
     const wStatus& InitEpoll();
     const wStatus& AddListener(const std::string& ipaddr, uint16_t port, const std::string& protocol = "TCP");
 
-    // 添加channel socket到epoll侦听事件队列
+    // 添加本进程channel socket到epoll侦听读事件队列
     const wStatus& Channel2Epoll(bool addpool = true);
 
     // 添加listen socket到epoll侦听事件队列
     const wStatus& Listener2Epoll(bool addpool = true);
     const wStatus& RemoveListener(bool delpool = true);
 
-    const wStatus& RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
     const wStatus& CleanTask();
     const wStatus& CleanListenSock();
     const wStatus& DeleteAcceptFile();

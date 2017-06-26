@@ -34,9 +34,6 @@ const wStatus& wChannelSocket::Open() {
     } else if (fcntl(mChannel[1], F_SETFD, FD_CLOEXEC) == -1) {
     	LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelSocket::Open [1] fcntl() FD_CLOEXEC failed", error::Strerror(errno).c_str());
     }
-
-    // mChannel[1]被监听（可读事件）
-    mFD = mChannel[1];
     return mStatus;
 }
 

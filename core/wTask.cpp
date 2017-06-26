@@ -290,6 +290,16 @@ const wStatus& wTask::SyncWorker(char cmd[], size_t len) {
     return mStatus;
 }
 
+const wStatus& wTask::AsyncWorker(char cmd[], size_t len) {
+    if (mServer && mServer->Worker()) {
+        std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
+        mStatus = mServer->AsyncWorker(cmd, len, kMaxProcess, &blackslot);
+    } else {
+        mStatus = wStatus::Corruption("wTask::AsyncWorker, send error", "server or worker is null");
+    }
+    return mStatus;
+}
+
 #ifdef _USE_PROTOBUF_
 const wStatus& wTask::SyncWorker(const google::protobuf::Message* msg) {
     if (mServer && mServer->Worker()) {
@@ -297,6 +307,18 @@ const wStatus& wTask::SyncWorker(const google::protobuf::Message* msg) {
         mStatus = mServer->SyncWorker(msg, kMaxProcess, &blackslot);
     } else {
         mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
+    }
+    return mStatus;
+}
+#endif
+
+#ifdef _USE_PROTOBUF_
+const wStatus& wTask::AsyncWorker(const google::protobuf::Message* msg) {
+    if (mServer && mServer->Worker()) {
+        std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
+        mStatus = mServer->AsyncWorker(msg, kMaxProcess, &blackslot);
+    } else {
+        mStatus = wStatus::Corruption("wTask::AsyncWorker, send error", "server or worker is null");
     }
     return mStatus;
 }
