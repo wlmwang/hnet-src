@@ -431,11 +431,103 @@ const wStatus& wServer::Broadcast(const google::protobuf::Message* msg) {
 }
 #endif
 
+const wStatus& wServer::Send(wTask *task, char *cmd, size_t len) {
+	if ((mStatus = task->Send2Buf(cmd, len)).Ok()) {
+	    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+	}
+    return mStatus;
+}
+
+#ifdef _USE_PROTOBUF_
+const wStatus& wServer::Send(wTask *task, const google::protobuf::Message* msg) {
+	if ((mStatus = task->Send2Buf(msg)).Ok()) {
+	    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+	}
+    return mStatus;
+}
+#endif
+
+const wStatus& wServer::FindTaskBySocket(wTask** task, const wSocket* sock) {
+	if (!sock) {
+		return mStatus = wStatus::Corruption("wServer::FindTaskBySocket () failed", "sock null");
+	}
+
+	uint32_t type = Shard(sock);
+	if (mTaskPool[type].empty()) {
+		return mStatus = wStatus::Corruption("wServer::FindTaskBySocket () failed", "empty pool");
+	}
+
+	for (std::vector<wTask*>::iterator it = mTaskPool[type].begin(); it != mTaskPool[type].end(); it++) {
+		if ((*it)->Socket() == sock) {	// 直接地址比较
+			*task = *it;
+			return mStatus.Clear();
+		}
+	}
+	return mStatus = wStatus::Corruption("wServer::FindTaskBySocket () failed", "not found");
+}
+
+const wStatus& wServer::AsyncWorker(char *cmd, int len, uint32_t solt, const std::vector<uint32_t>* blackslot) {
+	if (solt == kMaxProcess) {	// 广播消息
+		for (uint32_t i = 0; i < kMaxProcess; i++) {
+			if (mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
+				continue;
+			} else if (blackslot && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
+				continue;
+			}
+
+			wTask *task = NULL;
+			if (FindTaskBySocket(&task, mMaster->Worker(i)->Channel()).Ok() && task) {
+				mStatus = Send(task, cmd, len);
+			}
+	    }
+	} else {
+		if (mMaster->Worker(solt)->mPid != -1 && mMaster->Worker(solt)->ChannelFD(0) != kFDUnknown) {
+
+			wTask *task = NULL;
+			if (FindTaskBySocket(&task, mMaster->Worker(solt)->Channel()).Ok() && task) {
+				mStatus = Send(task, cmd, len);
+			}
+		} else {
+			mStatus = wStatus::Corruption("wServer::AsyncWorker failed 1", "worker channel is null");
+		}
+	}
+    return mStatus;
+}
+
+#ifdef _USE_PROTOBUF_
+const wStatus& wServer::AsyncWorker(const google::protobuf::Message* msg, uint32_t solt, const std::vector<uint32_t>* blackslot) {
+	if (solt == kMaxProcess) {	// 广播消息
+		for (uint32_t i = 0; i < kMaxProcess; i++) {
+			if (mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
+				continue;
+			} else if (blackslot && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
+				continue;
+			}
+
+			wTask *task = NULL;
+			if (FindTaskBySocket(&task, mMaster->Worker(i)->Channel()).Ok() && task) {
+				mStatus = Send(task, msg);
+			}
+	    }
+	} else {
+		if (mMaster->Worker(solt)->mPid != -1 && mMaster->Worker(solt)->ChannelFD(0) != kFDUnknown) {
+			
+			wTask *task = NULL;
+			if (FindTaskBySocket(&task, mMaster->Worker(solt)->Channel()).Ok() && task) {
+				mStatus = Send(task, msg);
+			}
+		} else {
+			mStatus = wStatus::Corruption("wServer::SyncWorker failed 2", "worker channel is null");
+		}
+	}
+    return mStatus;
+}
+#endif
+
 const wStatus& wServer::SyncWorker(char *cmd, int len, uint32_t solt, const std::vector<uint32_t>* blackslot) {
 	ssize_t ret;
 	char buf[kPackageSize];
-	if (solt == kMaxProcess) {
-		// 广播消息
+	if (solt == kMaxProcess) {	// 广播消息
 		for (uint32_t i = 0; i < kMaxProcess; i++) {
 			if (mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
 				continue;
@@ -465,7 +557,7 @@ const wStatus& wServer::SyncWorker(const google::protobuf::Message* msg, uint32_
 	ssize_t ret;
 	char buf[kPackageSize];
 	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
-	if (solt == kMaxProcess) {
+	if (solt == kMaxProcess) {	// 广播消息
 		for (uint32_t i = 0; i < kMaxProcess; i++) {
 			if (mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
 				continue;
@@ -486,22 +578,6 @@ const wStatus& wServer::SyncWorker(const google::protobuf::Message* msg, uint32_
 		} else {
 			mStatus = wStatus::Corruption("wServer::SyncWorker failed 2", "worker channel is null");
 		}
-	}
-    return mStatus;
-}
-#endif
-
-const wStatus& wServer::Send(wTask *task, char *cmd, size_t len) {
-	if ((mStatus = task->Send2Buf(cmd, len)).Ok()) {
-	    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
-	}
-    return mStatus;
-}
-
-#ifdef _USE_PROTOBUF_
-const wStatus& wServer::Send(wTask *task, const google::protobuf::Message* msg) {
-	if ((mStatus = task->Send2Buf(msg)).Ok()) {
-	    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
 	}
     return mStatus;
 }
@@ -609,36 +685,42 @@ const wStatus& wServer::RemoveListener(bool delpool) {
 }
 
 const wStatus& wServer::Channel2Epoll(bool addpool) {
-	if (mMaster != NULL && mMaster->Worker(mMaster->mSlot) != NULL) {
-		wChannelSocket *socket = mMaster->Worker(mMaster->mSlot)->Channel();
-		if (socket != NULL) {
+	for (uint32_t i = 0; i < kMaxProcess; i++) {
+		if (mMaster != NULL && mMaster->Worker(i)->mPid == -1) {
+			continue;
+		}
+
+		wChannelSocket *socket = mMaster->Worker(i)->Channel();
+		if (socket) {
+			if (i == mMaster->mSlot) {
+				socket->FD() = (*socket)[1];	// 自身worker供读取描述符
+			} else {
+				socket->FD() = (*socket)[0];	// 其他worker供写入描述符
+			}
+			socket->SS() = kSsConnected;
+
 			wTask *task;
 			NewChannelTask(socket, &task);
 			if (mStatus.Ok()) {
-				AddTask(task, EPOLLIN, EPOLL_CTL_ADD, addpool);
+				AddTask(task);
 			}
-		} else {
-			mStatus = wStatus::Corruption("wServer::Channel2Epoll failed", "channel is null");
 		}
-	} else {
-		mStatus = wStatus::Corruption("wServer::Channel2Epoll failed", "worker is null");
 	}
     return mStatus;
 }
 
 const wStatus& wServer::AddTask(wTask* task, int ev, int op, bool addpool) {
+    task->SetServer(this);	// 方便异步发送
     struct epoll_event evt;
     evt.events = ev | EPOLLERR | EPOLLHUP;
     evt.data.ptr = task;
     if (epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt) == -1) {
 		return mStatus = wStatus::IOError("wServer::AddTask, epoll_ctl() failed", error::Strerror(errno));
     }
-    // 方便异步发送
-    task->SetServer(this);
     if (addpool) {
-    	AddToTaskPool(task);
+    	return AddToTaskPool(task);
     }
-    return mStatus;
+    return mStatus.Clear();
 }
 
 const wStatus& wServer::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter, bool delpool) {

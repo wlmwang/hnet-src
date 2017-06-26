@@ -101,9 +101,13 @@ public:
         return mStatus = wStatus::IOError("wSocket::SetRecvTimeout () failed", "method should be inherit");
     }
 
-    inline int64_t& FD() { return mFD;}
     inline std::string& Host() { return mHost;}
+    inline const std::string& Host() const { return mHost;}
+    
     inline uint16_t& Port() { return mPort;}
+    inline const uint16_t& Port() const { return mPort;}
+
+    inline int64_t& FD() { return mFD;}
     inline uint64_t& RecvTm() { return mRecvTm;}
     inline uint64_t& SendTm() { return mSendTm;}
     inline uint64_t& MakeTm() { return mMakeTm;}
@@ -114,6 +118,10 @@ public:
     inline SockProto& SP() { return mSockProto;}
     inline SockFlag& SF() { return mSockFlag;}
     
+    inline bool operator==(const wSocket& rval) {
+        return mFD == rval.mFD && mSockType == rval.mSockType && mSockProto == rval.mSockProto;
+    }
+
 protected:
     virtual const wStatus& Bind(const std::string& host, uint16_t port = 0) = 0;
     
