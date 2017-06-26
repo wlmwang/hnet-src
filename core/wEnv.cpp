@@ -320,7 +320,7 @@ private:
     bool mStartedBgthread;	// 是否已开启了后台任务消费线程
 
     // 线程队列节点结构体
-    struct BGItem { void* arg; void (*function)(void*); };
+    struct BGItem {void* arg; void (*function)(void*); };
 
     typedef std::deque<BGItem> BGQueue;
     BGQueue mQueue; // 任务双端链表

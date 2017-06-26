@@ -188,8 +188,9 @@ bool wConfig::SetStrConf(const std::string& key, const char *val, bool force) {
 		return false;
 	}
 	char* c = mPool->Allocate(sizeof(std::string));
-	std::string *s;
-	// 初始化string对象（string使用前必须初始化）
+	
+    // 初始化string对象（string使用前必须初始化）
+    std::string *s;  
 	SAFE_NEW((c)std::string(), s);
 	*s = val;
 	mConf[key] = reinterpret_cast<void *>(s);

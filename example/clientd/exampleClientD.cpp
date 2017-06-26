@@ -122,6 +122,7 @@ int main(int argc, const char *argv[]) {
 	// 解析命令行
 	if (config->GetOption(argc, argv) == -1) {
 		std::cout << "get configure failed" << std::endl;
+		SAFE_DELETE(config);
 		return -1;
 	}
 
@@ -129,12 +130,14 @@ int main(int argc, const char *argv[]) {
 	bool version, daemon;
 	if (config->GetConf("version", &version) && version == true) {
 		std::cout << soft::SetSoftName("example client daemon -") << soft::GetSoftVer() << std::endl;
+		SAFE_DELETE(config);
 		return -1;
 	} else if (config->GetConf("daemon", &daemon) && daemon == true) {
 		std::string lock_path;
 		config->GetConf("lock_path", &lock_path);
 		if (misc::InitDaemon(lock_path) == -1) {
 			std::cout << "create daemon failed" << std::endl;
+			SAFE_DELETE(config);
 			return -1;
 		}
 	}
@@ -143,9 +146,11 @@ int main(int argc, const char *argv[]) {
     ExampleClient* client;
 	SAFE_NEW(ExampleClient(config), client);
 	if (client == NULL) {
+		SAFE_DELETE(config);
 		return -1;
 	}
 
+	int ret = 0;
 	// 准备客户端
 	if (client->PrepareStart().Ok()) {
 		/** 阻塞服务方式运行*/
@@ -168,13 +173,14 @@ int main(int argc, const char *argv[]) {
 #else
 		client->Broadcast(reinterpret_cast<char*>(&req), sizeof(req), 1);
 #endif
-		// 等待连接结束
-		client->JoinThread();
+		client->JoinThread();	// 等待连接结束
 		std::cout << "thread end" << std::endl;
 	} else {
 		std::cout << "prepare error" << std::endl;
-		return -1;
+		ret = -1;
 	}
+	SAFE_DELETE(config);
+	SAFE_DELETE(client);
 
-	return 0;
+	return ret;
 }

@@ -30,6 +30,7 @@ int main(int argc, const char *argv[]) {
 	// 解析命令行
 	if (config->GetOption(argc, argv) == -1) {
 		std::cout << "get configure failed" << std::endl;
+		SAFE_DELETE(config);
 		return -1;
 	}
 
@@ -37,6 +38,7 @@ int main(int argc, const char *argv[]) {
 	bool version;
 	if (config->GetConf("version", &version) && version == true) {
 		std::cout << soft::SetSoftName("example client -") << soft::GetSoftVer() << std::endl;
+		SAFE_DELETE(config);
 		return -1;
 	}
 
@@ -44,6 +46,7 @@ int main(int argc, const char *argv[]) {
 	std::string host;
     int16_t port = 0;
     if (!config->GetConf("host", &host) || !config->GetConf("port", &port)) {
+    	SAFE_DELETE(config);
     	return -1;
     }
 
@@ -51,6 +54,7 @@ int main(int argc, const char *argv[]) {
 	wSingleClient *client;
 	SAFE_NEW(wSingleClient, client);
     if (client == NULL) {
+    	SAFE_DELETE(config);
         return -1;
     }
 
@@ -58,6 +62,8 @@ int main(int argc, const char *argv[]) {
     wStatus s = client->Connect(host, port, "HTTP");
     if (!s.Ok()) {
     	std::cout << "client connect failed" << s.ToString() << std::endl;
+    	SAFE_DELETE(config);
+    	SAFE_DELETE(client);
     	return -1;
     }
 
@@ -70,7 +76,10 @@ int main(int argc, const char *argv[]) {
     	std::cout << "http get failed:" << s.ToString() << std::endl;
     }
     usleep(1000);
-
     std::cout << "response:" << res << std::endl;
+    
+    SAFE_DELETE(config);
+	SAFE_DELETE(client);
+	
 	return 0;
 }

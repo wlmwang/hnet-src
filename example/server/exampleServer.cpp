@@ -180,6 +180,7 @@ int main(int argc, const char *argv[]) {
 	// 解析命令行
 	if (config->GetOption(argc, argv) == -1) {
 		std::cout << "get configure failed" << std::endl;
+		SAFE_DELETE(config);
 		return -1;
 	}
 
@@ -187,12 +188,14 @@ int main(int argc, const char *argv[]) {
 	bool version, daemon;
 	if (config->GetConf("version", &version) && version == true) {
 		std::cout << soft::SetSoftName("example server -") << soft::GetSoftVer() << std::endl;
+		SAFE_DELETE(config);
 		return -1;
 	} else if (config->GetConf("daemon", &daemon) && daemon == true) {
 		std::string lock_path;
 		config->GetConf("lock_path", &lock_path);
 		if (misc::InitDaemon(lock_path) == -1) {
 			std::cout << "create daemon failed" << std::endl;
+			SAFE_DELETE(config);
 			return -1;
 		}
 	}
@@ -201,31 +204,30 @@ int main(int argc, const char *argv[]) {
 	ExampleServer* server;
 	SAFE_NEW(ExampleServer(config), server);
 	if (server == NULL) {
+		SAFE_DELETE(config);
 		return -1;
 	}
 
 	// 创建master对象
+	int ret = 0;
 	wMaster* master;
 	SAFE_NEW(wMaster("EXAMPLE", server), master);
 	if (master != NULL) {
-		// 接受命令信号
 	    std::string signal;
-	    if (config->GetConf("signal", &signal) && signal.size() > 0) {
-	    	if (master->SignalProcess(signal).Ok()) {
-	    		return 0;
-	    	} else {
-	    		return -1;
+	    if (config->GetConf("signal", &signal) && signal.size() > 0) {	// 接受命令信号
+	    	if (!master->SignalProcess(signal).Ok()) {
+	    		ret = -1;
 	    	}
 	    } else {
 	    	// 准备服务器
 			if (master->PrepareStart().Ok()) {
-				// Master-Worker方式开启服务器
-				master->MasterStart();
-			} else {
-				return -1;
+				master->MasterStart();	// Master-Worker方式开启服务器
 			}
 	    }
 	}
-
-	return 0;
+	SAFE_DELETE(config);
+	SAFE_DELETE(server);
+	SAFE_DELETE(master);
+	
+	return ret;
 }

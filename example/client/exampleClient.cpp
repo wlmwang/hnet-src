@@ -32,6 +32,7 @@ int main(int argc, const char *argv[]) {
 	// 解析命令行
 	if (config->GetOption(argc, argv) == -1) {
 		std::cout << "get configure failed" << std::endl;
+		SAFE_DELETE(config);
 		return -1;
 	}
 
@@ -39,6 +40,7 @@ int main(int argc, const char *argv[]) {
 	bool version;
 	if (config->GetConf("version", &version) && version == true) {
 		std::cout << soft::SetSoftName("example client -") << soft::GetSoftVer() << std::endl;
+		SAFE_DELETE(config);
 		return -1;
 	}
 
@@ -46,6 +48,7 @@ int main(int argc, const char *argv[]) {
 	std::string host;
     int16_t port = 0;
     if (!config->GetConf("host", &host) || !config->GetConf("port", &port)) {
+    	SAFE_DELETE(config);
     	return -1;
     }
 
@@ -60,6 +63,8 @@ int main(int argc, const char *argv[]) {
     wStatus s = client->Connect(host, port);
     if (!s.Ok()) {
     	std::cout << "client connect failed" << s.ToString() << std::endl;
+    	SAFE_DELETE(config);
+    	SAFE_DELETE(client);
     	return -1;
     }
 
@@ -81,6 +86,8 @@ int main(int argc, const char *argv[]) {
 
 	if (!s.Ok()) {
 		std::cout << "client send failed" << s.ToString() << std::endl;
+    	SAFE_DELETE(config);
+    	SAFE_DELETE(client);
 		return -1;
 	}
 
@@ -91,6 +98,8 @@ int main(int argc, const char *argv[]) {
 
 	if (!s.Ok()) {
 		std::cout << "client receive failed" << s.ToString() << std::endl;
+    	SAFE_DELETE(config);
+    	SAFE_DELETE(client);
 		return -1;
 	}
 #else
@@ -99,10 +108,14 @@ int main(int argc, const char *argv[]) {
 
 	if (!s.Ok()) {
 		std::cout << "client receive failed" << s.ToString() << std::endl;
+    	SAFE_DELETE(config);
+    	SAFE_DELETE(client);
 		return -1;
 	}
 #endif
 	std::cout << res.cmd() << "|" << res.ret() << std::endl;
-
+    SAFE_DELETE(config);
+    SAFE_DELETE(client);
+    
 	return 0;
 }

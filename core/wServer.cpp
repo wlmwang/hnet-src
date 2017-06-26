@@ -829,7 +829,7 @@ void wServer::CheckHeartBeat() {
     for (int i = 0; i < kServerNumShard; i++) {
     	std::vector<int> slot(1, i);
     	if (mScheduleTurn) Locks(&slot);
-	    if (mTaskPool[i].size() > 0) {
+	    if (!mTaskPool[i].empty()) {
 	    	std::vector<wTask*>::iterator it = mTaskPool[i].begin();
 	    	while (it != mTaskPool[i].end()) {
 	    		if ((*it)->Socket()->ST() == kStConnect && ((*it)->Socket()->SP() == kSpTcp || (*it)->Socket()->SP() == kSpUnix)) {
