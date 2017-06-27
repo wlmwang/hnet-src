@@ -400,15 +400,15 @@ void wPosixEnv::StartThread(void (*function)(void* arg), void* arg) {
 }	// namespace anonymous
 
 // 实例化env对象
-static pthread_once_t once = PTHREAD_ONCE_INIT;
-static wEnv* defaultEnv;
+static pthread_once_t g_once = PTHREAD_ONCE_INIT;
+static wEnv* g_defaultEnv;
 static void InitDefaultEnv() {
-    SAFE_NEW(wPosixEnv(), defaultEnv);
+    SAFE_NEW(wPosixEnv(), g_defaultEnv);
 }
 
 wEnv* wEnv::Default() {
-    pthread_once(&once, InitDefaultEnv);
-    return defaultEnv;
+    pthread_once(&g_once, InitDefaultEnv);
+    return g_defaultEnv;
 }
 
 }	// namespace hnet

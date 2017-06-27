@@ -200,8 +200,8 @@ std::string UrlDecode(const std::string& str);
 
 namespace soft {
 
-uint64_t TimeUpdate();
-uint64_t TimeUsec();
+int64_t TimeUpdate();
+int64_t TimeUsec();
 time_t TimeUnix();
 
 uid_t GetUser();
