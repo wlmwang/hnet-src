@@ -83,9 +83,9 @@ const uint8_t 	kFFlushPerLog = 0;
 // 1M共享消息队列大小
 const uint32_t  kMsgQueueLen = 1048576;
 
-// 64k客户端task消息缓冲大小
-const uint32_t  kPackageSize = 65536;
-const uint32_t  kMaxPackageSize = 65532;
+// 512k客户端task消息缓冲大小
+const uint32_t  kPackageSize = 524288;
+const uint32_t  kMaxPackageSize = 524284;
 const uint32_t  kMinPackageSize = 3;
 
 const uint32_t  kPageSize = 4096;
