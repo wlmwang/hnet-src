@@ -149,7 +149,7 @@ const wStatus& wTcpSocket::Accept(int64_t *fd, struct sockaddr* clientaddr, sock
 		if (*fd > 0) {
 			break;
 		} else if (errno == EAGAIN) {
-			continue;
+			//continue;
 		} else if (errno == EINTR) {
 		    // 操作被信号中断，中断后唤醒继续处理
 		    // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理

@@ -320,8 +320,10 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_un sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);
-		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok() && fd <= 0) {
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
 		    return mStatus;
+		} else if (fd <= 0) {
+			return mStatus = wStatus::IOError("wServer::AcceptConn () failed", "");
 		}
 
 		// unix socket
@@ -339,8 +341,10 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_in sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);	
-		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok() && fd <= 0) {
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
 		    return mStatus;
+		} else if (fd <= 0) {
+			return mStatus = wStatus::IOError("wServer::AcceptConn () failed", "");
 		}
 
 		// tcp socket
@@ -358,8 +362,10 @@ const wStatus& wServer::AcceptConn(wTask *task) {
 		int64_t fd;
 		struct sockaddr_in sockAddr;
 		socklen_t sockAddrSize = sizeof(sockAddr);	
-		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok() && fd <= 0) {
+		if (!(mStatus = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize)).Ok()) {
 		    return mStatus;
+		} else if (fd <= 0) {
+			return mStatus = wStatus::IOError("wServer::AcceptConn () failed", "");
 		}
 
 		// tcp socket
