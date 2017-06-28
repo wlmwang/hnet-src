@@ -4,6 +4,7 @@
 升级gcc-4.8+（编译依赖）
 安装protobuf（必要时安装protobuf）
 安装tinyxml（必要时安装tinyxml）
+安装jsoncpp（必要时安装jsoncpp）
 安装hnet（目前几个项目多数使用静态库，并将其编译为可静态链接到到动态库版本）
 ```
 
@@ -35,7 +36,6 @@
 		* strings /usr/lib64/libstdc++.so.6 | grep GLIBC
 
 * 安装protobuf（默认路径 /usr/local/lib   /usr/local/include/google）
-
     * 源码安装(hnet/vendor目录附带有2.4.1版本。官方https://github.com/google/protobuf)
         * tar -zxvf protobuf-2.4.1.tar.gz
         * cd protobuf-2.4.1
@@ -53,15 +53,19 @@
         * echo "/usr/local/lib" > /etc/ld.so.conf.d/tinyxml.conf #如已在搜索路径无需此步
         * ldconfig
 
-* 安装hnet
+* 安装jsoncpp（默认路径  /usr/local/lib   /usr/local/include/jsoncpp）
+    * 源码安装（hnet/vendor目录附带有源码）
+        * make
+        * make install
+        * echo "/usr/local/lib" > /etc/ld.so.conf.d/jsoncpp.conf #如已在搜索路径无需此步
+        * ldconfig
 
+* 安装hnet
     * 解压hnet.tar.gz到任一目录中，以/usr/local/src为例
         * cd /usr/local/src
         * tar -zxvf hnet.tar.gz
         * cd hnet/core
-        * make  #修改Makefile编译参数-D_USE_PROTOBUF_，可打开protobuf功能
-        * ```此步骤可能会有protobuf出错信息。请使用本机安装的protoc重新编译wChannel.proto文件   protoc -I./ --cpp_out=./ ./wChannel.proto```
-
+        * make  #可修改Makefile编译参数-D_USE_PROTOBUF_ 并开启-lprotobuf，打开protobuf功能
         * make install
         * echo "/usr/local/lib" > /etc/ld.so.conf.d/hnet.conf #如已在搜索路径无需此步
         * ldconfig
