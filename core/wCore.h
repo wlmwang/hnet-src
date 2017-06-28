@@ -116,8 +116,7 @@ const gid_t     kDeamonGroup = 0;
 /**
  * 惊群锁实现可使用以下三种
  * 0:atmoic（原子锁，c++11、共享内存支持） 
- * 1:semaphore（信号量，sem_open支持。@TODO 测试情况跨进程极其不稳定，会引起bug） 
- * 2:file（记录锁，多数POSIX平台均对flock提供支持。但性能相对最低）
+ * 1:file（记录锁，多数POSIX平台均对flock提供支持。但性能相对最低）
  */
 const bool		kAcceptTurn = true;
 const int8_t	kAcceptStuff = 0;	// atmoic

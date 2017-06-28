@@ -36,7 +36,6 @@ class wTask;
 class wMaster;
 class wWorker;
 class wFileLock;
-class wSem;
 class wShm;
 
 // 服务基础类
@@ -192,10 +191,8 @@ protected:
 
     // 惊群锁
     wShm *mShm;
-
     wAtomic<int>* mAcceptAtomic;
     wFileLock* mAcceptFL;
-    wSem *mAcceptSem;
 
     bool mUseAcceptTurn;
     bool mAcceptHeld;

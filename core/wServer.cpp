@@ -12,7 +12,6 @@
 #include <algorithm>
 #include "wServer.h"
 #include "wConfig.h"
-#include "wSem.h"
 #include "wShm.h"
 #include "wMaster.h"
 #include "wWorker.h"
@@ -29,7 +28,7 @@
 namespace hnet {
 
 wServer::wServer(wConfig* config) : mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleTurn(kScheduleTurn), mScheduleOk(true), 
-mEpollFD(kFDUnknown), mTimeout(10),mTask(NULL), mShm(NULL), mAcceptAtomic(NULL), mAcceptFL(NULL), mAcceptSem(NULL), mUseAcceptTurn(kAcceptTurn), 
+mEpollFD(kFDUnknown), mTimeout(10),mTask(NULL), mShm(NULL), mAcceptAtomic(NULL), mAcceptFL(NULL), mUseAcceptTurn(kAcceptTurn), 
 mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config), mEnv(wEnv::Default()) {
 	assert(mConfig != NULL);
     mLatestTm = soft::TimeUsec();
@@ -39,7 +38,6 @@ mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config), mEnv(wEn
 wServer::~wServer() {
     CleanTask();
     SAFE_DELETE(mShm);
-    SAFE_DELETE(mAcceptSem);
 }
 
 const wStatus& wServer::PrepareStart(const std::string& ipaddr, uint16_t port, const std::string& protocol) {
@@ -105,8 +103,6 @@ const wStatus& wServer::WorkerStart(bool daemon) {
     	    if (kAcceptStuff == 0 && mShm) {
     	    	mAcceptAtomic->CompareExchangeWeak(mMaster->mWorker->mPid, -1);
     	    	mShm->Remove();
-    	    } else if (kAcceptStuff == 1 && mAcceptSem) {
-    	    	mAcceptSem->Remove();
     	    }
     	   	ProcessExit();
 			CleanListenSock();
@@ -126,8 +122,6 @@ const wStatus& wServer::HandleSignal() {
 	    if (kAcceptStuff == 0 && mShm) {
 	    	mAcceptAtomic->CompareExchangeWeak(mMaster->mWorker->mPid, -1);
 	    	mShm->Remove();
-	    } else if (kAcceptStuff == 1 && mAcceptSem) {
-	    	mAcceptSem->Remove();
 	    }
 	   	ProcessExit();
 		exit(0);
@@ -235,12 +229,6 @@ const wStatus& wServer::InitAcceptMutex() {
     			}
     		}
 		} else if (kAcceptStuff == 1) {
-			if (mEnv->NewSem(soft::GetAcceptmtxPath(), &mAcceptSem) == 0) {
-				if (mAcceptSem->Open() == -1) {
-					mStatus = wStatus::IOError("wServer::InitAcceptMutex open sem failed", "");
-				}
-			}
-		} else if (kAcceptStuff == 2) {
     		int fd;
     		if (mEnv->OpenFile(soft::GetAcceptmtxPath(), fd) == 0) {
     			mEnv->CloseFD(fd);
@@ -262,8 +250,7 @@ const wStatus& wServer::ReleaseAcceptMutex(int pid) {
 const wStatus& wServer::Recv() {
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {	// 争抢accept锁
 		if ((kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeWeak(-1, mMaster->mWorker->mPid)) ||
-			(kAcceptStuff == 1 && mAcceptSem->TryWait() == 0) || 
-			(kAcceptStuff == 2 && mEnv->LockFile(soft::GetAcceptmtxPath(), &mAcceptFL) == 0)) {
+			(kAcceptStuff == 1 && mEnv->LockFile(soft::GetAcceptmtxPath(), &mAcceptFL) == 0)) {
 			Listener2Epoll(false);
 			mAcceptHeld = true;
 		}
@@ -320,10 +307,7 @@ const wStatus& wServer::Recv() {
 		if (kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeWeak(mMaster->mWorker->mPid, -1)) {
 			RemoveListener(false);
 			mAcceptHeld = false;
-		} else if (kAcceptStuff == 1 && mAcceptSem->Post() == 0) {
-			RemoveListener(false);
-			mAcceptHeld = false;
-		} else if (kAcceptStuff == 2 && mEnv->UnlockFile(mAcceptFL) == 0) {
+		} else if (kAcceptStuff == 1 && mEnv->UnlockFile(mAcceptFL) == 0) {
 			RemoveListener(false);
 			mAcceptHeld = false;
 		}
@@ -785,8 +769,6 @@ const wStatus& wServer::CleanListenSock() {
 const wStatus& wServer::DeleteAcceptFile() {
     if (kAcceptStuff == 0 && mShm) {
     	mShm->Destroy();
-    } else if (kAcceptStuff == 1 && mAcceptSem) {
-    	mAcceptSem->Destroy();
     }
     mEnv->DeleteFile(soft::GetAcceptmtxPath());
 	return mStatus;
