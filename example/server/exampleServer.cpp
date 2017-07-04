@@ -6,6 +6,7 @@
 
 #include "wCore.h"
 #include "wMisc.h"
+#include "wDaemon.h"
 #include "wChannelTask.h"
 #include "wTcpTask.h"
 #include "wHttpTask.h"
@@ -189,15 +190,16 @@ int main(int argc, char *argv[]) {
 	}
 
 	// 版本输出 && 守护进程创建
-	bool version, daemon;
-	if (config->GetConf("version", &version) && version) {
+	bool vn, dn;
+	if (config->GetConf("version", &vn) && vn) {
 		std::cout << soft::SetSoftName("example server -") << soft::GetSoftVer() << std::endl;
 		SAFE_DELETE(config);
 		return -1;
-	} else if (config->GetConf("daemon", &daemon) && daemon) {
+	} else if (config->GetConf("daemon", &dn) && dn) {
 		std::string lock_path;
 		config->GetConf("lock_path", &lock_path);
-		if (misc::InitDaemon(lock_path) == -1) {
+		wDaemon daemon;
+		if (daemon.Start(lock_path) == -1) {
 			std::cout << "create daemon failed" << std::endl;
 			SAFE_DELETE(config);
 			return -1;

@@ -133,9 +133,6 @@ unsigned int GetIpByIF(const char* ifname);
 // 行成功则返回0, 失败返回-1, errno 为错误代码
 int SetBinPath(std::string bin_path = "", std::string self = "/proc/self/exe");
 
-// 创建守护进程
-int InitDaemon(std::string lock_path, const char *prefix = NULL);
-
 // 错误返回NULL
 inline const char* IP2Text(uint32_t ip) {
     struct in_addr in;
