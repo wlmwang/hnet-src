@@ -190,11 +190,11 @@ int main(int argc, char *argv[]) {
 
 	// 版本输出 && 守护进程创建
 	bool version, daemon;
-	if (config->GetConf("version", &version) && version == true) {
+	if (config->GetConf("version", &version) && version) {
 		std::cout << soft::SetSoftName("example server -") << soft::GetSoftVer() << std::endl;
 		SAFE_DELETE(config);
 		return -1;
-	} else if (config->GetConf("daemon", &daemon) && daemon == true) {
+	} else if (config->GetConf("daemon", &daemon) && daemon) {
 		std::string lock_path;
 		config->GetConf("lock_path", &lock_path);
 		if (misc::InitDaemon(lock_path) == -1) {
