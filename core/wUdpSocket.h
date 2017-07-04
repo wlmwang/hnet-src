@@ -9,7 +9,6 @@
 
 #include <sys/socket.h>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wSocket.h"
 
 namespace hnet {
@@ -19,14 +18,14 @@ class wUdpSocket : public wSocket {
 public:
 	wUdpSocket(SockType type = kStConnect, SockProto proto = kSpUdp, SockFlag flag = kSfRvsd) : wSocket(type, proto, flag) { }
 
-	virtual const wStatus& RecvBytes(char buf[], size_t len, ssize_t *size);
-    virtual const wStatus& SendBytes(char buf[], size_t len, ssize_t *size);
+	virtual int RecvBytes(char buf[], size_t len, ssize_t *size);
+    virtual int SendBytes(char buf[], size_t len, ssize_t *size);
 
-    virtual const wStatus& Open();
-    virtual const wStatus& Listen(const std::string& host, uint16_t port = 0);
+    virtual int Open();
+    virtual int Listen(const std::string& host, uint16_t port = 0);
 
 protected:
-    virtual const wStatus& Bind(const std::string& host, uint16_t port = 0);
+    virtual int Bind(const std::string& host, uint16_t port = 0);
 
     std::string mClientHost;
     uint16_t mClientPort;

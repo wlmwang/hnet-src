@@ -5,7 +5,6 @@
  */
 
 #include "wCore.h"
-#include "wStatus.h"
 #include "wMisc.h"
 #include "wTcpTask.h"
 #include "wMultiClient.h"
@@ -26,12 +25,12 @@ public:
 		On(example::CMD_EXAMPLE_RES, example::EXAMPLE_RES_ECHO, &ExampleTask::ExampleEchoRes, this);
 #endif
 	}
-    virtual const wStatus& ReConnect();
+    virtual int ReConnect();
 	
 	int ExampleEchoRes(struct Request_t *request);
 };
 
-const wStatus& ExampleTask::ReConnect() {
+int ExampleTask::ReConnect() {
 
 std::cout << "ReConnect" << std::endl;
 
@@ -48,7 +47,8 @@ std::cout << "ReConnect" << std::endl;
 #else
 	AsyncSend(reinterpret_cast<char*>(&req), sizeof(req));
 #endif
-	return mStatus;
+
+	return 0;
 }
 
 int ExampleTask::ExampleEchoRes(struct Request_t *request) {
@@ -73,49 +73,57 @@ int ExampleTask::ExampleEchoRes(struct Request_t *request) {
 #else
 	AsyncSend(reinterpret_cast<char*>(&req), sizeof(req));
 #endif
+
 	return 0;
 }
 
 class ExampleClient : public wMultiClient {
 public:
-	ExampleClient(wConfig* config, wServer* server = NULL) : wMultiClient(config, server) { }
+	ExampleClient(wConfig* config, wServer* server = NULL) : wMultiClient(config, server, true) { }
 
-	virtual const wStatus& NewTcpTask(wSocket* sock, wTask** ptr, int type = 0) {
+	virtual int NewTcpTask(wSocket* sock, wTask** ptr, int type = 0) {
 	    SAFE_NEW(ExampleTask(sock, type), *ptr);
-	    if (*ptr == NULL) {
-	        return mStatus = wStatus::IOError("ExampleClient::NewTcpTask", "new failed");
+	    if (!*ptr) {
+	    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleClient::NewTcpTask new() failed", "");
+	    	return -1;
 	    }
-	    return mStatus;
+	    return 0;
 	}
 
-	virtual const wStatus& PrepareRun() {
+	virtual int PrepareRun() {
 	    std::string host;
 	    int16_t port = 0;
 
 	    wConfig* config = Config<wConfig*>();
-	    if (config == NULL || !config->GetConf("host", &host) || !config->GetConf("port", &port)) {
-	    	return mStatus = wStatus::IOError("ExampleClient::PrepareRun failed", "Config() is null or host|port is illegal");
+	    if (!config || !config->GetConf("host", &host) || !config->GetConf("port", &port)) {
+	    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleClient::PrepareRun () failed", "");
+	    	return -1;
 	    }
 
-	    // 连接服务器
-		int type = 1;	// 该类服务器key，每个key可挂载连接多个服务器
-		if (!AddConnect(type, host, port).Ok()) {
-			std::cout << "connect error:" << mStatus.ToString() << std::endl;
+	    // 服务器key，每个key可挂载连接多个服务器
+		int type = 1;
+
+		// 连接服务器
+		int ret = AddConnect(type, host, port);
+		if (ret == -1) {
+			std::cout << "connect error" << std::endl;
 		}
-		return mStatus;
+		return ret;
 	}
 };
 
-int main(int argc, const char *argv[]) {
+int main(int argc, char *argv[]) {
 	// 设置运行目录
 	if (misc::SetBinPath() == -1) {
 		std::cout << "set bin path failed" << std::endl;
+		return -1;
 	}
 
 	// 创建配置对象
 	wConfig* config;
 	SAFE_NEW(wConfig, config);
-	if (config == NULL) {
+	if (!config) {
+		std::cout << "config new failed" << std::endl;
 		return -1;
 	}
 
@@ -146,16 +154,14 @@ int main(int argc, const char *argv[]) {
     ExampleClient* client;
 	SAFE_NEW(ExampleClient(config), client);
 	if (client == NULL) {
+		std::cout << "client new failed" << std::endl;
 		SAFE_DELETE(config);
 		return -1;
 	}
 
-	int ret = 0;
 	// 准备客户端
-	if (client->PrepareStart().Ok()) {
-		/** 阻塞服务方式运行*/
-		//client->Start();
-
+	int ret = client->PrepareStart();
+	if (ret == 0) {
 		/** 守护线程方式运行*/
 		std::cout << "thread start" << std::endl;
 		client->StartThread();
@@ -174,13 +180,14 @@ int main(int argc, const char *argv[]) {
 		client->Broadcast(reinterpret_cast<char*>(&req), sizeof(req), 1);
 #endif
 		client->JoinThread();	// 等待连接结束
+
 		std::cout << "thread end" << std::endl;
 	} else {
 		std::cout << "prepare error" << std::endl;
 		ret = -1;
 	}
+	
 	SAFE_DELETE(config);
 	SAFE_DELETE(client);
-
 	return ret;
 }

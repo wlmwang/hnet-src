@@ -36,9 +36,20 @@ int wChannelTask::ChannelOpen(struct Request_t *request) {
 		socket->FD() = open.fd();
 		socket->SS() = kSsConnected;
 
-		wTask *task;
-		if (mMaster->Server()->NewChannelTask(socket, &task).Ok() && task) {
-			mMaster->Server()->AddTask(task);
+		// @TODO
+		wTask *task = NULL;
+		if (mMaster->Server()->NewChannelTask(socket, &task) == -1) {
+			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelOpen NewChannelTask() failed", "");
+			
+			//return -1;
+			exit(0);	// 进程重启
+		}
+		if (mMaster->Server()->AddTask(task) == -1) {
+			mMaster->Server()->RemoveTask(task);
+			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelOpen AddTask() failed", "");
+			
+			//return -1;
+			exit(0);	// 进程重启
 		}
 	}
 	return 0;
@@ -48,19 +59,30 @@ int wChannelTask::ChannelClose(struct Request_t *request) {
 	wChannelReqClose_t cls;
 	cls.ParseFromArray(request->mBuf, request->mLen);
 	
+	// @TODO
 	// 移除事件及task对象
+	/**
 	wChannelSocket *socket = mMaster->Worker(cls.slot())->Channel();
 	if (socket) {
-		wTask *task;
-		if (mMaster->Server()->FindTaskBySocket(&task, socket).Ok() && task) {
-			mMaster->Server()->RemoveTask(task);	// 移除task队列
+		wTask *task = NULL;
+		if (mMaster->Server()->FindTaskBySocket(&task, socket) == 0) {
+			mMaster->Server()->RemoveTask(task);
+		} else {
+			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelClose AddTask() failed", "");
+
+			//return -1;
+			exit(2);
 		}
 	}
+	*/
 
 	// 关闭描述符
 	if (mMaster->Worker(cls.slot())->ChannelFD(0) != kFDUnknown) {
 		if (close(mMaster->Worker(cls.slot())->ChannelFD(0)) == -1) {
 	    	LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelClose, close() failed", error::Strerror(errno).c_str());
+
+	    	//return -1;
+	    	exit(2);
 		}
 	}
 	mMaster->Worker(cls.slot())->ChannelFD(0) = kFDUnknown;

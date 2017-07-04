@@ -5,7 +5,6 @@
  */
 
 #include "wCore.h"
-#include "wStatus.h"
 #include "wMisc.h"
 #include "wChannelTask.h"
 #include "wTcpTask.h"
@@ -139,41 +138,46 @@ class ExampleServer : public wServer {
 public:
 	ExampleServer(wConfig* config) : wServer(config) { }
 
-	virtual const wStatus& NewTcpTask(wSocket* sock, wTask** ptr) {
+	virtual int NewTcpTask(wSocket* sock, wTask** ptr) {
 	    SAFE_NEW(ExampleTcpTask(sock, Shard(sock)), *ptr);
-	    if (*ptr == NULL) {
-			return mStatus = wStatus::IOError("ExampleServer::NewTcpTask", "ExampleTcpTask new failed");
+	    if (!*ptr) {
+	    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewTcpTask new() failed", "");
+	    	return -1;
 	    }
-	    return mStatus;
+	    return 0;
 	}
 	
-	virtual const wStatus& NewHttpTask(wSocket* sock, wTask** ptr) {
+	virtual int NewHttpTask(wSocket* sock, wTask** ptr) {
 	    SAFE_NEW(ExampleHttpTask(sock, Shard(sock)), *ptr);
-	    if (*ptr == NULL) {
-			return mStatus = wStatus::IOError("ExampleServer::NewHttpTask", "ExampleHttpTask new failed");
+	    if (!*ptr) {
+	    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewHttpTask new() failed", "");
+	    	return -1;
 	    }
-	    return mStatus;
+	    return 0;
 	}
 
-	virtual const wStatus& NewChannelTask(wSocket* sock, wTask** ptr) {
+	virtual int NewChannelTask(wSocket* sock, wTask** ptr) {
 		SAFE_NEW(ExampleChannelTask(sock, mMaster, Shard(sock)), *ptr);
-	    if (*ptr == NULL) {
-			return mStatus = wStatus::IOError("ExampleServer::NewChannelTask", "ExampleChannelTask new failed");
+	    if (!*ptr) {
+	    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewChannelTask new() failed", "");
+	    	return -1;
 	    }
-	    return mStatus;
+	    return 0;
 	}
 };
 
-int main(int argc, const char *argv[]) {
+int main(int argc, char *argv[]) {
 	// 设置运行目录
 	if (misc::SetBinPath() == -1) {
 		std::cout << "set bin path failed" << std::endl;
+		return -1;
 	}
 
 	// 创建配置对象
 	wConfig* config;
 	SAFE_NEW(wConfig, config);
-	if (config == NULL) {
+	if (!config) {
+		std::cout << "config new failed" << std::endl;
 		return -1;
 	}
 
@@ -203,7 +207,8 @@ int main(int argc, const char *argv[]) {
 	// 创建服务器对象
 	ExampleServer* server;
 	SAFE_NEW(ExampleServer(config), server);
-	if (server == NULL) {
+	if (!server) {
+		std::cout << "server new failed" << std::endl;
 		SAFE_DELETE(config);
 		return -1;
 	}
@@ -212,22 +217,28 @@ int main(int argc, const char *argv[]) {
 	int ret = 0;
 	wMaster* master;
 	SAFE_NEW(wMaster("EXAMPLE", server), master);
-	if (master != NULL) {
+	if (master) {
 	    std::string signal;
 	    if (config->GetConf("signal", &signal) && signal.size() > 0) {	// 接受命令信号
-	    	if (!master->SignalProcess(signal).Ok()) {
-	    		ret = -1;
-	    	}
+	    	ret = master->SignalProcess(signal);
 	    } else {
 	    	// 准备服务器
-			if (master->PrepareStart().Ok()) {
-				master->MasterStart();	// Master-Worker方式开启服务器
+	    	ret = master->PrepareStart();
+			if (ret == 0) {
+				ret = master->MasterStart();	// Master-Worker方式开启服务器
+				if (ret == -1) {
+					std::cout << "MasterStart failed" << std::endl;
+				}
+			} else {
+				std::cout << "PrepareStart failed" << std::endl;
 			}
 	    }
+	} else {
+		std::cout << "master new failed" << std::endl;
 	}
+
 	SAFE_DELETE(config);
 	SAFE_DELETE(server);
 	SAFE_DELETE(master);
-	
 	return ret;
 }

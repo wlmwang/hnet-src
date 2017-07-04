@@ -14,22 +14,29 @@ namespace hnet {
 
 class wProcTitle : private wNoncopyable {
 public:
-    wProcTitle() { }
+    wProcTitle();
+    
     ~wProcTitle();
 
     // 务必在设置进程标题之前调用
     // 移动**argv到堆上，移动**environ到堆上
-    // tips：*argv[]与**environ两个变量所占的内存是连续的，并且是**environ紧跟在*argv[]后面
-    int SaveArgv(int argc, const char* argv[]);
+    // tips：*argv[]与**environ两个指针数组指向的值所占的内存是连续的，且**environ紧跟在*argv[]后面
+    int SaveArgv(int argc, char* argv[]);
 
     // 设置进程标题
+    // Linux进程名称是通过命令行参数argv[0]来表示的
     int Setproctitle(const char *title, const char *pretitle = NULL, bool attach = true);
 
+    char** Argv() { return mArgv;}
+    char** Environ() { return mEnv;}
+
 protected:
-    const char** mOsArgv;
-    int mArgc;
+    int mOsEnvc;
+    int mOsArgc;
+    char** mOsEnv;
+    char** mOsArgv;
+
     char** mArgv;
-    int mNumEnv;
     char** mEnv;
 };
 

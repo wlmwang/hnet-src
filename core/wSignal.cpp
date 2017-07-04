@@ -10,13 +10,13 @@
 
 namespace hnet {
 
-int g_sigalrm = 0;
-int g_sigio = 0;
-int g_terminate = 0;
-int g_quit = 0;
-int g_reconfigure = 0;
-int g_reap = 0;
-int g_reopen = 0;
+volatile int g_sigalrm = 0;
+volatile int g_sigio = 0;
+volatile int g_terminate = 0;
+volatile int g_quit = 0;
+volatile int g_reconfigure = 0;
+volatile int g_reap = 0;
+volatile int g_reopen = 0;
 
 // 信号集
 wSignal::Signal_t g_signals[] = {

@@ -14,12 +14,12 @@
 #include <vector>
 #include <algorithm>
 #include "wEnv.h"
+#include "wMisc.h"
 #include "wFile.h"
 #include "wLogger.h"
 #include "wSem.h"
 #include "wShm.h"
 #include "wMutex.h"
-#include "wMisc.h"
 
 namespace hnet {
 
@@ -34,8 +34,8 @@ public:
     virtual int NewSequentialFile(const std::string& fname, wSequentialFile** result) {
         FILE* f = fopen(fname.c_str(), "r");
         *result = NULL;
-        if (f == NULL) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::NewSequentialFile fopen() failed", error::Strerror(errno).c_str());
+        if (!f) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewSequentialFile fopen() failed", error::Strerror(errno).c_str());
             return -1;
         } else {
             SAFE_NEW(wPosixSequentialFile(fname, f), *result);
@@ -47,7 +47,7 @@ public:
         *result = NULL;
         int fd = open(fname.c_str(), O_RDONLY);
         if (fd < 0) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::NewRandomAccessFile fopen() failed", error::Strerror(errno).c_str());
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewRandomAccessFile fopen() failed", error::Strerror(errno).c_str());
             return -1;
         } else if (mMmapLimit.Acquire()) {
         	// 创建mmaps
@@ -61,7 +61,7 @@ public:
                 } else {
                     close(fd);
                     mMmapLimit.Release();
-                    LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::NewRandomAccessFile mmap() failed", error::Strerror(errno).c_str());
+                    LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewRandomAccessFile mmap() failed", error::Strerror(errno).c_str());
                     return -1;
                 }
             } else {
@@ -77,8 +77,8 @@ public:
     virtual int NewWritableFile(const std::string& fname, wWritableFile** result) {
         *result = NULL;
         FILE* f = fopen(fname.c_str(), "w");
-        if (f == NULL) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::NewWritableFile fopen() failed", error::Strerror(errno).c_str());
+        if (!f) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewWritableFile fopen() failed", error::Strerror(errno).c_str());
             return -1;
         }
         SAFE_NEW(wPosixWritableFile(fname, f), *result);
@@ -87,8 +87,8 @@ public:
 
     virtual int NewSem(const std::string& name, wSem** result) {
     	SAFE_NEW(wPosixSem(name), *result);
-        if (*result == NULL) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::NewSem new() failed", error::Strerror(errno).c_str());
+        if (!*result) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewSem new() failed", error::Strerror(errno).c_str());
             return -1;
         }
     	return 0;
@@ -96,8 +96,8 @@ public:
 
     virtual int NewShm(const std::string& filename, wShm** result, size_t size = kMsgQueueLen) {
         SAFE_NEW(wPosixShm(filename, size), *result);
-        if (*result == NULL) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::NewShm new() failed", error::Strerror(errno).c_str());
+        if (!*result) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewShm new() failed", error::Strerror(errno).c_str());
             return -1;
         }
         return 0;
@@ -108,11 +108,11 @@ public:
         *lock = NULL;
         int fd = open(fname.c_str(), O_WRONLY|O_CREAT, 0644);
         if (fd < 0) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::LockFile open() failed", error::Strerror(errno).c_str());
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::LockFile open() failed", error::Strerror(errno).c_str());
             return -1;
         } else if (!mLocks.Insert(fname)) {   // 重复加锁
             close(fd);
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::LockFile Insert() failed", error::Strerror(errno).c_str());
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::LockFile Insert() failed", error::Strerror(errno).c_str());
             return -1;
         } else if (LockOrUnlock(fd, true) == -1) {  // 加锁失败
             close(fd);
@@ -132,7 +132,7 @@ public:
     virtual int UnlockFile(wFileLock* lock) {
         wPosixFileLock* my_lock = reinterpret_cast<wPosixFileLock*>(lock);        
         if (LockOrUnlock(my_lock->mFD, false) == -1) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::UnlockFile LockOrUnlock() failed", error::Strerror(errno).c_str());
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::UnlockFile LockOrUnlock() failed", error::Strerror(errno).c_str());
             return -1;
         }
         mLocks.Remove(my_lock->mName);
@@ -144,8 +144,8 @@ public:
     // 日志对象
     virtual int NewLogger(const std::string& fname, wLogger** result, off_t maxsize = kMaxLoggerSize) {
     	SAFE_NEW(wPosixLogger(fname, &wPosixEnv::getpid, maxsize), *result);
-		if (*result == NULL) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::NewLogger new() failed", error::Strerror(errno).c_str());
+		if (!*result) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewLogger new() failed", error::Strerror(errno).c_str());
             return -1;
 		}
 		return 0;
@@ -155,13 +155,13 @@ public:
     virtual int GetChildren(const std::string& dir, std::vector<std::string>* result, bool fullname = true) {
         result->clear();
         DIR* d = opendir(dir.c_str());
-        if (d == NULL) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::GetChildren opendir() failed", error::Strerror(errno).c_str());
+        if (!d) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::GetChildren opendir() failed", error::Strerror(errno).c_str());
             return -1;
         }
         struct dirent* entry;
         std::string dname;
-        while ((entry = readdir(d)) != NULL) {
+        while ((entry = readdir(d))) {
         	if (fullname) {
         		result->push_back(dir + "/" + entry->d_name);
         	} else {
@@ -176,7 +176,7 @@ public:
     	char dir_path[256] = {'\0'};
     	int len = readlink(self.c_str(), dir_path, 256);
     	if (len < 0 || len >= 256) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::GetBinPath readlink() failed", error::Strerror(errno).c_str());
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::GetBinPath readlink() failed", error::Strerror(errno).c_str());
             return -1;
     	}
 		for (int i = len; i >= 0; --i) {
@@ -191,8 +191,8 @@ public:
 
     virtual int GetRealPath(const std::string& fname, std::string* result) {
     	char dir_path[256] = {'\0'};
-        if (realpath(fname.c_str(), dir_path) == NULL) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::GetRealPath realpath() failed", error::Strerror(errno).c_str());
+        if (!realpath(fname.c_str(), dir_path)) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::GetRealPath realpath() failed", error::Strerror(errno).c_str());
             return -1;
         }
         *result = dir_path;
@@ -202,7 +202,7 @@ public:
     virtual int OpenFile(const std::string& fname, int& fd, int oflag = O_RDWR | O_CREAT, mode_t mode= 0644) {
         fd = open(fname.c_str(), oflag, mode);
         if (fd == -1) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::OpenFile open() failed", error::Strerror(errno).c_str());
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::OpenFile open() failed", error::Strerror(errno).c_str());
             return -1;
         }
         return 0;
@@ -211,7 +211,7 @@ public:
     virtual int CloseFD(int fd) {
         int ret = close(fd);
         if (ret != 0) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::CloseFD close() failed", error::Strerror(errno).c_str());
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::CloseFD close() failed", error::Strerror(errno).c_str());
         }
         return ret;
     }
@@ -219,7 +219,7 @@ public:
     virtual int DeleteFile(const std::string& fname) {
         int ret = unlink(fname.c_str());
         if (ret != 0) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::DeleteFile unlink() failed", error::Strerror(errno).c_str());
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::DeleteFile unlink() failed", error::Strerror(errno).c_str());
         }
         return ret;
     }
@@ -227,7 +227,7 @@ public:
     virtual int CreateDir(const std::string& name) {
         int ret = mkdir(name.c_str(), 0755);
         if (ret != 0) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::CreateDir mkdir() failed", error::Strerror(errno).c_str());
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::CreateDir mkdir() failed", error::Strerror(errno).c_str());
         }
         return ret;
     }
@@ -235,7 +235,7 @@ public:
     virtual int DeleteDir(const std::string& name) {
         int ret = rmdir(name.c_str());
         if (ret != 0) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::DeleteDir rmdir() failed", error::Strerror(errno).c_str());
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::DeleteDir rmdir() failed", error::Strerror(errno).c_str());
         }
         return ret;
     }
@@ -245,7 +245,7 @@ public:
         int ret = stat(fname.c_str(), &sbuf);
         if (ret != 0) {
             *size = 0;
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::GetFileSize stat() failed", error::Strerror(errno).c_str());
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::GetFileSize stat() failed", error::Strerror(errno).c_str());
         } else {
             *size = sbuf.st_size;
         }
@@ -255,7 +255,7 @@ public:
     virtual int RenameFile(const std::string& src, const std::string& target) {
         int ret = rename(src.c_str(), target.c_str());
         if (ret != 0) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wEnv::RenameFile rename() failed", error::Strerror(errno).c_str());
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::RenameFile rename() failed", error::Strerror(errno).c_str());
         }
         return ret;
     }
@@ -299,7 +299,7 @@ public:
 private:
     void PthreadCall(const char* label, int err) {
         if (err != 0) {
-        	std::string str = "wEnv::PthreadCall, pthread ";
+        	std::string str = "wPosixEnv::PthreadCall, pthread ";
             LOG_ERROR(soft::GetLogPath(), "%s : %s", str.c_str(), error::Strerror(err).c_str());
         	exit(-1);
         }

@@ -11,7 +11,6 @@
 #include <vector>
 #include <sys/epoll.h>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wNoncopyable.h"
 #include "wMutex.h"
 #include "wMisc.h"
@@ -36,49 +35,49 @@ class wTask;
 // 多用于与服务端长连，守护监听服务端消息
 class wMultiClient : public wThread {
 public:
-    wMultiClient(wConfig* config, wServer* server = NULL);
+    wMultiClient(wConfig* config, wServer* server = NULL, bool join = false);
     virtual ~wMultiClient();
 
     // 添加连接
-    const wStatus& AddConnect(int type, const std::string& ipaddr, uint16_t port, const std::string& protocol = "TCP");
+    int AddConnect(int type, const std::string& ipaddr, uint16_t port, const std::string& protocol = "TCP");
 
     // 重连
-    const wStatus& ReConnect(wTask* task);
+    int ReConnect(wTask* task);
     
     // 断开连接
-    const wStatus& DisConnect(wTask *task);
+    int DisConnect(wTask *task);
     
     // 异步广播消息
     // 当 type== kNumShard 广播所有类型下的所有客户端
-    const wStatus& Broadcast(char *cmd, size_t len, int type = kClientNumShard);
+    int Broadcast(char *cmd, size_t len, int type = kClientNumShard);
 #ifdef _USE_PROTOBUF_
-    const wStatus& Broadcast(const google::protobuf::Message* msg, int type = kClientNumShard);
+    int Broadcast(const google::protobuf::Message* msg, int type = kClientNumShard);
 #endif
 
-    const wStatus& Send(wTask *task, char *cmd, size_t len);
+    int Send(wTask *task, char *cmd, size_t len);
 #ifdef _USE_PROTOBUF_
-    const wStatus& Send(wTask *task, const google::protobuf::Message* msg);
+    int Send(wTask *task, const google::protobuf::Message* msg);
 #endif
 
-    const wStatus& PrepareStart();
-    const wStatus& Start();
+    int PrepareStart();
+    int Start();
     
-    virtual const wStatus& RunThread();
+    virtual int RunThread();
 
-    virtual const wStatus& PrepareRun() {
-    	return mStatus;
+    virtual int PrepareRun() {
+    	return 0;
     }
 
-    virtual const wStatus& Run() {
-    	return mStatus;
+    virtual int Run() {
+    	return 0;
     }
 
     // 检查时钟周期tick
     void CheckTick();
 
-    virtual const wStatus& NewTcpTask(wSocket* sock, wTask** ptr, int type = 0);
-    virtual const wStatus& NewUnixTask(wSocket* sock, wTask** ptr, int type = 0);
-	virtual const wStatus& NewHttpTask(wSocket* sock, wTask** ptr, int type = 0);
+    virtual int NewTcpTask(wSocket* sock, wTask** ptr, int type = 0);
+    virtual int NewUnixTask(wSocket* sock, wTask** ptr, int type = 0);
+	virtual int NewHttpTask(wSocket* sock, wTask** ptr, int type = 0);
 
     virtual void CheckHeartBeat();
 
@@ -88,21 +87,21 @@ public:
     template<typename T = wServer*>
     inline T Server() { return reinterpret_cast<T>(mServer);}
 
-    const wStatus& AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
+    int AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
     
 protected:
     void Locks(std::vector<int>* slot = NULL, std::vector<int>* blackslot = NULL);
     void Unlocks(std::vector<int>* slot = NULL, std::vector<int>* blackslot = NULL);
 
-    const wStatus& Recv();
-    const wStatus& InitEpoll();
+    int Recv();
+    int InitEpoll();
 
-    const wStatus& RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
-    const wStatus& CleanTask();
+    int RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
+    int CleanTask();
     
-    const wStatus& AddToTaskPool(wTask *task);
+    int AddToTaskPool(wTask *task);
     std::vector<wTask*>::iterator RemoveTaskPool(wTask *task);
-    const wStatus& CleanTaskPool(std::vector<wTask*> pool);
+    int CleanTaskPool(std::vector<wTask*> pool);
 
     static void ScheduleRun(void* argv);
 
@@ -119,17 +118,15 @@ protected:
     bool mScheduleOk;
     wMutex mScheduleMutex;
 
-    int32_t mEpollFD;
-    uint64_t mTimeout;
+    int mEpollFD;
+    int64_t mTimeout;
 
     // task|pool
-    wTask *mTask;
     std::vector<wTask*> mTaskPool[kClientNumShard];
     wMutex mTaskPoolMutex[kClientNumShard];
 
     wConfig* mConfig;
     wServer* mServer;
-    wStatus mStatus;
 };
 
 }	// namespace hnet

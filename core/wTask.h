@@ -8,11 +8,11 @@
 #define _W_TASK_H_
 
 #include "wCore.h"
-#include "wStatus.h"
 #include "wNoncopyable.h"
 #include "wEvent.h"
 #include "wServer.h"
 #include "wMultiClient.h"
+#include "wLogger.h"
 
 #ifdef _USE_PROTOBUF_
 #include <google/protobuf/message.h>
@@ -35,86 +35,82 @@ public:
     void ResetBuffer();
     virtual ~wTask();
 
-    virtual const wStatus& Connect() {
-        return mStatus;
+    virtual int Connect() {
+        return 0;
     }
     
-    virtual const wStatus& DisConnect() {
-        return mStatus;
+    virtual int DisConnect() {
+        return 0;
     }
 
-    virtual const wStatus& ReConnect() {
-        return mStatus;
+    virtual int ReConnect() {
+        return 0;
     }
 
     // 处理接受到数据，转发给业务处理函数 Handlemsg 处理。每条消息大小[1b,512k]
-    // wStatus返回不为空，则task被关闭；Handlemsg处理出错返回，task也被关闭
     // size = -1 对端发生错误|稍后重试
     // size = 0  对端关闭
     // size > 0  接受字符
-    virtual const wStatus& TaskRecv(ssize_t *size);
+    virtual int TaskRecv(ssize_t *size);
 
     // 处理接受到数据
-    // wStatus返回不为空，则task被关闭
     // size = -1 对端发生错误|稍后重试|对端关闭
     // size >= 0 发送字符
-    virtual const wStatus& TaskSend(ssize_t *size);
+    virtual int TaskSend(ssize_t *size);
 
     // 解析消息
-    // wStatus返回不为空，则task被关闭
-    virtual const wStatus& Handlemsg(char cmd[], uint32_t len);
+    virtual int Handlemsg(char cmd[], uint32_t len);
 
     // 异步发送：将待发送客户端消息写入buf，等待TaskSend发送
-    // wStatus返回不为空，则task被关闭
-    const wStatus& Send2Buf(char cmd[], size_t len);
+    int Send2Buf(char cmd[], size_t len);
 #ifdef _USE_PROTOBUF_
-    const wStatus& Send2Buf(const google::protobuf::Message* msg);
+    int Send2Buf(const google::protobuf::Message* msg);
 #endif
 
     // 同步发送确切长度消息
-    // wStatus返回不为空，则task被关闭
     // size = -1 对端发生错误|稍后重试|对端关闭
     // size >= 0 发送字符
-    const wStatus& SyncSend(char cmd[], size_t len, ssize_t *size);
+    int SyncSend(char cmd[], size_t len, ssize_t *size);
 #ifdef _USE_PROTOBUF_
-    const wStatus& SyncSend(const google::protobuf::Message* msg, ssize_t *size);
+    int SyncSend(const google::protobuf::Message* msg, ssize_t *size);
 #endif
 
     // SyncSend的异步发送版本
-    const wStatus& AsyncSend(char cmd[], size_t len);
+    int AsyncSend(char cmd[], size_t len);
 #ifdef _USE_PROTOBUF_
-    const wStatus& AsyncSend(const google::protobuf::Message* msg);
+    int AsyncSend(const google::protobuf::Message* msg);
 #endif
 
     // 同步接受一条合法的、非心跳消息 或 接受一条指定长度合法的、非心跳消息（该消息必须为一条即将接受的消息）
-    // 调用者：保证此sock未加入epoll中，否则出现事件竞争！另外也要确保buf有足够长的空间接受自此同步消息
-    // wStatus返回不为空，则socket被关闭
+    // 调用者：保证此sock未加入epoll中，否则出现事件竞争；且该sock需为阻塞的fd；另外也要确保buf有足够长的空间接受自此同步消息
     // size = -1 对端发生错误|稍后重试
     // size = 0  对端关闭
     // size > 0  接受字符
-    const wStatus& SyncRecv(char cmd[], ssize_t *size, size_t msglen = 0, uint32_t timeout = 30);
+    int SyncRecv(char cmd[], ssize_t *size, size_t msglen = 0, uint32_t timeout = 30);
 #ifdef _USE_PROTOBUF_
-    const wStatus& SyncRecv(google::protobuf::Message* msg, ssize_t *size, size_t msglen = 0, uint32_t timeout = 30);
+    int SyncRecv(google::protobuf::Message* msg, ssize_t *size, size_t msglen = 0, uint32_t timeout = 30);
 #endif
 
     // 同步广播其他worker进程
-    const wStatus& SyncWorker(char cmd[], size_t len);
+    int SyncWorker(char cmd[], size_t len);
 #ifdef _USE_PROTOBUF_
-    const wStatus& SyncWorker(const google::protobuf::Message* msg);
+    int SyncWorker(const google::protobuf::Message* msg);
 #endif
 
     // 异步广播其他worker进程
-    const wStatus& AsyncWorker(char cmd[], size_t len);
+    int AsyncWorker(char cmd[], size_t len);
 #ifdef _USE_PROTOBUF_
-    const wStatus& AsyncWorker(const google::protobuf::Message* msg);
+    int AsyncWorker(const google::protobuf::Message* msg);
 #endif
 
-    virtual const wStatus& HttpGet(const std::string& url, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30) {
-        return mStatus = wStatus::IOError("wTask::HttpGet failed", "method should be inherit");
+    virtual int HttpGet(const std::string& url, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::HttpGet () failed", "method should be inherit");
+        return -1;
     }
 
-    virtual const wStatus& HttpPost(const std::string& url, const std::map<std::string, std::string>& data, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30) {
-        return mStatus = wStatus::IOError("wTask::HttpPost failed", "method should be inherit");
+    virtual int HttpPost(const std::string& url, const std::map<std::string, std::string>& data, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::HttpPost () failed", "method should be inherit");
+        return -1;
     }
 
     static void Assertbuf(char buf[], const char cmd[], size_t len);
@@ -122,7 +118,7 @@ public:
     static void Assertbuf(char buf[], const google::protobuf::Message* msg);
 #endif
 
-    const wStatus& HeartbeatSend();
+    int HeartbeatSend();
 
     inline bool HeartbeatOut() {
         return mHeartbeat > kHeartbeat;
@@ -133,7 +129,7 @@ public:
     }
 
     // 添加epoll可写事件
-    const wStatus& Output();
+    int Output();
 
     // 设置服务端对象（方便异步发送）
     inline void SetServer(wServer* server) {
@@ -162,12 +158,10 @@ public:
     	return config;
     }
 
-    inline wSocket *Socket() { return mSocket;}
-    
     inline size_t SendLen() { return mSendLen;}
-    
     inline int32_t Type() { return mType;}
-
+    inline wSocket* Socket() { return mSocket;}
+    
 protected:
     // command消息路由器
     template<typename T = wTask>
@@ -205,8 +199,6 @@ protected:
 
     // 0为server，1为client
     uint8_t mSCType;
-
-    wStatus mStatus;
 };
 
 }	// namespace hnet

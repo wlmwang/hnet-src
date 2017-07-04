@@ -28,25 +28,33 @@ wTask::~wTask() {
     SAFE_DELETE(mSocket);
 }
 
-const wStatus& wTask::HeartbeatSend() {
+int wTask::HeartbeatSend() {
     mHeartbeat++;
     struct wCommand cmd;
     return AsyncSend(reinterpret_cast<char*>(&cmd), sizeof(cmd));
 }
 
-const wStatus& wTask::Output() {
-    if (mSCType == 0 && mServer != NULL) {
-        mStatus = mServer->AddTask(this, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
-    } else if (mSCType == 1 && mClient != NULL) {
-        mStatus = mClient->AddTask(this, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+int wTask::Output() {
+    if (mSCType == 0 && mServer) {
+        if (mServer->AddTask(this, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false) == -1) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::Output AddTask() failed", "");
+            return -1;
+        }
+    } else if (mSCType == 1 && mClient) {
+        if (mClient->AddTask(this, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false) == -1) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::Output AddTask() failed", "");
+            return -1;
+        }
     } else {
-        mStatus = wStatus::Corruption("wTask::Output, failed", "mServer or mClient is null");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::Output () failed", "mServer or mClient is null");
+        return -1;
     }
-    return mStatus;
+    return 0;
 }
 
-const wStatus& wTask::TaskRecv(ssize_t *size) {
+int wTask::TaskRecv(ssize_t *size) {
 	const char *buffend = mRecvBuff + kPackageSize;
+
 	// 循环队列
 	if (mRecvLen < kPackageSize && mRecvLen == 0) {
 		mRecvRead = mRecvWrite = mRecvBuff;
@@ -72,21 +80,26 @@ const wStatus& wTask::TaskRecv(ssize_t *size) {
 
     	if (leftlen > 0) {
         	// socket接受数据
-        	if (!(mStatus = mSocket->RecvBytes(mRecvWrite, leftlen, size)).Ok() || *size < 0) {
-                return mStatus;
+        	int ret = mSocket->RecvBytes(mRecvWrite, leftlen, size);
+            if (ret == -1 || *size < 0) {
+                return ret;
             }
+
             mRecvLen += *size;
             mRecvWrite += *size;
     	}
     }
 
     // 消息解析
-    auto handleFunc = [this] (char* buf, uint32_t len, char* nextbuf) {
-        this->mStatus = this->Handlemsg(buf, len);
+    auto handleFunc = [this] (char* buf, uint32_t len, char* nextbuf) -> int {
+        int ret = this->Handlemsg(buf, len);
+
         this->mRecvRead = nextbuf;
-        this->mRecvLen -= (len + sizeof(uint32_t));
+        this->mRecvLen -= len + sizeof(uint32_t);
+        return ret;
     };
 
+    int ret = 0;
     while (mRecvLen > sizeof(uint32_t)) {
     	// 循环队列
     	if (mRecvRead == buffend && mRecvWrite != mRecvBuff) {
@@ -99,16 +112,18 @@ const wStatus& wTask::TaskRecv(ssize_t *size) {
             // 消息字符在正向缓冲中
             reallen = coding::DecodeFixed32(mRecvRead);
             if (reallen < kMinPackageSize || reallen > kMaxPackageSize) {
-                mStatus = wStatus::Corruption("wTask::TaskRecv, message length error, out range", ">0");
+                ret = -1;
+                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::TaskRecv () failed", ">0 message length error");
                 break;
+
             } else if (reallen > static_cast<uint32_t>(len - sizeof(uint32_t))) {
-                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::TaskRecv, recv a part of message", ">0");
-                mStatus.Clear();
+                ret = 0;
+                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::TaskRecv () failed", ">0 recv a part of message");
                 break;
             }
 
-            handleFunc(mRecvRead + sizeof(uint32_t), reallen, mRecvRead + sizeof(uint32_t) + reallen);
-            if (!mStatus.Ok()) {
+            ret = handleFunc(mRecvRead + sizeof(uint32_t), reallen, mRecvRead + sizeof(uint32_t) + reallen);
+            if (ret == -1) {
                 break;
             }
         } else {
@@ -129,54 +144,60 @@ const wStatus& wTask::TaskRecv(ssize_t *size) {
             }
 
             if (reallen < kMinPackageSize || reallen > kMaxPackageSize) {
-                mStatus = wStatus::Corruption("wTask::TaskRecv, message length error, out range", "<=0");
+                ret = -1;
+                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::TaskRecv () failed", "<=0 message length error");
                 break;
+
             } else if (reallen > static_cast<uint32_t>(kPackageSize - abs(len) - sizeof(uint32_t))) {
-                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::TaskRecv, recv a part of message", "<=0");
-                mStatus.Clear();
+                ret = 0;
+                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::TaskRecv () failed", "<=0 recv a part of message");
                 break;
             }
             
-            if (reallen <= static_cast<uint32_t>(leftlen - sizeof(uint32_t))) {
-                // 正向剩余
-                handleFunc(mRecvRead + sizeof(uint32_t), reallen, mRecvRead + sizeof(uint32_t) + reallen);
-                if (!mStatus.Ok()) {
+            if (reallen <= static_cast<uint32_t>(leftlen - sizeof(uint32_t))) { // 正向剩余
+                ret = handleFunc(mRecvRead + sizeof(uint32_t), reallen, mRecvRead + sizeof(uint32_t) + reallen);
+                if (ret == -1) {
                     break;
                 }
             } else {
                 memcpy(mTempBuff, mRecvRead, leftlen);
                 memcpy(mTempBuff + leftlen, mRecvBuff, reallen - leftlen + sizeof(uint32_t));
-                handleFunc(mTempBuff + sizeof(uint32_t), reallen, mRecvBuff + (reallen - leftlen + sizeof(uint32_t)));
-                if (!mStatus.Ok()) {
+                
+                ret = handleFunc(mTempBuff + sizeof(uint32_t), reallen, mRecvBuff + (reallen - leftlen + sizeof(uint32_t)));
+                if (ret == -1) {
                     break;
                 }
             }
         }
     }
-    return mStatus;
+    return ret;
 }
 
-const wStatus& wTask::TaskSend(ssize_t *size) {
+int wTask::TaskSend(ssize_t *size) {
     ssize_t len;
     const char *buffend = mSendBuff + kPackageSize;
+    int ret = 0;
     while (true) {
         len = mSendWrite - mSendRead;
         if (len == 0 && mSendLen == 0) {
-        	mStatus.Clear();
             break;
         } else if (len > 0) {
-            if (!(mStatus = mSocket->SendBytes(mSendRead, mSendLen, size)).Ok() || *size < 0) {
+            ret = mSocket->SendBytes(mSendRead, mSendLen, size);
+            if (ret == -1 || *size < 0) {
                 break;
             }
+
             mSendLen -= *size;
             mSendRead += *size;
         } else if (len <= 0) {
             ssize_t leftlen = buffend - mSendRead;
             memcpy(mTempBuff, mSendRead, leftlen);
             memcpy(mTempBuff + leftlen, mSendBuff, mSendLen - leftlen);
-            if (!(mStatus = mSocket->SendBytes(mTempBuff, mSendLen, size)).Ok() || *size < 0) {
+            ret = mSocket->SendBytes(mTempBuff, mSendLen, size);
+            if (ret == -1 || *size < 0) {
                 break;
             }
+
             if (*size <= leftlen) {
             	mSendRead += *size;
             } else {
@@ -185,7 +206,7 @@ const wStatus& wTask::TaskSend(ssize_t *size) {
             mSendLen -= *size;
         }
     }
-    return mStatus;
+    return ret;
 }
 
 #ifdef _USE_PROTOBUF_
@@ -220,14 +241,18 @@ void wTask::Assertbuf(char buf[], const char cmd[], size_t len) {
 	memcpy(buf + sizeof(uint32_t) + sizeof(uint8_t), cmd, len);
 }
 
-const wStatus& wTask::Send2Buf(char cmd[], size_t len) {
+int wTask::Send2Buf(char cmd[], size_t len) {
 	// 消息体总长度
 	len += sizeof(uint8_t);
     if (len < kMinPackageSize || len > kMaxPackageSize) {
-        return mStatus = wStatus::Corruption("wTask::Send2Buf, command message length error", "message too large");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::Send2Buf () failed", "message too large");
+        return -1;
+
     } else if (len > static_cast<size_t>(kPackageSize - mSendLen - sizeof(uint32_t))) {
-        return mStatus = wStatus::Corruption("wTask::Send2Buf, command message length error", "left buffer not enough");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::Send2Buf () failed", "left buffer not enough");
+        return -1;
     }
+
     const char *buffend = mSendBuff + kPackageSize;
     ssize_t writelen =  mSendWrite - mSendRead;
     ssize_t leftlen = buffend - mSendWrite;
@@ -235,6 +260,7 @@ const wStatus& wTask::Send2Buf(char cmd[], size_t len) {
     	// 单向剩余足够（右边剩余 || 中间剩余）
     	Assertbuf(mSendWrite, cmd, len - sizeof(uint8_t));
     	mSendWrite += sizeof(uint32_t) + len;
+
     } else if (writelen >= 0 && leftlen < static_cast<ssize_t>(len + sizeof(uint32_t))) {
     	// 分段剩余足够（两边剩余）
     	Assertbuf(mTempBuff, cmd, len - sizeof(uint8_t));
@@ -242,22 +268,28 @@ const wStatus& wTask::Send2Buf(char cmd[], size_t len) {
     	mSendWrite = mSendBuff;
     	memcpy(mSendWrite, mTempBuff + leftlen, sizeof(uint32_t) + len - leftlen);
     	mSendWrite += sizeof(uint32_t)+ len - leftlen;
+
     } else {
-    	return mStatus = wStatus::Corruption("wTask::Send2Buf, message length error", "left buffer not enough");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::Send2Buf () failed", "left buffer not enough");
+        return -1;
     }
     mSendLen += sizeof(uint32_t) + len;
-    return mStatus.Clear();
+    return 0;
 }
 
 #ifdef _USE_PROTOBUF_
-const wStatus& wTask::Send2Buf(const google::protobuf::Message* msg) {
+int wTask::Send2Buf(const google::protobuf::Message* msg) {
 	// 消息体总长度
 	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
     if (len < kMinPackageSize || len > kMaxPackageSize) {
-        return mStatus = wStatus::Corruption("wTask::Send2Buf, google::protobuf::Message length error", "message too large");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::Send2Buf () failed", "message too large");
+        return -1;
+
     } else if (len > static_cast<uint32_t>(kPackageSize - mSendLen - sizeof(uint32_t))) {
-        return mStatus = wStatus::Corruption("wTask::Send2Buf, google::protobuf::Message length error", "left buffer not enough");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::Send2Buf () failed", "left buffer not enough");
+        return -1;
     }
+
     const char *buffend = mSendBuff + kPackageSize;
     ssize_t writelen =  mSendWrite - mSendRead;
     ssize_t leftlen = buffend - mSendWrite;
@@ -265,112 +297,149 @@ const wStatus& wTask::Send2Buf(const google::protobuf::Message* msg) {
     	// 单向剩余足够（右边剩余 || 中间剩余）
     	Assertbuf(mSendWrite, msg);
     	mSendWrite += sizeof(uint32_t) + len;
+
     } else if (writelen >= 0 && leftlen < static_cast<ssize_t>(len + sizeof(uint32_t))) {
     	// 分段剩余足够（两边剩余）
     	Assertbuf(mTempBuff, msg);
     	memcpy(mSendWrite, mTempBuff, leftlen);
     	memcpy(mSendWrite = mSendBuff, mTempBuff + leftlen, sizeof(uint32_t) + len - leftlen);
     	mSendWrite += sizeof(uint32_t)+ len - leftlen;
+
     } else {
-    	return mStatus = wStatus::Corruption("wTask::Send2Buf, message length error", "left buffer not enough");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::Send2Buf () failed", "left buffer not enough");
+        return -1;
     }
 
     mSendLen += sizeof(uint32_t) + len;
-    return mStatus.Clear();
+    return 0;
 }
 #endif
 
-const wStatus& wTask::SyncWorker(char cmd[], size_t len) {
+int wTask::SyncWorker(char cmd[], size_t len) {
     if (mServer && mServer->Worker()) {
         std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
-        mStatus = mServer->SyncWorker(cmd, len, kMaxProcess, &blackslot);
+        if (mServer->SyncWorker(cmd, len, kMaxProcess, &blackslot) == -1) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::SyncWorker SyncWorker() failed", "");
+            return -1;
+        }
     } else {
-        mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::SyncWorker () failed", "server is null");
+        return -1;
     }
-    return mStatus;
+    return 0;
 }
 
-const wStatus& wTask::AsyncWorker(char cmd[], size_t len) {
+int wTask::AsyncWorker(char cmd[], size_t len) {
     if (mServer && mServer->Worker()) {
         std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
-        mStatus = mServer->AsyncWorker(cmd, len, kMaxProcess, &blackslot);
+        if (mServer->AsyncWorker(cmd, len, kMaxProcess, &blackslot) == -1) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::AsyncWorker AsyncWorker() failed", "");
+            return -1;
+        }
     } else {
-        mStatus = wStatus::Corruption("wTask::AsyncWorker, send error", "server or worker is null");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::AsyncWorker () failed", "server is null");
+        return -1;
     }
-    return mStatus;
+    return 0;
 }
 
 #ifdef _USE_PROTOBUF_
-const wStatus& wTask::SyncWorker(const google::protobuf::Message* msg) {
+int wTask::SyncWorker(const google::protobuf::Message* msg) {
     if (mServer && mServer->Worker()) {
         std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
-        mStatus = mServer->SyncWorker(msg, kMaxProcess, &blackslot);
+        if (mServer->SyncWorker(msg, kMaxProcess, &blackslot) == -1) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::SyncWorker SyncWorker() failed", "");
+            return -1;
+        }
     } else {
-        mStatus = wStatus::Corruption("wTask::SyncWorker, send error", "server or worker is null");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::SyncWorker () failed", "server is null");
+        return -1;
     }
-    return mStatus;
+    return 0;
 }
 #endif
 
 #ifdef _USE_PROTOBUF_
-const wStatus& wTask::AsyncWorker(const google::protobuf::Message* msg) {
+int wTask::AsyncWorker(const google::protobuf::Message* msg) {
     if (mServer && mServer->Worker()) {
         std::vector<uint32_t> blackslot(1, mServer->Worker()->Slot());
-        mStatus = mServer->AsyncWorker(msg, kMaxProcess, &blackslot);
+        if (mServer->AsyncWorker(msg, kMaxProcess, &blackslot) == -1) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::AsyncWorker SyncWorker() failed", "");
+            return -1;
+        }
     } else {
-        mStatus = wStatus::Corruption("wTask::AsyncWorker, send error", "server or worker is null");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::AsyncWorker () failed", "server is null");
+        return -1;
     }
-    return mStatus;
+    return 0;
 }
 #endif
 
-const wStatus& wTask::AsyncSend(char cmd[], size_t len) {
+int wTask::AsyncSend(char cmd[], size_t len) {
 	if (mSCType == 0 && mServer != NULL) {
-		mStatus = mServer->Send(this, cmd, len);
+        if (mServer->Send(this, cmd, len) == -1) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::AsyncSend Send() failed", "");
+            return -1;
+        }
 	} else if (mSCType == 1 && mClient != NULL) {
-		mStatus = mClient->Send(this, cmd, len);
+        if (mClient->Send(this, cmd, len) == -1) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::AsyncSend Send() failed", "");
+            return -1;
+        }
 	} else {
-		mStatus = wStatus::Corruption("wTask::AsyncSend, failed", "mServer or mClient is null");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::AsyncSend () failed", "server or client is null");
+        return -1;
 	}
-	return mStatus;
+	return 0;
 }
 
 #ifdef _USE_PROTOBUF_
-const wStatus& wTask::AsyncSend(const google::protobuf::Message* msg) {
+int wTask::AsyncSend(const google::protobuf::Message* msg) {
 	if (mSCType == 0 && mServer != NULL) {
-		mStatus = mServer->Send(this, msg);
+        if (mServer->Send(this, msg) == -1) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::AsyncSend Send() failed", "");
+            return -1;
+        }
 	} else if (mSCType == 1 && mClient != NULL) {
-		mStatus = mClient->Send(this, msg);
+        if (mClient->Send(this, msg) == -1) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::AsyncSend Send() failed", "");
+            return -1;
+        }
 	} else {
-		mStatus = wStatus::Corruption("wTask::AsyncSend, failed", "mServer or mClient is null");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::AsyncSend () failed", "server or client is null");
+        return -1;
 	}
-	return mStatus;
+	return 0;
 }
 #endif
 
-const wStatus& wTask::SyncSend(char cmd[], size_t len, ssize_t *size) {
+int wTask::SyncSend(char cmd[], size_t len, ssize_t *size) {
 	// 消息体总长度
 	len += sizeof(uint8_t);
     if (len < kMinPackageSize || len > kMaxPackageSize) {
-        return mStatus = wStatus::Corruption("wTask::SyncSend, command message length error", "out range");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::SyncSend () failed", "message length error");
+        return -1;
     }
+
     Assertbuf(mTempBuff, cmd, len - sizeof(uint8_t));
-    return mStatus = mSocket->SendBytes(mTempBuff, len + sizeof(uint32_t), size);
+    return mSocket->SendBytes(mTempBuff, len + sizeof(uint32_t), size);
 }
 
 #ifdef _USE_PROTOBUF_
-const wStatus& wTask::SyncSend(const google::protobuf::Message* msg, ssize_t *size) {
+int wTask::SyncSend(const google::protobuf::Message* msg, ssize_t *size) {
 	// 消息体总长度
 	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();
 	if (len < kMinPackageSize || len > kMaxPackageSize) {
-        return mStatus = wStatus::Corruption("wTask::SyncSend, google::protobuf::Message length error", "out range");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::SyncSend () failed", "message length error");
+        return -1;
     }
+
 	Assertbuf(mTempBuff, msg);
-    return mStatus = mSocket->SendBytes(mTempBuff, len + sizeof(uint32_t), size);
+    return mSocket->SendBytes(mTempBuff, len + sizeof(uint32_t), size);
 }
 #endif
 
-const wStatus& wTask::SyncRecv(char cmd[], ssize_t *size, size_t msglen, uint32_t timeout) {
+int wTask::SyncRecv(char cmd[], ssize_t *size, size_t msglen, uint32_t timeout) {
     static const size_t kCmdHeadLen = sizeof(uint32_t) + sizeof(uint8_t); // 包长度 + 数据协议
 
 	size_t recvheadlen = 0, recvbodylen = 0, headlen = 0;
@@ -384,21 +453,24 @@ const wStatus& wTask::SyncRecv(char cmd[], ssize_t *size, size_t msglen, uint32_
     while (true) {
         // 超时时间设置
         if (timeout > 0) {
-            double tmleft = static_cast<uint64_t>(timeout*1000000) - (soft::TimeUpdate() - now);
+            double tmleft = static_cast<int64_t>(timeout*1000000) - (soft::TimeUpdate() - now);
             if (tmleft > 0) {
-                mStatus = mSocket->SetRecvTimeout(tmleft/1000000);
-                if (!mStatus.Ok()) {
-                    return mStatus;
+                if (mSocket->SetRecvTimeout(tmleft/1000000) == -1) {
+                    return -1;
                 }
             } else {
-                return mStatus = wStatus::Corruption("wTask::SyncRecv () failed", "timeout");
+                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::SyncRecv () failed", "timeout");
+                return -1;
             }
         }
 
         // 接受消息
-        if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen, headlen - recvheadlen, size)).Ok()) {
-            return mStatus;
-        } else if (*size > 0) {
+        int ret = mSocket->RecvBytes(mTempBuff + recvheadlen, headlen - recvheadlen, size);
+        if (ret == -1) {
+            return -1;
+        }
+
+        if (*size > 0) {
             recvheadlen += *size;
         }
         if (recvheadlen < headlen) {
@@ -420,9 +492,12 @@ const wStatus& wTask::SyncRecv(char cmd[], ssize_t *size, size_t msglen, uint32_
 
         // 接受消息体
         uint32_t reallen = static_cast<size_t>(coding::DecodeFixed32(mTempBuff) - sizeof(uint8_t) - sizeof(uint16_t));
-        if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen + recvbodylen, reallen - recvbodylen, size)).Ok()) {
-            return mStatus;
-        } else if (*size > 0) {
+        ret = mSocket->RecvBytes(mTempBuff + recvheadlen + recvbodylen, reallen - recvbodylen, size);
+        if (ret == -1) {
+            return -1;
+        }
+
+        if (*size > 0) {
             recvbodylen += *size;
         }
         break;
@@ -430,25 +505,29 @@ const wStatus& wTask::SyncRecv(char cmd[], ssize_t *size, size_t msglen, uint32_
 
     uint32_t len = coding::DecodeFixed32(mTempBuff);
     if (len < kMinPackageSize || len > kMaxPackageSize) {
-        return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "out range");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::SyncRecv () failed", "message length error,out range");
+        return -1;
+
     } else if (len + sizeof(uint32_t) != recvheadlen + recvbodylen) {
-    	return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "illegal message");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::SyncRecv () failed", "message length error,illegal message");
+        return -1;
     }
 
     *size = len - sizeof(uint8_t);
     if (msglen > 0 && msglen != static_cast<size_t>(*size)) {
-        return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "error message");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::SyncRecv () failed", "message length error,error message");
+        return -1;
     }
     memcpy(cmd, mTempBuff + kCmdHeadLen, *size);
-    return mStatus.Clear();
+    return 0;
 }
 
 #ifdef _USE_PROTOBUF_
-const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, size_t msglen, uint32_t timeout) {
+int wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, size_t msglen, uint32_t timeout) {
     static const size_t kCmdHeadLen = sizeof(uint32_t) + sizeof(uint8_t); // 包长度 + 数据协议
 
     size_t recvheadlen = 0, recvbodylen = 0, headlen = 0;
-    uint64_t now = soft::TimeUsec();
+    int64_t now = soft::TimeUsec();
     if (msglen > 0) {
         headlen = kCmdHeadLen + msglen + sizeof(uint16_t) + msg->GetTypeName().size();  // 类名协议
     } else {
@@ -458,20 +537,23 @@ const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, si
     while (true) {
         // 超时时间设置
         if (timeout > 0) {
-            double tmleft = static_cast<uint64_t>(timeout*1000000) - (soft::TimeUpdate() - now);
+            double tmleft = static_cast<int64_t>(timeout*1000000) - (soft::TimeUpdate() - now);
             if (tmleft > 0) {
-                mStatus = mSocket->SetRecvTimeout(tmleft/1000000);
-                if (!mStatus.Ok()) {
-                    return mStatus;
+                if (mSocket->SetRecvTimeout(tmleft/1000000) == -1) {
+                    return -1;
                 }
             } else {
-                return mStatus = wStatus::Corruption("wTask::SyncRecv () failed", "timeout");
+                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::SyncRecv () failed", "timeout");
+                return -1;
             }
         }
 
-        if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen, headlen - recvheadlen, size)).Ok()) {
-            return mStatus;
-        } else if (*size > 0) {
+        int ret = mSocket->RecvBytes(mTempBuff + recvheadlen, headlen - recvheadlen, size);
+        if (ret == -1) {
+            return -1;
+        }
+
+        if (*size > 0) {
             recvheadlen += *size;
         }
         if (recvheadlen < headlen) {
@@ -492,9 +574,12 @@ const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, si
         }
 
         uint32_t reallen = static_cast<size_t>(coding::DecodeFixed32(mTempBuff) - sizeof(uint8_t) - sizeof(uint16_t));
-        if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvheadlen + recvbodylen, reallen - recvbodylen, size)).Ok()) {
-            return mStatus;
-        } else if (*size > 0) {
+        ret = mSocket->RecvBytes(mTempBuff + recvheadlen + recvbodylen, reallen - recvbodylen, size);
+        if (ret == -1) {
+            return -1;
+        }
+
+        if (*size > 0) {
             recvbodylen += *size;
         }
         break;
@@ -502,32 +587,36 @@ const wStatus& wTask::SyncRecv(google::protobuf::Message* msg, ssize_t *size, si
 
     uint32_t len = coding::DecodeFixed32(mTempBuff);
     if (len < kMinPackageSize || len > kMaxPackageSize) {
-        return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "out range");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::SyncRecv () failed", "message length error,out range");
+        return -1;
+
     } else if (len + sizeof(uint32_t) != recvheadlen + recvbodylen) {
-    	return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "illegal message");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::SyncRecv () failed", "message length error,illegal message");
+        return -1;
     }
 
     uint32_t n = sizeof(uint16_t) + coding::DecodeFixed16(mTempBuff + kCmdHeadLen); // 类名长度
     *size = len - sizeof(uint8_t) - n;
     if (msglen > 0 && msglen != static_cast<size_t>(*size)) {
-        return mStatus = wStatus::Corruption("wTask::SyncRecv, message length error", "error message");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::SyncRecv () failed", "message length error,error message");
+        return -1;
     }
     msg->ParseFromArray(mTempBuff + kCmdHeadLen + n, *size);
-    return mStatus.Clear();
+    return 0;
 }
 #endif
 
-const wStatus& wTask::Handlemsg(char cmd[], uint32_t len) {
+int wTask::Handlemsg(char cmd[], uint32_t len) {
 	// 数据协议
 	uint8_t sp = static_cast<uint8_t>(coding::DecodeFixed8(cmd));
 	cmd += sizeof(uint8_t);
 	len -= sizeof(uint8_t);
 
+    int ret = 0;
 	if (sp == kMpCommand) {
 		struct wCommand *basecmd = reinterpret_cast<struct wCommand*>(cmd);
 		if (basecmd->GetId() == CmdId(kCmdNull, kParaNull)) {
 			mHeartbeat = 0;
-			mStatus.Clear();
 		} else {
 			struct Request_t request(cmd, len);
 			if (mEventCmd(basecmd->GetId(), &request) == false) {
@@ -537,7 +626,9 @@ const wStatus& wTask::Handlemsg(char cmd[], uint32_t len) {
 				logging::AppendNumberTo(&id, static_cast<uint64_t>(basecmd->GetCmd()));
 				id += ", para:";
 				logging::AppendNumberTo(&id, static_cast<uint64_t>(basecmd->GetPara()));
-				mStatus = wStatus::Corruption("wTask::Handlemsg, command invalid request, no method find", id);
+
+                LOG_ERROR(soft::GetLogPath(), "%s : %s[id=%s]", "wTask::Handlemsg () failed", "request invalid", id.c_str());
+                ret = -1;
 			}
 		}
 	} else if (sp == kMpProtobuf) {
@@ -546,15 +637,19 @@ const wStatus& wTask::Handlemsg(char cmd[], uint32_t len) {
 		std::string name(cmd + sizeof(uint16_t), l);
 		struct Request_t request(cmd + sizeof(uint16_t) + l, len - sizeof(uint16_t) - l);
 		if (mEventPb(name, &request) == false) {
-			mStatus = wStatus::Corruption("wTask::Handlemsg, protobuf invalid request, no method find", name);
+            LOG_ERROR(soft::GetLogPath(), "%s : %s[name=%s]", "wTask::Handlemsg () failed", "request invalid", name.c_str());
+            ret = -1;
 		}
 #else
-        mStatus = wStatus::Corruption("wTask::Handlemsg, protobuf invalid request", "no protobuf support");
+        LOG_ERROR(soft::GetLogPath(), "%s : %s[sp=%d]", "wTask::Handlemsg () failed", "protobuf invalid", sp);
+        ret = -1;
 #endif
 	} else {
-		mStatus = wStatus::Corruption("wTask::Handlemsg, invalid message protocol", logging::NumberToString(sp));
+        LOG_ERROR(soft::GetLogPath(), "%s : %s[sp=%d]", "wTask::Handlemsg () failed", "request invalid", sp);
+        ret = -1;
 	}
-	return mStatus;
+
+	return ret;
 }
 
 }   // namespace hnet

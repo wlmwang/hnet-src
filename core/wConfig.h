@@ -10,39 +10,37 @@
 #include <map>
 #include "wCore.h"
 #include "wNoncopyable.h"
-#include "wProcTitle.h"
-#include "wMemPool.h"
 
 namespace hnet {
+
+class wProcTitle;
+class wMemPool;
 
 class wConfig : private wNoncopyable {
 public:
     wConfig();
     virtual ~wConfig();
-    virtual int GetOption(int argc, const char *argv[]);
-
-    inline int Setproctitle(const char* pretitle, const char* title, bool attach = true) {
-        return mProcTitle->Setproctitle(pretitle, title, attach);
-    }
+    virtual int GetOption(int argc, char *argv[]);
     
-    inline int InitProcTitle(int argc, const char *argv[]) {
-        return mProcTitle->SaveArgv(argc, argv);
-    }
-
-    template<typename T>
-    bool GetConf(const std::string& key, T* val) {
-    	std::map<std::string, void*>::iterator it = mConf.find(key);
-    	if (it != mConf.end()) {
-    		*val = *(reinterpret_cast<T*>(it->second));
-    		return true;
-    	}
-    	return false;
-    }
+    char** Argv();
+    char** Environ();
+    int InitProcTitle(int argc, char *argv[]);
+    int Setproctitle(const char* pretitle, const char* title, bool attach = true);
 
     // 设置配置函数
     bool SetBoolConf(const std::string& key, bool val, bool force = true);
     bool SetIntConf(const std::string& key, int val, bool force = true);
     bool SetStrConf(const std::string& key, const char *val, bool force = true);
+
+    template<typename T>
+    bool GetConf(const std::string& key, T* val) {
+        std::map<std::string, void*>::iterator it = mConf.find(key);
+        if (it != mConf.end()) {
+            *val = *(reinterpret_cast<T*>(it->second));
+            return true;
+        }
+        return false;
+    }
 
 protected:
     std::map<std::string, void*> mConf;

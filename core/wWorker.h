@@ -10,13 +10,12 @@
 #include <map>
 #include <vector>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wNoncopyable.h"
 #include "wChannelSocket.h"
 
 namespace hnet {
 
-const uint32_t	kRlimitCore = 512000;
+const uint32_t	kRlimitCore = 1024;
 const char     	kWorkerTitle[] = " - worker process";
 
 class wMaster;
@@ -28,16 +27,16 @@ public:
 	wWorker(std::string title, uint32_t slot, wMaster* master);
 	virtual ~wWorker();
 
-	virtual const wStatus& PrepareRun() {
-		return mStatus;
+	virtual int PrepareRun() {
+		return 0;
 	}
 
-	virtual const wStatus& Run() {
-		return mStatus;
+	virtual int Run() {
+		return 0;
 	}
 
-	const wStatus& PrepareStart();
-	const wStatus& Start();
+	int PrepareStart();
+	int Start();
 
 	inline wMaster* Master() { return mMaster;}
 	inline std::string& Title() { return mTitle;}
@@ -52,7 +51,9 @@ public:
 	inline uint32_t& Slot() { return mSlot;}
 
 	inline wChannelSocket* Channel() { return mChannel;}
+
 	inline int& ChannelFD(uint8_t i) { return (*mChannel)[i];}
+	
 	inline int ChannelClose(uint8_t i) {
 		if (close(ChannelFD(i)) == -1) {
 			return -1;
@@ -81,8 +82,6 @@ protected:
 
 	uint32_t mSlot;	// 进程表中索引
 	wChannelSocket* mChannel;	// worker进程channel
-
-	wStatus mStatus;
 };
 
 }	// namespace hnet

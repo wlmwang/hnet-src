@@ -5,7 +5,6 @@
  */
 
 #include "wSocket.h"
-#include "wMisc.h"
 
 namespace hnet {
 
@@ -16,52 +15,65 @@ wSocket::~wSocket() {
     Close();
 }
 
-const wStatus& wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
+int wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     mRecvTm = soft::TimeUsec();
+
+    int ret = 0;
     while (true) {
         *size = recv(mFD, reinterpret_cast<void*>(buf), len, 0);
+
         if (*size > 0) {
             break;
-        } else if (*size == 0) {
-        	mStatus = wStatus::IOError("wSocket::RecvBytes, client was closed", "", false);
+        } else if (*size == 0) {    // FIN package // client was closed
+            ret = -1;
             break;
-        } else if (errno == EAGAIN) {
+        } else if (errno == EAGAIN || errno == EWOULDBLOCK) {   // Resource temporarily unavailable // 资源暂时不够(可能读缓冲区没有数据)
+            ret = 0;
             break;
-        } else if (errno == EINTR) {
-            // 操作被信号中断，中断后唤醒继续处理
-            // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
+        } else if (errno == EINTR) {    // Interrupted system call
             continue;
+            //ret = 0;
+            //break;
         } else {
-            mStatus = wStatus::IOError("wSocket::RecvBytes, recv failed", error::Strerror(errno));
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::RecvBytes recv() failed", error::Strerror(errno).c_str());
+            ret = -1;
             break;
         }
     }
-    return mStatus;
+    return ret;
 }
 
-const wStatus& wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
+int wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     mSendTm = soft::TimeUsec();
+
+    int ret = 0;
     ssize_t sendedlen = 0, leftlen = len;
     while (leftlen > 0) {
         *size = send(mFD, reinterpret_cast<void*>(buf + sendedlen), leftlen, 0);
+
         if (*size >= 0) {
             sendedlen += *size;
             if ((leftlen -= *size) == 0) {
                 *size = sendedlen;
                 break;
             }
-        } else if (errno == EAGAIN) {
+        } else if (errno == EAGAIN || errno == EWOULDBLOCK) {   // Resource temporarily unavailable // 资源暂时不够(可能写缓冲区满)
+            ret = 0;
             break;
-        } else if (errno == EINTR) {
-            // 操作被信号中断，中断后唤醒继续处理
-            // 注意：系统中信号安装需提供参数SA_RESTART，否则请按 EAGAIN 信号处理
+        } else if (errno == EINTR) {    // Interrupted system call
             continue;
+            //ret = 0;
+            //break;
+        } else if (errno == EPIPE) {    // RST package // client was closed
+            ret = -1;
+            break;
         } else {
-            mStatus = wStatus::IOError("wSocket::SendBytes, send failed", error::Strerror(errno));
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SendBytes send() failed", error::Strerror(errno).c_str());
+            ret = -1;
             break;
         }
     }
-    return mStatus;
+    return ret;
 }
 
 int wSocket::Close() {
@@ -77,6 +89,7 @@ int wSocket::GetNonblock() {
     int ret = fcntl(mFD, F_GETFL, 0);
     if (ret == -1) {
         LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::GetNonblock fcntl() failed", error::Strerror(errno).c_str());
+        return -1;
     }
     return ret & O_NONBLOCK;
 }

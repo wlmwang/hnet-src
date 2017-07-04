@@ -11,7 +11,6 @@
 #include <vector>
 #include <sys/epoll.h>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wNoncopyable.h"
 #include "wMutex.h"
 #include "wEnv.h"
@@ -44,60 +43,65 @@ public:
     explicit wServer(wConfig* config);
     virtual ~wServer();
 
-    const wStatus& PrepareStart(const std::string& ipaddr, uint16_t port, const std::string& protocol = "TCP");
+    int PrepareStart(const std::string& ipaddr, uint16_t port, const std::string& protocol = "TCP");
 
     // single模式启动服务
-    const wStatus& SingleStart(bool daemon = true);
+    int SingleStart(bool daemon = true);
 
     // master-worker多进程架构
     // PrepareMaster 需在master进程中调用
     // WorkerStart在worker进程提供服务
-    const wStatus& WorkerStart(bool daemon = true);
-    
+    int WorkerStart(bool daemon = true);
+
+    // 创建惊群锁（master调用）
+    int InitAcceptMutex();
+    // 释放惊群锁（master调用）
+    int ReleaseAcceptMutex(int pid);
+
     // 异步广播消息
-    const wStatus& Broadcast(char *cmd, int len);
+    int Broadcast(char *cmd, int len);
 #ifdef _USE_PROTOBUF_
-    const wStatus& Broadcast(const google::protobuf::Message* msg);
+    int Broadcast(const google::protobuf::Message* msg);
 #endif
 
     // 同步广播消息至worker进程   blacksolt为黑名单
-    const wStatus& SyncWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
+    int SyncWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
 #ifdef _USE_PROTOBUF_
-    const wStatus& SyncWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
+    int SyncWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
 #endif
 
     // 同步广播消息至worker进程   blacksolt为黑名单
-    const wStatus& AsyncWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
+    int AsyncWorker(char *cmd, int len, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
 #ifdef _USE_PROTOBUF_
-    const wStatus& AsyncWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
+    int AsyncWorker(const google::protobuf::Message* msg, uint32_t solt = kMaxProcess, const std::vector<uint32_t>* blackslot = NULL);
 #endif
 
     // 异步发送消息
-    const wStatus& Send(wTask *task, char *cmd, size_t len);
+    int Send(wTask *task, char *cmd, size_t len);
 #ifdef _USE_PROTOBUF_
-    const wStatus& Send(wTask *task, const google::protobuf::Message* msg);
+    int Send(wTask *task, const google::protobuf::Message* msg);
 #endif
 
     // 检查时钟周期tick
     void CheckTick();
 
     // 新建客户端
-    virtual const wStatus& NewTcpTask(wSocket* sock, wTask** ptr);
-    virtual const wStatus& NewUdpTask(wSocket* sock, wTask** ptr);
-    virtual const wStatus& NewUnixTask(wSocket* sock, wTask** ptr);
-    virtual const wStatus& NewChannelTask(wSocket* sock, wTask** ptr);
-    virtual const wStatus& NewHttpTask(wSocket* sock, wTask** ptr);
+    virtual int NewTcpTask(wSocket* sock, wTask** ptr);
+    virtual int NewUdpTask(wSocket* sock, wTask** ptr);
+    virtual int NewUnixTask(wSocket* sock, wTask** ptr);
+    virtual int NewChannelTask(wSocket* sock, wTask** ptr);
+    virtual int NewHttpTask(wSocket* sock, wTask** ptr);
 
-    virtual const wStatus& PrepareRun() {
-        return mStatus;
+    virtual int PrepareRun() {
+        return 0;
     }
     
     // 服务主循环逻辑，继承可以定制服务
-    virtual const wStatus& Run() {
-        return mStatus;
+    virtual int Run() {
+        return 0;
     }
     
-    virtual const wStatus& HandleSignal();
+    virtual int HandleSignal();
 
     // 连接检测（心跳）
     virtual void CheckHeartBeat();
@@ -116,9 +120,9 @@ public:
     template<typename T = wWorker*>
     inline T Worker() { return mMaster->Worker<T>();}
 
-    const wStatus& AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
-    const wStatus& RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
-    const wStatus& FindTaskBySocket(wTask** task, const wSocket* sock);
+    int AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
+    int RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter = NULL, bool delpool = true);
+    int FindTaskBySocket(wTask** task, const wSocket* sock);
     
 protected:
     friend class wMaster;
@@ -132,33 +136,28 @@ protected:
     void Locks(std::vector<int>* slot = NULL, std::vector<int>* blackslot = NULL);
     void Unlocks(std::vector<int>* slot = NULL, std::vector<int>* blackslot = NULL);
     
-    // 创建惊群锁（master调用）
-    const wStatus& InitAcceptMutex();
-    // 释放惊群锁（master调用）
-    const wStatus& ReleaseAcceptMutex(int pid);
-
     // 事件读写主调函数
-    const wStatus& Recv();
+    int Recv();
     // accept接受连接
-    const wStatus& AcceptConn(wTask *task);
+    int AcceptConn(wTask *task);
 
-    const wStatus& InitEpoll();
-    const wStatus& AddListener(const std::string& ipaddr, uint16_t port, const std::string& protocol = "TCP");
+    int InitEpoll();
+    int AddListener(const std::string& ipaddr, uint16_t port, const std::string& protocol = "TCP");
 
     // 添加本进程channel socket到epoll侦听读事件队列
-    const wStatus& Channel2Epoll(bool addpool = true);
+    int Channel2Epoll(bool addpool = true);
 
     // 添加listen socket到epoll侦听事件队列
-    const wStatus& Listener2Epoll(bool addpool = true);
-    const wStatus& RemoveListener(bool delpool = true);
+    int Listener2Epoll(bool addpool = true);
+    int RemoveListener(bool delpool = true);
 
-    const wStatus& CleanTask();
-    const wStatus& CleanListenSock();
-    const wStatus& DeleteAcceptFile();
+    int CleanTask();
+    int CleanListenSock();
+    int DeleteAcceptFile();
 
-    const wStatus& AddToTaskPool(wTask *task);
+    int AddToTaskPool(wTask *task);
     std::vector<wTask*>::iterator RemoveTaskPool(wTask *task);
-    const wStatus& CleanTaskPool(std::vector<wTask*> pool);
+    int CleanTaskPool(std::vector<wTask*> pool);
 
     static void ScheduleRun(void* argv);
 
@@ -181,11 +180,10 @@ protected:
     // 多listen socket监听服务描述符
     std::vector<wSocket*> mListenSock;
 
-    int32_t mEpollFD;
-    uint64_t mTimeout;
+    int mEpollFD;
+    int64_t mTimeout;
 
     // task|pool
-    wTask *mTask;
     std::vector<wTask*> mTaskPool[kServerNumShard];
     wMutex mTaskPoolMutex[kServerNumShard];
 
@@ -201,8 +199,6 @@ protected:
     wMaster* mMaster;	// 引用进程表
     wConfig* mConfig;
     wEnv* mEnv;
-
-    wStatus mStatus;
 };
 
 }	// namespace hnet

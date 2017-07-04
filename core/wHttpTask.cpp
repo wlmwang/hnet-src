@@ -12,8 +12,9 @@
 
 namespace hnet {
 
-const wStatus& wHttpTask::TaskRecv(ssize_t *size) {
+int wHttpTask::TaskRecv(ssize_t *size) {
 	const char *buffend = mRecvBuff + kPackageSize;
+
 	// 循环队列
 	if (mRecvLen < kPackageSize && mRecvLen == 0) {
 		mRecvRead = mRecvWrite = mRecvBuff;
@@ -39,21 +40,26 @@ const wStatus& wHttpTask::TaskRecv(ssize_t *size) {
 
 		if (leftlen > 0) {
 			// socket接受数据
-			if (!(mStatus = mSocket->RecvBytes(mRecvWrite, leftlen, size)).Ok() || *size < 0) {
-				return mStatus;
-			}
+			int ret = mSocket->RecvBytes(mRecvWrite, leftlen, size);
+            if (ret == -1 || (ret == 0 && *size < 0)) {
+                return ret;
+            }
+
 			mRecvLen += *size;
 			mRecvWrite += *size;
 		}
 	}
 
 	// 消息解析
-	auto handleFunc = [this] (char* buf, uint32_t len, char* nextbuf) {
-		this->mStatus = this->Handlemsg(buf, len);
-		this->mRecvRead = nextbuf;
-		this->mRecvLen -= len;
-	};
+    auto handleFunc = [this] (char* buf, uint32_t len, char* nextbuf) -> int {
+        int ret = this->Handlemsg(buf, len);
 
+        this->mRecvRead = nextbuf;
+        this->mRecvLen -= len;
+        return ret;
+    };
+
+    int ret = 0;
 	while (mRecvLen > strlen(kProtocol[0]) + strlen(kMethod[0]) + strlen(kCRLF)) {
 		// 循环队列
 		if (mRecvRead == buffend && mRecvWrite != mRecvBuff) {
@@ -68,8 +74,8 @@ const wStatus& wHttpTask::TaskRecv(ssize_t *size) {
 				// GET请求
 				int32_t pos = misc::Strpos(std::string(mRecvRead, 0, len), kEndl);
 				if (pos == -1) {
-					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [GET] recv a part of message", ">0");
-					mStatus.Clear();
+					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv () failed", ">0 [GET] recv a part of message");
+					ret = 0;
 					break;
 				}
 
@@ -78,37 +84,41 @@ const wStatus& wHttpTask::TaskRecv(ssize_t *size) {
 				// POST请求
 				int32_t pos = misc::Strpos(std::string(mRecvRead, 0, len), kEndl);
 				if (pos == -1) {
-					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [POST] recv a part of message", ">0");
-					mStatus.Clear();
+					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv () failed", ">0 [POST] recv a part of message");
+					ret = 0;
 					break;
 				}
 
 				int32_t pos1 = misc::Strpos(std::string(mRecvRead, 0, len), kHeader[0]);
 				if (pos1 == -1) {
-					mStatus = wStatus::Corruption("wHttpTask::TaskRecv, [POST] header error(has no Content-Length)", ">0");
+					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv () failed", ">0 [POST] header error(has no Content-Length)");
+					ret = -1;
 					break;
 				}
+
 				int32_t contentLength = atoi(mRecvRead + pos1 + strlen(kHeader[0]) + strlen(kColon));
 				if (pos + strlen(kEndl) + contentLength > kMaxPackageSize) {
-					mStatus = wStatus::Corruption("wHttpTask::TaskRecv, [POST] header error(Content-Length out range)", ">0");
+					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv () failed", ">0 [POST] header error(Content-Length out range)");
+					ret = -1;
 					break;
 				} else if (pos + strlen(kEndl) + contentLength > static_cast<uint32_t>(len)) {
-					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [POST] recv a part of message", ">0");
-					mStatus.Clear();
+					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv () failed", ">0 [POST] recv a part of message");
+					ret = 0;
 					break;
 				}
 
 				reallen = pos + strlen(kEndl) + contentLength;
 			} else {
 				// 未知请求
-				mStatus = wStatus::Corruption("wHttpTask::TaskRecv, method error", ">0");
+				LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv () failed", ">0 method error");
+				ret = -1;
 				break;
 			}
 
-			handleFunc(mRecvRead, reallen, mRecvRead + reallen);
-			if (!mStatus.Ok()) {
-				break;
-			}
+			ret = handleFunc(mRecvRead, reallen, mRecvRead + reallen);
+            if (ret == -1) {
+                break;
+            }
 		} else {
 			leftlen = buffend - mRecvRead;
 			if ((leftlen >= strlen(kMethod[0]) && misc::Strcmp(std::string(mRecvRead, 0, strlen(kMethod[0])), kMethod[0], strlen(kMethod[0])) == 0) ||
@@ -121,8 +131,8 @@ const wStatus& wHttpTask::TaskRecv(ssize_t *size) {
 					memcpy(mTempBuff + leftlen, mRecvBuff, mRecvLen - leftlen);
 					pos = misc::Strpos(std::string(mTempBuff, 0, mRecvLen), kEndl);
 					if (pos == -1) {
-						LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [GET] recv a part of message", "<=0");
-						mStatus.Clear();
+						LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv () failed", "<=0 [GET] recv a part of message");
+						ret = 0;
 						break;
 					}
 
@@ -132,13 +142,14 @@ const wStatus& wHttpTask::TaskRecv(ssize_t *size) {
 				}
 
 				if (reallen <= leftlen) {
-					handleFunc(mRecvRead, reallen, mRecvRead + reallen);
+					ret = handleFunc(mRecvRead, reallen, mRecvRead + reallen);
 				} else {
-					handleFunc(mTempBuff, reallen, mRecvBuff + reallen - leftlen);
+					ret = handleFunc(mTempBuff, reallen, mRecvBuff + reallen - leftlen);
 				}
-				if (!mStatus.Ok()) {
-					break;
-				}
+
+	            if (ret == -1) {
+	                break;
+	            }
 			} else if ((leftlen >= strlen(kMethod[1]) && misc::Strcmp(std::string(mRecvRead, 0, strlen(kMethod[1])), kMethod[1], strlen(kMethod[1])) == 0) || 
 				(leftlen == 0 && misc::Strcmp(std::string(mRecvBuff, 0, strlen(kMethod[1])), kMethod[1], strlen(kMethod[1])) == 0)) {
 				// POST请求
@@ -148,47 +159,51 @@ const wStatus& wHttpTask::TaskRecv(ssize_t *size) {
 
 				int32_t pos = misc::Strpos(std::string(mTempBuff, 0, mRecvLen), kEndl);
 				if (pos == -1) {
-					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [POST] recv a part of message", "<=0");
-					mStatus.Clear();
+					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv () failed", "<=0 [POST] recv a part of message");
+					ret = 0;
 					break;
 				}
 
 				int32_t pos1 = misc::Strpos(std::string(mTempBuff, 0, mRecvLen), kHeader[0]);
 				if (pos1 == -1) {
-					mStatus = wStatus::Corruption("wHttpTask::TaskRecv, [POST] header error(has no Content-Length)", "<=0");
+					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv () failed", "<=0 [POST] header error(has no Content-Length)");
+					ret = -1;
 					break;
 				}
 				int32_t contentLength = atoi(mTempBuff + pos1 + strlen(kHeader[0]) + strlen(kColon));
 				if (pos + strlen(kEndl) + contentLength > kMaxPackageSize) {
-					mStatus = wStatus::Corruption("wHttpTask::TaskRecv, [POST] header error(Content-Length out range)", "<=0");
+					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv () failed", "<=0 [POST] header error(Content-Length out range)");
+					ret = -1;
 					break;
 				} else if (pos + strlen(kEndl) + contentLength > static_cast<uint32_t>(mRecvLen)) {
-					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv, [POST] recv a part of message", "<=0");
-					mStatus.Clear();
+					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv () failed", "<=0 [POST] recv a part of message");
+					ret = 0;
 					break;
 				}
 
 				reallen = pos + strlen(kEndl) + contentLength;
 				if (reallen <= leftlen) {
-					handleFunc(mTempBuff, reallen, mRecvRead + reallen);
+					ret = handleFunc(mTempBuff, reallen, mRecvRead + reallen);
 				} else {
-					handleFunc(mTempBuff, reallen, mRecvBuff + reallen - leftlen);
+					ret = handleFunc(mTempBuff, reallen, mRecvBuff + reallen - leftlen);
 				}
-				if (!mStatus.Ok()) {
-					break;
-				}
+	            if (ret == -1) {
+	                break;
+	            }
 			} else {
 				// 未知请求
-				mStatus = wStatus::Corruption("wHttpTask::TaskRecv, method error", "<=0");
+				LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::TaskRecv () failed", "<=0 method error");
+				ret = -1;
 				break;
 			}
 		}
 	}
-	return mStatus;
+	return ret;
 }
 
-const wStatus& wHttpTask::Handlemsg(char buf[], uint32_t len) {
+int wHttpTask::Handlemsg(char buf[], uint32_t len) {
 	mReq.clear(); mRes.clear(); mGet.clear(); mPost.clear();
+
 	ParseRequest(buf, len);
 	std::string cmd = QueryGet(kCmd[0]);
 	std::string para = QueryGet(kCmd[1]);
@@ -205,7 +220,7 @@ const wStatus& wHttpTask::Handlemsg(char buf[], uint32_t len) {
 	return AsyncResponse();
 }
 
-const wStatus& wHttpTask::ParseRequest(char buf[], uint32_t len) {
+int wHttpTask::ParseRequest(char buf[], uint32_t len) {
 	std::vector<std::string> req = misc::SplitString(std::string(buf, 0, len), kCRLF);
 	if (!req.empty()) {	// 请求行
 		std::vector<std::string> line = misc::SplitString(req.front(), " ");
@@ -265,10 +280,10 @@ const wStatus& wHttpTask::ParseRequest(char buf[], uint32_t len) {
 			}
 		}
 	}
-	return mStatus;
+	return 0;
 }
 
-const wStatus& wHttpTask::AsyncResponse() {
+int wHttpTask::AsyncResponse() {
     const char *buffend = mSendBuff + kPackageSize;
     ssize_t writelen =  mSendWrite - mSendRead;
     ssize_t leftlen = buffend - mSendWrite;
@@ -315,67 +330,92 @@ const wStatus& wHttpTask::AsyncResponse() {
     	memcpy(mSendBuff, mTempBuff + leftlen, len - leftlen);
     	mSendWrite = mSendBuff + len - leftlen;
     } else {
-    	return mStatus = wStatus::Corruption("wHttpTask::ParseResponse, message length error", "left buffer not enough");
+    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::ParseResponse () failed", "left buffer not enough");
+    	return -1;
     }
     mSendLen += len;
-	return mStatus = Output();
+
+	return Output();
 }
 
-const wStatus& wHttpTask::SyncResponse(char buf[], ssize_t* size, uint32_t timeout) {
+int wHttpTask::SyncResponse(char buf[], ssize_t* size, uint32_t timeout) {
 	int32_t pos = 0, pos1 = 0, len = 0;
 	size_t recvlen = 0;
-	bool ok = false;
-	memset(mTempBuff, 0, sizeof(mTempBuff));
-	for (uint64_t step = 1, usc = 1, timeline = timeout * 1000000; usc <= timeline; step <<= 1, usc += step) {
-		if (!(mStatus = mSocket->RecvBytes(mTempBuff + recvlen, kPackageSize, size)).Ok()) {
-			return mStatus;
-        } else if (*size > 0) {
-        	recvlen += *size;
+	bool ok = false;	
+	int64_t now = soft::TimeUsec();
+	int ret = 0;
+
+	while (true) {
+        // 超时时间设置
+        if (timeout > 0) {
+            double tmleft = static_cast<int64_t>(timeout*1000000) - (soft::TimeUpdate() - now);
+            if (tmleft > 0) {
+                if (mSocket->SetRecvTimeout(tmleft/1000000) == -1) {
+                    return -1;
+                }
+            } else {
+                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::SyncRecv () failed", "timeout");
+                return -1;
+            }
         }
+
+        // 接受消息
+        ret = mSocket->RecvBytes(mTempBuff + recvlen, kPackageSize, size);
+        if (ret == -1) {
+            return -1;
+        }
+
+		if (*size > 0) {
+            recvlen += *size;
+        }
+
         if (recvlen < strlen(kProtocol[0])) {
-   			usleep(step);
             continue;
         }
 
-        if (misc::Strcmp(std::string(mTempBuff, 0, strlen(kProtocol[0])), kProtocol[0], strlen(kProtocol[0])) == 0) {
+        if (misc::Strcmp(std::string(mTempBuff, 0, strlen(kProtocol[0])), kProtocol[0], strlen(kProtocol[0])) == 0) {	// HTTP/1.1
        		pos = misc::Strpos(std::string(mTempBuff, 0, recvlen), kEndl);
        		if (pos == -1) {
-	   			usleep(step);
 	            continue;
        		}
-	   		pos1 = misc::Strpos(std::string(mTempBuff, 0, recvlen), kHeader[0]);
+
+	   		pos1 = misc::Strpos(std::string(mTempBuff, 0, recvlen), kHeader[0]);	// Content-Length
 	   		if (pos1 == -1) {
-	   			usleep(step);
 	   			continue;
 	   		}
 
 	   		len = atoi(mTempBuff + pos1 + strlen(kHeader[0]) + strlen(kColon));
 	   		if (pos + strlen(kEndl) + len > kMaxPackageSize) {
-	   			mStatus = wStatus::Corruption("wHttpTask::SyncResponse, header error(Content-Length out range)", "");
+	   			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::SyncResponse () failed", "header error(Content-Length out range)");
+	   			ret = -1;
 	   			break;
 	   		} else if (pos + strlen(kEndl) + len > static_cast<uint32_t>(recvlen)) {
-	   			usleep(step);
 	   			continue;
 	   		} else {
 	   			ok = true;
 	   		}
         } else {
        		// 未知协议
-            mStatus = wStatus::Corruption("wHttpTask::SyncResponse, only support HTTP/1.1", "");
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::SyncResponse () failed", "only support HTTP/1.1");
+            ret = -1;
             break;
         }
+
         break;
 	}
 
 	if (ok == false) {
-		return mStatus.Ok()? (mStatus = wStatus::Corruption("wTask::SyncResponse, message length error", "illegal message")): mStatus;
+		if (ret == 0) {
+			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::SyncResponse () failed", "message invaild");
+		}
+		return -1;
 	}
 	*size = recvlen;
 	memcpy(buf, mTempBuff , *size);
-    return mStatus.Clear();
+    return 0;
 }
 
-const wStatus& wHttpTask::AsyncRequest() {
+int wHttpTask::AsyncRequest() {
     const char *buffend = mSendBuff + kPackageSize;
     ssize_t writelen =  mSendWrite - mSendRead;
     ssize_t leftlen = buffend - mSendWrite;
@@ -422,13 +462,15 @@ const wStatus& wHttpTask::AsyncRequest() {
     	memcpy(mSendBuff, mTempBuff + leftlen, len - leftlen);
     	mSendWrite = mSendBuff + len - leftlen;
     } else {
-    	return mStatus = wStatus::Corruption("wHttpTask::ParseResponse, message length error", "left buffer not enough");
+    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::AsyncRequest () failed", "left buffer not enough");
+    	return -1;
     }
     mSendLen += len;
-    return mStatus = Output();
+
+    return Output();
 }
 
-const wStatus& wHttpTask::SyncRequest(ssize_t* size) {
+int wHttpTask::SyncRequest(ssize_t* size) {
     ssize_t len = 0;
     std::string tmp;
 
@@ -495,6 +537,7 @@ void wHttpTask::FillResponse() {
 	if (mRes[kHeader[6]].empty()) {	// Pragma
 		ResponseSet(kHeader[6], "no-cache");
 	}
+	return;
 }
 
 void wHttpTask::Error(const std::string& status, const std::string& code) {
@@ -518,25 +561,30 @@ void wHttpTask::Write(const std::string& body) {
 	ResponseSet(kLine[9], body);
 }
 
-const wStatus& wHttpTask::HttpGet(const std::string& url, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout) {
+int wHttpTask::HttpGet(const std::string& url, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout) {
 	ResponseSet(kLine[0], kMethod[0]);
 	ResponseSet(kLine[1], url);
     ResponseSet(kHeader[2], Socket()->Host() + ":" + logging::NumberToString(static_cast<uint64_t>(Socket()->Port())));
 
     ssize_t size;
-    if (!(mStatus = SyncRequest(&size)).Ok()) {
-    	return mStatus;
+    int ret = SyncRequest(&size);
+    if (ret == -1) {
+    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::HttpGet SyncRequest() failed", "");
+    	return -1;
     }
     memset(mTempBuff, 0, sizeof(mTempBuff));
-    if (!(mStatus = SyncResponse(mTempBuff, &size, timeout)).Ok()) {
-    	return mStatus;
+    
+    ret = SyncResponse(mTempBuff, &size, timeout);
+    if (ret == -1) {
+    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wHttpTask::HttpGet SyncResponse() failed", "");
+    	return ret;
     }
     res = mTempBuff;
-    return mStatus;
+    return 0;
 }
 
-const wStatus& wHttpTask::HttpPost(const std::string& url, const std::map<std::string, std::string>& data, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout) {
-    return mStatus;
+int wHttpTask::HttpPost(const std::string& url, const std::map<std::string, std::string>& data, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout) {
+    return 0;
 }
 
 }	// namespace hnet

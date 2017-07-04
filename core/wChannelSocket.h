@@ -9,13 +9,10 @@
 
 #include <sys/socket.h>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wSocket.h"
 
 namespace hnet {
 
-// socketpair基础类
-// master-worker间的IPC通信
 class wChannelSocket : public wSocket {
 public:
     wChannelSocket(SockType type = kStConnect, SockProto proto = kSpChannel, SockFlag flag = kSfRvsd) : wSocket(type, proto, flag) {
@@ -23,23 +20,19 @@ public:
     }
     
     virtual ~wChannelSocket();
-    
-    virtual const wStatus& Open();
-
-    virtual const wStatus& RecvBytes(char buf[], size_t len, ssize_t *size);
-
-    virtual const wStatus& SendBytes(char buf[], size_t len, ssize_t *size);
-
+    virtual int Open();
     virtual int Close();
+    virtual int RecvBytes(char buf[], size_t len, ssize_t *size);
+    virtual int SendBytes(char buf[], size_t len, ssize_t *size);
 
     inline int& operator[](uint8_t i) {
-        assert(i == 0 || i == 1);
+        assert(i < 2);
         return mChannel[i];
     }
 
 protected:
-    virtual const wStatus& Bind(const std::string& host, uint16_t port = 0) {
-        return mStatus;
+    virtual int Bind(const std::string& host, uint16_t port = 0) {
+        return 0;
     }
 
     // 0:传递给其他进程，供写入数据

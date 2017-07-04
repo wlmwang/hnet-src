@@ -12,75 +12,104 @@
 
 namespace hnet {
 
-const wStatus& wUdpSocket::Open() {
-	if ((mFD = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-		return mStatus = wStatus::AccessIllegal("wUdpSocket::Open socket() AF_INET failed", error::Strerror(errno));
+int wUdpSocket::Open() {
+	mFD = socket(AF_INET, SOCK_DGRAM, 0);
+	if (mFD == -1) {
+		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUdpSocket::Open socket() failed", error::Strerror(errno).c_str());
+		return -1;
 	}
-	return mStatus;
+	return 0;
 }
 
-const wStatus& wUdpSocket::Bind(const std::string& host, uint16_t port) {
+int wUdpSocket::Bind(const std::string& host, uint16_t port) {
 	struct sockaddr_in socketAddr;
 	socketAddr.sin_family = AF_INET;
 	socketAddr.sin_port = htons(static_cast<short int>(port));
 	socketAddr.sin_addr.s_addr = misc::Text2IP(host.c_str());
-	if (bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr)) == -1) {
-		return mStatus = wStatus::IOError("wUdpSocket::Bind bind failed", error::Strerror(errno));
+	int ret = bind(mFD, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr));
+	if (ret == -1) {
+		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUdpSocket::Bind bind() failed", error::Strerror(errno).c_str());
 	}
-	return mStatus;
+	return ret;
 }
 
-const wStatus& wUdpSocket::Listen(const std::string& host, uint16_t port) {
+int wUdpSocket::Listen(const std::string& host, uint16_t port) {
 	mHost = host;
 	mPort = port;
-	if (!Bind(mHost, port).Ok()) {
-		return mStatus;
+
+	if (Bind(mHost, mPort) == -1) {
+		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUdpSocket::Listen Bind() failed", "");
+		return -1;
+	}
+
+	// 设置发送缓冲大小4M
+	socklen_t optVal = 0x400000;
+	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void*>(&optVal), sizeof(socklen_t)) == -1) {
+		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUdpSocket::Listen setsockopt(SO_SNDBUF) failed", error::Strerror(errno).c_str());
+		return -1;
 	}
 
 	if (SetNonblock() == -1) {
-		return mStatus = wStatus::IOError("wUdpSocket::Listen SetNonblock() failed", "");
+		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUdpSocket::Listen SetNonblock() failed", "");
+		return -1;
 	}
-	return mStatus.Clear();
+	return 0;
 }
 
-const wStatus& wUdpSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
+int wUdpSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
 	mRecvTm = soft::TimeUsec();
+
+	int ret = 0;
     if (mClientHost.size() == 0 || mClientPort == 0) {
         struct sockaddr_in socketAddr;
         socklen_t addrLen;
         *size = recvfrom(mFD, reinterpret_cast<void*>(buf), len, 0, reinterpret_cast<struct sockaddr *>(&socketAddr), &addrLen);
-        if (*size == 0) {
-            mStatus = wStatus::IOError("wUdpSocket::RecvBytes, client was closed", "");
-        } else if (*size == -1 && (errno == EINTR || errno == EAGAIN)) {
-            //mStatus.Clear();
-        } else if (*size == -1) {
-            mStatus = wStatus::IOError("wUdpSocket::RecvBytes, recvfrom failed", error::Strerror(errno));
+        if (*size == 0) {	// FIN package // client was closed
+        	ret = -1;
+        } else if (*size < 0) {
+        	if (errno == EAGAIN || errno == EWOULDBLOCK) {	// Resource temporarily unavailable // 资源暂时不够(可能读缓冲区没有数据)
+        		ret = 0;
+        	} else if (errno == EINTR) {	// Interrupted system call
+        		ret = 0;
+        	} else {
+	            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUdpSocket::RecvBytes recvfrom() failed", error::Strerror(errno).c_str());
+	            ret = -1;
+        	}
         }
         mClientHost = inet_ntoa(socketAddr.sin_addr);
         mClientPort = socketAddr.sin_port;
     }
-    return mStatus;
+    return ret;
 }
 
-const wStatus& wUdpSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
+int wUdpSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
 	mSendTm = soft::TimeUsec();
+
+	int ret = 0;
 	if (mClientHost.size() != 0 && mClientPort != 0) {
 		struct sockaddr_in socketAddr;
 		socketAddr.sin_family = AF_INET;
 		socketAddr.sin_port = htons((short)mClientPort);
 		socketAddr.sin_addr.s_addr = misc::Text2IP(mClientHost.c_str());
 		*size = sendto(mFD, reinterpret_cast<void*>(buf), len, 0, reinterpret_cast<struct sockaddr *>(&socketAddr), sizeof(socketAddr));
-	    if (*size >= 0) {
-	        //mStatus.Clear();
-	    } else if (*size == -1 && (errno == EINTR || errno == EAGAIN)) {
-	        //mStatus.Clear();
-	    } else {
-	        mStatus = wStatus::IOError("wUdpSocket::SendBytes, sendto failed", error::Strerror(errno));
-	    }
+
+        if (*size < 0) {
+        	if (errno == EAGAIN || errno == EWOULDBLOCK) {	// Resource temporarily unavailable // 资源暂时不够(可能读缓冲区没有数据)
+        		ret = 0;
+        	} else if (errno == EINTR) {	// Interrupted system call
+        		ret = 0;
+        	} else {
+	            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUdpSocket::SendBytes sendto() failed", error::Strerror(errno).c_str());
+	            ret = -1;
+        	}
+        } else if (*size == 0) {
+            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUdpSocket::SendBytes sendto() failed", error::Strerror(errno).c_str());
+            ret = -1;
+        }
 	    mClientHost = "";
 	    mClientPort = 0;
 	}
-    return mStatus;
+    return ret;
 }
 
 }	// namespace hnet

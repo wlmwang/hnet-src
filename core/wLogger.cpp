@@ -4,7 +4,6 @@
  * Copyright (C) Hupu, Inc.
  */
 
-#include "wStatus.h"
 #include "wLogger.h"
 #include "wEnv.h"
 #include "wMisc.h"

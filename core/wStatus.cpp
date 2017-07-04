@@ -7,7 +7,6 @@
 #include "wCore.h"
 #include "wStatus.h"
 #include "wMisc.h"
-#include "wLogger.h"
 
 namespace hnet {
 
@@ -39,10 +38,6 @@ wStatus::wStatus(Code code, const wSlice& msg, const wSlice& msg2, bool log) {
         memcpy(result + 7 + len1, msg2.data(), len2);
     }
     mState = result;
-    // 日志
-    if (log) {
-    	LOG_ERROR(soft::GetLogPath(), "%s", ToString().c_str());
-    }
 }
 
 std::string wStatus::ToString() const {

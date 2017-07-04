@@ -52,13 +52,13 @@ struct wSignal::Signal_t {
 
 // 信号集
 extern wSignal::Signal_t g_signals[];
-extern int g_sigalrm;       // SIGALRM
-extern int g_sigio;         // SIGIO
-extern int g_terminate;     // SIGTERM SIGINT
-extern int g_quit;          // SIGQUIT
-extern int g_reconfigure;   // SIGHUP
-extern int g_reap;          // SIGCHLD
-extern int g_reopen;        // SIGUSR1
+extern volatile int g_sigalrm;       // SIGALRM
+extern volatile int g_sigio;         // SIGIO
+extern volatile int g_terminate;     // SIGTERM SIGINT
+extern volatile int g_quit;          // SIGQUIT
+extern volatile int g_reconfigure;   // SIGHUP
+extern volatile int g_reap;          // SIGCHLD
+extern volatile int g_reopen;        // SIGUSR1
 
 }   // namespace hnet
 

@@ -8,7 +8,6 @@
 #define _W_CHANNEL_TASK_H_
 
 #include "wCore.h"
-#include "wStatus.h"
 #include "wTask.h"
 
 namespace hnet {

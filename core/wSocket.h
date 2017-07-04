@@ -9,7 +9,7 @@
 
 #include <sys/socket.h>
 #include "wCore.h"
-#include "wStatus.h"
+#include "wMisc.h"
 #include "wNoncopyable.h"
 #include "wLogger.h"
 
@@ -43,67 +43,80 @@ public:
     wSocket(SockType type = kStListen, SockProto proto = kSpTcp, SockFlag flag = kSfRvsd);
     virtual ~wSocket();
 
-    // 从客户端接收数据
-    // wStatus返回不为空，则socket被关闭
-    // size = -1 对端发生错误|稍后重试
-    // size = 0  对端关闭
-    // size > 0  接受字符
-    virtual const wStatus& RecvBytes(char buf[], size_t len, ssize_t *size);
-
-    // 发送到客户端数据
-    // wStatus返回不为空，则socket被关闭
-    // size = -1 对端发生错误|稍后重试|对端关闭
-    // size >= 0 发送字符
-    virtual const wStatus& SendBytes(char buf[], size_t len, ssize_t *size);
-    
-    // 从客户端接收连接
-    // fd = -1 发生错误|稍后重试
-    // fd > 0 新文件描述符
-    virtual const wStatus& Accept(int64_t *fd, struct sockaddr* clientaddr, socklen_t *addrsize) {
-        return mStatus = wStatus::IOError("wSocket::Accept failed", "method should be inherit");
-    }
-
-    // 连接服务器
-    // ret = -1 发生错误
-    // ret = 0 连接成功
-    virtual const wStatus& Connect(int64_t *ret, const std::string& host, uint16_t port = 0, float timeout = 30) {
-        return mStatus = wStatus::IOError("wSocket::Connect failed", "method should be inherit");
-    }
-    
-    virtual const wStatus& Listen(const std::string& host, uint16_t port = 0) {
-        return mStatus = wStatus::IOError("wSocket::Listen failed", "method should be inherit");
-    }
-    
-    virtual const wStatus& Open() {
-        return mStatus = wStatus::IOError("wSocket::Open failed", "method should be inherit");
-    }
-    
-    virtual int Close();
-    
+    // 设置、获取描述符阻塞状态
+    // 返回 =-1 操作失败
     virtual int SetNonblock(bool nonblock = true);
     virtual int GetNonblock();
 
-    virtual const wStatus& SetTimeout(float fTimeout = 30) {
-        //LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetTimeout () failed", "method should be inherit");
-        //return -1;
-        return mStatus = wStatus::IOError("wSocket::SetTimeout () failed", "method should be inherit");
+    // 关闭一个描述符
+    virtual int Close();
+
+    // 从客户端接收数据
+    // size =-1 对端发生错误|稍后重试
+    // size = 0 对端关闭
+    // size > 0 接受字符
+    // 返回 =-1 表示需要关闭该连接，并清理内存
+    virtual int RecvBytes(char buf[], size_t len, ssize_t *size);
+
+    // 发送到客户端数据
+    // size =-1 对端发生错误|稍后重试|对端关闭
+    // size>= 0 发送字符
+    // 返回 =-1 表示需要关闭该连接，并清理内存
+    virtual int SendBytes(char buf[], size_t len, ssize_t *size);
+    
+    // 从客户端接收连接
+    // fd   =-1 发生错误|稍后重试
+    // fd   > 0 新描述符值
+    // 返回 =-1 表示需要关闭该连接，并清理内存
+    virtual int Accept(int* fd, struct sockaddr* clientaddr, socklen_t *addrsize) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Accept () failed", "method should be inherit");
+        return -1;
     }
 
-    virtual const wStatus& SetSendTimeout(float fTimeout = 30) {
-        //LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetSendTimeout () failed", "method should be inherit");
-        //return -1;
-        return mStatus = wStatus::IOError("wSocket::SetSendTimeout () failed", "method should be inherit");
+    // 客户端连接服务器
+    // 返回 =-1 表示需要关闭该连接，并清理内存
+    virtual int Connect(const std::string& host, uint16_t port = 0, float timeout = 30) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Connect () failed", "method should be inherit");
+        return -1;
+    }
+    
+    // 监听socket描述符
+    // 返回 =-1 表示需要关闭该连接，并清理内存
+    virtual int Listen(const std::string& host, uint16_t port = 0) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Listen () failed", "method should be inherit");
+        return -1;
+    }
+    
+    // 创建socket描述符
+    // 返回 =-1 表示需要关闭该连接，并清理内存
+    virtual int Open() {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Open () failed", "method should be inherit");
+        return -1;
     }
 
-    virtual const wStatus& SetRecvTimeout(float fTimeout = 30) {
-        //LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetRecvTimeout () failed", "method should be inherit");
-        //return -1;
-        return mStatus = wStatus::IOError("wSocket::SetRecvTimeout () failed", "method should be inherit");
+    // 设置描述符接受、发送超时时间
+    // 返回 =-1 设置失败
+    virtual int SetTimeout(float fTimeout = 30) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetTimeout () failed", "method should be inherit");
+        return -1;
+    }
+
+    // 设置描述符发送超时时间
+    // 返回 =-1 设置失败
+    virtual int SetSendTimeout(float fTimeout = 30) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetSendTimeout () failed", "method should be inherit");
+        return -1;
+    }
+
+    // 设置描述符接受超时时间
+    // 返回 =-1 设置失败
+    virtual int SetRecvTimeout(float fTimeout = 30) {
+        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetRecvTimeout () failed", "method should be inherit");
+        return -1;
     }
 
     inline std::string& Host() { return mHost;}
     inline const std::string& Host() const { return mHost;}
-    
     inline uint16_t& Port() { return mPort;}
     inline const uint16_t& Port() const { return mPort;}
 
@@ -112,7 +125,7 @@ public:
     inline uint64_t& SendTm() { return mSendTm;}
     inline uint64_t& MakeTm() { return mMakeTm;}
 		
-    //socket状态属性
+    // socket描述符状态属性
     inline SockType& ST() { return mSockType;}
     inline SockStatus& SS() { return mSockStatus;}
     inline SockProto& SP() { return mSockProto;}
@@ -123,21 +136,24 @@ public:
     }
 
 protected:
-    virtual const wStatus& Bind(const std::string& host, uint16_t port = 0) = 0;
-    
+    // socket描述符绑定host、port
+    // 返回 =-1 绑定失败
+    virtual int Bind(const std::string& host, uint16_t port = 0) = 0;
+
+protected:
     int64_t  mFD;
+
     std::string mHost;
-    uint16_t mPort;
-    uint64_t mRecvTm;   // 最后接收到数据包的时间戳
-    uint64_t mSendTm;   // 最后发送数据包时间戳（主要用户心跳检测）
-    uint64_t mMakeTm;   // 创建时间
+    uint16_t    mPort;
 
-    SockType mSockType;
-    SockStatus mSockStatus;
-    SockProto mSockProto;
-    SockFlag mSockFlag;
+    uint64_t    mRecvTm;   // 最后接收到数据包的时间戳
+    uint64_t    mSendTm;   // 最后发送数据包时间戳
+    uint64_t    mMakeTm;   // 创建时间
 
-    wStatus mStatus;
+    SockType    mSockType;
+    SockStatus  mSockStatus;
+    SockProto   mSockProto;
+    SockFlag    mSockFlag;
 };
 
 }   // namespace hnet

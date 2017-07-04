@@ -6,7 +6,6 @@
 
 #include <vector>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wConfig.h"
 #include "wSingleClient.h"
 #include "exampleCmd.h"
@@ -21,19 +20,21 @@ pid_t SpawnProcess(int i, int request);
 void Handle(int i, int request);
 int exampleEchoWR();
 
-static std::string gHost = "";
-static uint16_t gPort = 0;
+static std::string g_host = "";
+static uint16_t g_port = 0;
 
-int main(int argc, const char *argv[]) {
+int main(int argc, char *argv[]) {
 	// 设置运行目录
 	if (misc::SetBinPath() == -1) {
 		std::cout << "set bin path failed" << std::endl;
+		return -1;
 	}
 
 	// 创建配置对象
 	wConfig* config;
 	SAFE_NEW(wConfig, config);
-	if (config == NULL) {
+	if (!config) {
+		std::cout << "config new failed" << std::endl;
 		return -1;
 	}
 	
@@ -46,14 +47,14 @@ int main(int argc, const char *argv[]) {
 
 	// 版本输出
 	bool version;
-	if (config->GetConf("version", &version) && version == true) {
+	if (config->GetConf("version", &version) && version) {
 		std::cout << soft::SetSoftName("example client -") << soft::GetSoftVer() << std::endl;
 		SAFE_DELETE(config);
 		return -1;
 	}
 
 	// 命令行-h、-p解析
-    if (!config->GetConf("host", &gHost) || !config->GetConf("port", &gPort)) {
+    if (!config->GetConf("host", &g_host) || !config->GetConf("port", &g_port)) {
     	std::cout << "host or port error" << std::endl;
     	SAFE_DELETE(config);
     	return -1;
@@ -141,13 +142,15 @@ int exampleEchoWR() {
     // 创建客户端
 	wSingleClient *client;
 	SAFE_NEW(wSingleClient, client);
-    if (client == NULL) {
+    if (!client) {
+    	std::cout << "client new failed" << std::endl;
         return -1;
     }
     
     // 连接服务器
-    wStatus s = client->Connect(gHost, gPort);
-    if (!s.Ok()) {
+    int ret = client->Connect(g_host, g_port);
+    if (ret == -1) {
+    	std::cout << "client connect failed" << std::endl;
     	SAFE_DELETE(client);
     	return -1;
     }
@@ -163,35 +166,38 @@ int exampleEchoWR() {
     req.set_cmd("hello hnet~");
 
 #ifdef _USE_PROTOBUF_
-	s = client->SyncSend(&req, &size);
+	ret = client->SyncSend(&req, &size);
 #else
-	s = client->SyncSend(reinterpret_cast<char*>(&req), sizeof(req), &size);
+	ret = client->SyncSend(reinterpret_cast<char*>(&req), sizeof(req), &size);
 #endif
 
-	if (!s.Ok()) {
-		SAFE_DELETE(client);
+	if (ret == -1) {
+		std::cout << "client send failed" << std::endl;
+    	SAFE_DELETE(client);
 		return -1;
 	}
 
 	// 同步接受服务器返回
 #ifdef _USE_PROTOBUF_
 	example::ExampleEchoRes res;
-	s = client->SyncRecv(&res, &size);
+	ret = client->SyncRecv(&res, &size);
 
-	if (!s.Ok()) {
-		SAFE_DELETE(client);
+	if (ret == -1) {
+		std::cout << "client receive failed" << s.ToString() << std::endl;
+    	SAFE_DELETE(client);
 		return -1;
 	}
 #else
 	example::ExampleResEcho_t res;
-	s = client->SyncRecv(reinterpret_cast<char*>(&res), &size, sizeof(res));
+	ret = client->SyncRecv(reinterpret_cast<char*>(&res), &size, sizeof(res));
 
-	if (!s.Ok()) {
-		SAFE_DELETE(client);
+	if (ret == -1) {
+		std::cout << "client receive failed" << std::endl;
+    	SAFE_DELETE(client);
 		return -1;
 	}
 #endif
-	SAFE_DELETE(client);
 	
+	SAFE_DELETE(client);
 	return 0;
 }

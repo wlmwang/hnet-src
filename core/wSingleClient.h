@@ -9,7 +9,6 @@
 
 #include <map>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wNoncopyable.h"
 #include "wTask.h"
 
@@ -25,31 +24,31 @@ public:
     wSingleClient() : mTask(NULL) { }
     ~wSingleClient();
 
-    const wStatus& Connect(const std::string& ipaddr, uint16_t port, const std::string& protocol = "TCP");
+    int Connect(const std::string& ipaddr, uint16_t port, const std::string& protocol = "TCP");
 
-    inline const wStatus& SyncSend(char cmd[], size_t len, ssize_t *size) {
-    	return mStatus = mTask->SyncSend(cmd, len, size);
+    inline int SyncSend(char cmd[], size_t len, ssize_t *size) {
+    	return mTask->SyncSend(cmd, len, size);
     }
 #ifdef _USE_PROTOBUF_
-    inline const wStatus& SyncSend(const google::protobuf::Message* msg, ssize_t *size) {
-    	return mStatus = mTask->SyncSend(msg, size);
+    inline int SyncSend(const google::protobuf::Message* msg, ssize_t *size) {
+    	return mTask->SyncSend(msg, size);
     }
 #endif
 
-    inline const wStatus& SyncRecv(char cmd[], ssize_t *size, size_t msglen = 0, uint32_t timeout = 30) {
-    	return mStatus = mTask->SyncRecv(cmd, size, msglen, timeout);
+    inline int SyncRecv(char cmd[], ssize_t *size, size_t msglen = 0, uint32_t timeout = 30) {
+    	return mTask->SyncRecv(cmd, size, msglen, timeout);
     }
 #ifdef _USE_PROTOBUF_
-    inline const wStatus& SyncRecv(google::protobuf::Message* msg, ssize_t *size, size_t msglen = 0, uint32_t timeout = 30) {
-    	return mStatus = mTask->SyncRecv(msg, size, msglen, timeout);
+    inline int SyncRecv(google::protobuf::Message* msg, ssize_t *size, size_t msglen = 0, uint32_t timeout = 30) {
+    	return mTask->SyncRecv(msg, size, msglen, timeout);
     }
 #endif
 
-    const wStatus& HttpGet(const std::string& url, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30);
-    const wStatus& HttpPost(const std::string& url, const std::map<std::string, std::string>& data, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30);
+    int HttpGet(const std::string& url, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30);
+    int HttpPost(const std::string& url, const std::map<std::string, std::string>& data, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30);
+
 protected:
     wTask* mTask;
-    wStatus mStatus;
 };
 
 }	// namespace hnet

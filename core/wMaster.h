@@ -11,7 +11,6 @@
 #include <vector>
 #include <algorithm>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wNoncopyable.h"
 #include "wEnv.h"
 
@@ -28,30 +27,30 @@ public:
     virtual ~wMaster();
 
     // 准备启动
-    const wStatus& PrepareStart();
+    int PrepareStart();
     
     // 单进程模式启动
-    const wStatus& SingleStart();
+    int SingleStart();
 
     // M-W模式启动(master-worker)
-    const wStatus& MasterStart();
+    int MasterStart();
 
     // 发送命令行信号
-    const wStatus& SignalProcess(const std::string& signal);
+    int SignalProcess(const std::string& signal);
 
     // 修改pid文件名（默认hnet.pid）
     // 修改启动worker个数（默认cpu个数）
     // 修改自定义信号处理（默认定义在wSignal.cpp文件中）
-    virtual const wStatus& PrepareRun();
+    virtual int PrepareRun();
 
     // 单进程为客户端事件循环体
     // M-W模式中为系统信号循环体
-    virtual const wStatus& Run();
+    virtual int Run();
     
-    virtual const wStatus& NewWorker(uint32_t slot, wWorker** ptr);
-    virtual const wStatus& HandleSignal();
+    virtual int NewWorker(uint32_t slot, wWorker** ptr);
+    virtual int HandleSignal();
     
-    virtual const wStatus& Reload();
+    virtual int Reload();
 
     // master主进程退出函数
     virtual void ProcessExit();
@@ -77,17 +76,17 @@ protected:
     friend class wServer;
 
     // 启动n个worker进程
-    const wStatus& WorkerStart(uint32_t n, int32_t type = kProcessRespawn);
+    int WorkerStart(uint32_t n, int32_t type = kProcessRespawn);
     // 创建一个worker进程
-    const wStatus& SpawnWorker(int64_t type);
+    int SpawnWorker(int64_t type);
     
     // 注册信号回调
     // 可覆盖全局变量g_signals，实现自定义信号处理
-    const wStatus& InitSignals();
+    int InitSignals();
 
     // 如果有worker异常退出，则重启
     // 如果所有的worker都退出了，则mLive = 0
-    const wStatus& ReapChildren();
+    int ReapChildren();
 
     int CreatePidFile();
     int DeletePidFile();
@@ -107,7 +106,7 @@ protected:
     // 进程表
     uint32_t mSlot;
     uint32_t mWorkerNum;
-    wWorker *mWorkerPool[kMaxProcess];
+    wWorker* mWorkerPool[kMaxProcess];
 
     int32_t mDelay;
     int32_t mSigio;
@@ -116,8 +115,6 @@ protected:
     wServer* mServer;
     wWorker* mWorker;	// 当前worker进程
     wEnv* mEnv;
-
-    wStatus mStatus;
 };
 
 }	// namespace hnet

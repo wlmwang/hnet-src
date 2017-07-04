@@ -10,7 +10,6 @@
 #include <map>
 #include <cstdarg>
 #include "wCore.h"
-#include "wStatus.h"
 #include "wNoncopyable.h"
 
 #ifdef _USE_LOGGER_

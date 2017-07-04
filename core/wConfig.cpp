@@ -6,8 +6,9 @@
 
 #include "wConfig.h"
 #include "wMisc.h"
-#include "wSlice.h"
 #include "wLogger.h"
+#include "wMemPool.h"
+#include "wProcTitle.h"
 
 namespace hnet {
 
@@ -15,7 +16,9 @@ wConfig::wConfig(): mPool(NULL), mProcTitle(NULL) {
     soft::TimeUpdate(); // 时间初始化
 	error::StrerrorInit(); // 初始化错误列表
     http::StatusCodeInit(); // 初始化http状态码
-	SAFE_NEW(wMemPool, mPool); // 初始化内存池
+
+	SAFE_NEW(wMemPool, mPool);
+    SAFE_NEW(wProcTitle, mProcTitle);
 }
 
 wConfig::~wConfig() {
@@ -28,7 +31,7 @@ wConfig::~wConfig() {
 // ./bin/server -d
 // ./bin/server -h127.0.0.1  
 // ./bin/server -h 127.0.0.1
-int wConfig::GetOption(int argc, const char *argv[]) {
+int wConfig::GetOption(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         const char* p = argv[i];
         if (*p++ != '-') {
@@ -158,18 +161,32 @@ int wConfig::GetOption(int argc, const char *argv[]) {
     next:
         continue;
     }
-	SAFE_NEW(wProcTitle, mProcTitle);
-    
     return InitProcTitle(argc, argv);
+}
+
+int wConfig::InitProcTitle(int argc, char *argv[]) {
+    return mProcTitle->SaveArgv(argc, argv);
+}
+
+int wConfig::Setproctitle(const char* pretitle, const char* title, bool attach) {
+    return mProcTitle->Setproctitle(pretitle, title, attach);
+}
+
+char** wConfig::Argv() {
+    return mProcTitle->Argv();
+}
+
+char** wConfig::Environ() {
+    return mProcTitle->Environ();
 }
 
 bool wConfig::SetBoolConf(const std::string& key, bool val, bool force) {
 	if (!force && mConf.find(key) != mConf.end()) {
 		return false;
 	}
-	bool* b = reinterpret_cast<bool *>(mPool->Allocate(sizeof(bool)));
+	bool* b = reinterpret_cast<bool*>(mPool->Allocate(sizeof(bool)));
 	*b = val;
-	mConf[key] = reinterpret_cast<void *>(b);
+	mConf[key] = reinterpret_cast<void*>(b);
 	return true;
 }
 
@@ -177,9 +194,9 @@ bool wConfig::SetIntConf(const std::string& key, int val, bool force) {
 	if (!force && mConf.find(key) != mConf.end()) {
 		return false;
 	}
-	int* i = reinterpret_cast<int *>(mPool->Allocate(sizeof(int)));
+	int* i = reinterpret_cast<int*>(mPool->Allocate(sizeof(int)));
 	*i = val;
-	mConf[key] = reinterpret_cast<void *>(i);
+	mConf[key] = reinterpret_cast<void*>(i);
 	return true;
 }
 
@@ -193,7 +210,7 @@ bool wConfig::SetStrConf(const std::string& key, const char *val, bool force) {
     std::string *s;  
 	SAFE_NEW((c)std::string(), s);
 	*s = val;
-	mConf[key] = reinterpret_cast<void *>(s);
+	mConf[key] = reinterpret_cast<void*>(s);
 	return true;
 }
 
