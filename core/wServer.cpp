@@ -529,18 +529,20 @@ int wServer::Broadcast(const google::protobuf::Message* msg) {
 #endif
 
 int wServer::Send(wTask *task, char *cmd, size_t len) {
-	if (task->Send2Buf(cmd, len) == 0) {
-	    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+	int ret = task->Send2Buf(cmd, len);
+	if (ret == 0) {
+	    ret = AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
 	}
-    return 0;
+    return ret;
 }
 
 #ifdef _USE_PROTOBUF_
 int wServer::Send(wTask *task, const google::protobuf::Message* msg) {
-	if (task->Send2Buf(msg) == 0) {
-	    return AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+	int ret = task->Send2Buf(msg);
+	if (ret == 0) {
+	    ret = AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
 	}
-    return 0;
+    return ret;
 }
 #endif
 
@@ -568,6 +570,9 @@ int wServer::FindTaskBySocket(wTask** task, const wSocket* sock) {
 }
 
 int wServer::AsyncWorker(char *cmd, int len, uint32_t solt, const std::vector<uint32_t>* blackslot) {
+	if (Master()->WorkerNum() <= 1) {
+		return 0;
+	}
 	if (solt == kMaxProcess) {	// 广播消息
 		for (uint32_t i = 0; i < kMaxProcess; i++) {
 			if (mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
@@ -595,6 +600,9 @@ int wServer::AsyncWorker(char *cmd, int len, uint32_t solt, const std::vector<ui
 
 #ifdef _USE_PROTOBUF_
 int wServer::AsyncWorker(const google::protobuf::Message* msg, uint32_t solt, const std::vector<uint32_t>* blackslot) {
+	if (Master()->WorkerNum() <= 1) {
+		return 0;
+	}
 	if (solt == kMaxProcess) {	// 广播消息
 		for (uint32_t i = 0; i < kMaxProcess; i++) {
 			if (mMaster->Worker(i)->mPid == -1 || mMaster->Worker(i)->ChannelFD(0) == kFDUnknown) {
@@ -622,6 +630,9 @@ int wServer::AsyncWorker(const google::protobuf::Message* msg, uint32_t solt, co
 #endif
 
 int wServer::SyncWorker(char *cmd, int len, uint32_t solt, const std::vector<uint32_t>* blackslot) {
+	if (Master()->WorkerNum() <= 1) {
+		return 0;
+	}
 	ssize_t ret;
 	char buf[kPackageSize];
 	if (solt == kMaxProcess) {	// 广播消息
@@ -649,6 +660,9 @@ int wServer::SyncWorker(char *cmd, int len, uint32_t solt, const std::vector<uin
 
 #ifdef _USE_PROTOBUF_
 int wServer::SyncWorker(const google::protobuf::Message* msg, uint32_t solt, const std::vector<uint32_t>* blackslot) {
+	if (Master()->WorkerNum() <= 1) {
+		return 0;
+	}
 	ssize_t ret;
 	char buf[kPackageSize];
 	uint32_t len = sizeof(uint8_t) + sizeof(uint16_t) + msg->GetTypeName().size() + msg->ByteSize();

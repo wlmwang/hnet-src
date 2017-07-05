@@ -345,33 +345,34 @@ int wMultiClient::Broadcast(const google::protobuf::Message* msg, int type) {
 #endif
 
 int wMultiClient::Send(wTask *task, char *cmd, size_t len) {
-    if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected
+    int ret = 0;
+    if (task && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected
         && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
-        if (task->Send2Buf(cmd, len) == 0) {
-        	AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+        ret = task->Send2Buf(cmd, len);
+        if (ret == 0) {
+        	ret = AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
         }
     }
-    return 0;
+    return ret;
 }
 
 #ifdef _USE_PROTOBUF_
 int wMultiClient::Send(wTask *task, const google::protobuf::Message* msg) {
-    if (task != NULL && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected 
+    int ret = 0;
+    if (task && task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected 
         && (task->Socket()->SF() == kSfSend || task->Socket()->SF() == kSfRvsd)) {
-        if (task->Send2Buf(msg) == 0) {
-        	AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
+        ret = task->Send2Buf(msg);
+        if (ret == 0) {
+        	ret = AddTask(task, EPOLLIN | EPOLLOUT, EPOLL_CTL_MOD, false);
         }
     }
-    return 0;
+    return ret;
 }
 #endif
 
-int wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) {
-    // 方便异步发送
-    task->SetClient(this);
-    
-    // 方便worker进程间通信
-    task->Server() = mServer;
+int wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) {    
+    task->SetClient(this);  // 方便异步发送
+    task->Server() = mServer;   // 方便worker进程间通信
 
     struct epoll_event evt;
     evt.events = ev | EPOLLERR | EPOLLHUP;
@@ -381,7 +382,7 @@ int wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) {
         LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AddTask epoll_ctl() failed", error::Strerror(errno).c_str());
         return ret;
     }
-
+    
     if (addpool) {
         return AddToTaskPool(task);
     }

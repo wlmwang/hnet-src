@@ -284,7 +284,6 @@ int wTask::Send2Buf(const google::protobuf::Message* msg) {
     if (len < kMinPackageSize || len > kMaxPackageSize) {
         LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::Send2Buf () failed", "message too large");
         return -1;
-
     } else if (len > static_cast<uint32_t>(kPackageSize - mSendLen - sizeof(uint32_t))) {
         LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::Send2Buf () failed", "left buffer not enough");
         return -1;
@@ -297,19 +296,16 @@ int wTask::Send2Buf(const google::protobuf::Message* msg) {
     	// 单向剩余足够（右边剩余 || 中间剩余）
     	Assertbuf(mSendWrite, msg);
     	mSendWrite += sizeof(uint32_t) + len;
-
     } else if (writelen >= 0 && leftlen < static_cast<ssize_t>(len + sizeof(uint32_t))) {
     	// 分段剩余足够（两边剩余）
     	Assertbuf(mTempBuff, msg);
     	memcpy(mSendWrite, mTempBuff, leftlen);
     	memcpy(mSendWrite = mSendBuff, mTempBuff + leftlen, sizeof(uint32_t) + len - leftlen);
     	mSendWrite += sizeof(uint32_t)+ len - leftlen;
-
     } else {
         LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTask::Send2Buf () failed", "left buffer not enough");
         return -1;
     }
-
     mSendLen += sizeof(uint32_t) + len;
     return 0;
 }
