@@ -26,14 +26,14 @@ wPing::~wPing() {
 int wPing::Open() {
     int ret = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::Open socket() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::Open socket() failed", error::Strerror(errno).c_str());
         return ret;
     }
     // 扩大套接字接收缓冲区到50k，主要为了减小接收缓冲区溢出的的可能性
     // 若无意中ping一个广播地址或多播地址，将会引来大量应答
     const int size = 50*1024;
     if (setsockopt(ret, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::Open setsockopt() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::Open setsockopt() failed", error::Strerror(errno).c_str());
     }
     mFD = ret;
     return 0;
@@ -42,7 +42,7 @@ int wPing::Open() {
 int wPing::Close() {
     int ret = close(mFD);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::Close close() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::Close close() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -65,7 +65,7 @@ int wPing::SetSendTimeout(float timeout) {
     }
     int ret = setsockopt(mFD, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::SetSendTimeout setsockopt() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::SetSendTimeout setsockopt() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -80,7 +80,7 @@ int wPing::SetRecvTimeout(float timeout) {
     }
     int ret = setsockopt(mFD, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::SetRecvTimeout setsockopt() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::SetRecvTimeout setsockopt() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -90,7 +90,7 @@ int wPing::Ping(const char* ip) {
     mDestAddr.sin_family = AF_INET;
     in_addr_t inaddr = misc::Text2IP(ip);
     if (inaddr == INADDR_NONE) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::Ping Text2IP() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::Ping Text2IP() failed", error::Strerror(errno).c_str());
         return -1;
     } else {
         mDestAddr.sin_addr.s_addr = inaddr;
@@ -98,7 +98,7 @@ int wPing::Ping(const char* ip) {
 
     // 本机ping直接返回正确
     if (mLocalIp == ip) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::Ping ip failed", "localip == ip");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::Ping ip failed", "localip == ip");
         return 0;
     }
 
@@ -115,7 +115,7 @@ int wPing::SendPacket() {
     int len = Pack();   // 设置ICMP报头
     int ret = sendto(mFD, mSendpacket, len, 0, reinterpret_cast<struct sockaddr *>(&mDestAddr), sizeof(mDestAddr));
     if (ret < len) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::SendPacket sendto() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::SendPacket sendto() failed", error::Strerror(errno).c_str());
         return -1;
     }
     return 0;
@@ -147,14 +147,14 @@ int wPing::RecvPacket() {
             if (errno == EINTR) {
                 continue;
             } else if(errno == EAGAIN) {
-                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::RecvPacket recvmsg() failed", error::Strerror(errno).c_str());
+                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::RecvPacket recvmsg() failed", error::Strerror(errno).c_str());
                 return -1;
             } else {
-                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::RecvPacket recvmsg() failed", error::Strerror(errno).c_str());
+                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::RecvPacket recvmsg() failed", error::Strerror(errno).c_str());
                 return -1;
             }
         } else if (len == 0) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::RecvPacket recvmsg() failed", error::Strerror(errno).c_str());
+            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::RecvPacket recvmsg() failed", error::Strerror(errno).c_str());
             return -1;
         } else {
             struct ip *iphdr = reinterpret_cast<struct ip*>(mRecvpacket);
@@ -165,13 +165,13 @@ int wPing::RecvPacket() {
     }
 
     if (kRetryTimes >= 2 && i >= kRetryTimes) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::RecvPacket recvmsg() failed", "retry over times");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::RecvPacket recvmsg() failed", "retry over times");
         return -1;
     }
 
     int ret = Unpack(mRecvpacket, len);
     if (ret < 0) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::RecvPacket recvmsg() failed", "parse error");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPing::RecvPacket recvmsg() failed", "parse error");
         return ret;
     }
     return 0;

@@ -45,7 +45,7 @@ int wSignal::EmptySet(__sighandler_t  func) {
     mSigAct.sa_flags = 0;
     int ret = sigemptyset(&mSigAct.sa_mask);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::wSignal sigemptyset() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::wSignal sigemptyset() failed", error::Strerror(errno).c_str());
     }
     return -1;
 }
@@ -53,7 +53,7 @@ int wSignal::EmptySet(__sighandler_t  func) {
 int wSignal::AddMaskSet(int signo) {
     int ret = sigaddset(&mSigAct.sa_mask, signo);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddMaskSet sigaddset() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddMaskSet sigaddset() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -61,7 +61,7 @@ int wSignal::AddMaskSet(int signo) {
 int wSignal::AddSigno(int signo, struct sigaction *oact) {
     int ret = sigaction(signo, &mSigAct, oact);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddSigno sigaction() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddSigno sigaction() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -71,7 +71,7 @@ int wSignal::AddHandler(const Signal_t *signal) {
     mSigAct.sa_flags = 0;
     int ret = sigemptyset(&mSigAct.sa_mask);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddHandler sigemptyset() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddHandler sigemptyset() failed", error::Strerror(errno).c_str());
         return ret;
     }
     return AddSigno(signal->mSigno);

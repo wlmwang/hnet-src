@@ -28,7 +28,7 @@ wMultiClient::~wMultiClient() {
 
 int wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port, const std::string& protocol) {
     if (type >= kClientNumShard) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect () failed", "type overload");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect () failed", "type overload");
         return -1;
     }
     
@@ -42,14 +42,14 @@ int wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port,
     }
 
     if (!socket) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect new() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect new() failed", error::Strerror(errno).c_str());
         return -1;
     }
 
     int ret = socket->Open();
     if (ret == -1) {
         SAFE_DELETE(socket);
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect Open() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect Open() failed", "");
         return ret;
     }
 
@@ -57,7 +57,7 @@ int wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port,
     ret = socket->Connect(ipaddr, port);
     if (ret == -1) {
         SAFE_DELETE(socket);
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect Connect() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect Connect() failed", "");
         return ret;
     }
     socket->SS() = kSsConnected;
@@ -65,7 +65,7 @@ int wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port,
     ret = socket->SetNonblock();
     if (ret == -1) {
         SAFE_DELETE(socket);
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AcceptConn SetNonblock() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AcceptConn SetNonblock() failed", "");
         return ret;
     }
         
@@ -73,36 +73,36 @@ int wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port,
     if (protocol == "TCP") {
         if (NewTcpTask(socket, &ctask, type) == -1) {
             SAFE_DELETE(socket);
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect NewTcpTask() failed", "");
+            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect NewTcpTask() failed", "");
             return -1;
         }
     } else if (protocol == "HTTP") {
         if (NewHttpTask(socket, &ctask, type) == -1) {
             SAFE_DELETE(socket);
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect NewHttpTask() failed", "");
+            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect NewHttpTask() failed", "");
             return -1;
         }
     } else if (protocol == "UNIX") {
         if (NewUnixTask(socket, &ctask, type) == -1) {
             SAFE_DELETE(socket);
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect NewUnixTask() failed", "");
+            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect NewUnixTask() failed", "");
             return -1;
         }
     } else {
         SAFE_DELETE(socket);
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect () failed", "unknown sp");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect () failed", "unknown sp");
         return -1;
     }
 
     ret = AddTask(ctask);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect AddTask() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect AddTask() failed", "");
         return RemoveTask(ctask);
     }
 
     ret = ctask->Connect();
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect Connect() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::AddConnect Connect() failed", "");
         return RemoveTask(ctask);
     }
     return 0;
@@ -116,14 +116,14 @@ int wMultiClient::ReConnect(wTask* task) {
 
     int ret = socket->Open();
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::ReConnect Open() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::ReConnect Open() failed", "");
         return ret;
     }
 
     // 连接server
     ret = socket->Connect(socket->Host(), socket->Port());
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::ReConnect Connect() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::ReConnect Connect() failed", "");
         return ret;
     }
 
@@ -132,13 +132,13 @@ int wMultiClient::ReConnect(wTask* task) {
     task->ResetBuffer();    // 重置task缓冲
     ret = AddTask(task, EPOLLIN, EPOLL_CTL_ADD, false);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::ReConnect AddTask() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::ReConnect AddTask() failed", "");
         return RemoveTask(task, NULL, false);
     }
 
     ret = task->ReConnect();
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::ReConnect ReConnect() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::ReConnect ReConnect() failed", "");
         return RemoveTask(task, NULL, false);
     }
     return 0;
@@ -153,13 +153,13 @@ int wMultiClient::PrepareStart() {
 
     int ret = InitEpoll();
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::PrepareStart InitEpoll() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::PrepareStart InitEpoll() failed", "");
         return ret;
     }
 
     ret = PrepareRun();
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::PrepareStart PrepareRun() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::PrepareStart PrepareRun() failed", "");
     }
     return ret;
 }
@@ -183,7 +183,7 @@ int wMultiClient::RunThread() {
 int wMultiClient::NewTcpTask(wSocket* sock, wTask** ptr, int type) {
     SAFE_NEW(wTcpTask(sock, type), *ptr);
     if (!*ptr) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::NewTcpTask new() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::NewTcpTask new() failed", error::Strerror(errno).c_str());
         return -1;
     }
     return 0;
@@ -192,7 +192,7 @@ int wMultiClient::NewTcpTask(wSocket* sock, wTask** ptr, int type) {
 int wMultiClient::NewUnixTask(wSocket* sock, wTask** ptr, int type) {
     SAFE_NEW(wUnixTask(sock, type), *ptr);
     if (!*ptr) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::NewUnixTask new() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::NewUnixTask new() failed", error::Strerror(errno).c_str());
         return -1;
     }
     return 0;
@@ -201,7 +201,7 @@ int wMultiClient::NewUnixTask(wSocket* sock, wTask** ptr, int type) {
 int wMultiClient::NewHttpTask(wSocket* sock, wTask** ptr, int type) {
     SAFE_NEW(wHttpTask(sock, type), *ptr);
     if (!*ptr) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::NewHttpTask new() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::NewHttpTask new() failed", error::Strerror(errno).c_str());
         return -1;
     }
     return 0;
@@ -210,7 +210,7 @@ int wMultiClient::NewHttpTask(wSocket* sock, wTask** ptr, int type) {
 int wMultiClient::InitEpoll() {
     int ret = epoll_create(kListenBacklog);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::InitEpoll epoll_create() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::InitEpoll epoll_create() failed", error::Strerror(errno).c_str());
         return ret;
     }
     mEpollFD = ret;
@@ -263,7 +263,7 @@ int wMultiClient::Recv() {
     struct epoll_event evt[kListenBacklog];
     int ret = epoll_wait(mEpollFD, evt, kListenBacklog, mTimeout);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::Recv epoll_wait() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::Recv epoll_wait() failed", error::Strerror(errno).c_str());
     }
     if (mScheduleTurn) Unlocks();
 
@@ -379,7 +379,7 @@ int wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) {
     evt.data.ptr = task;
     int ret = epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AddTask epoll_ctl() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AddTask epoll_ctl() failed", error::Strerror(errno).c_str());
         return ret;
     }
     
@@ -400,7 +400,7 @@ int wMultiClient::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter, b
     evt.data.ptr = NULL;
     int ret = epoll_ctl(mEpollFD, EPOLL_CTL_DEL, task->Socket()->FD(), &evt);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::RemoveTask epoll_ctl() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::RemoveTask epoll_ctl() failed", error::Strerror(errno).c_str());
     }
 
     if (delpool) {
@@ -429,7 +429,7 @@ int wMultiClient::CleanTask() {
 
     int ret = close(mEpollFD);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::CleanTask close() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::CleanTask close() failed", error::Strerror(errno).c_str());
     }
 
     mEpollFD = kFDUnknown;

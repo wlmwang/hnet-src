@@ -21,22 +21,22 @@ wChannelSocket::~wChannelSocket() {
 int wChannelSocket::Open() {
     int ret = socketpair(AF_UNIX, SOCK_STREAM, 0, mChannel);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::Open socketpair() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::Open socketpair() failed", error::Strerror(errno).c_str());
         return -1;
     }
     
     if (fcntl(mChannel[0], F_SETFL, fcntl(mChannel[0], F_GETFL) | O_NONBLOCK) == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::Open fcntl(0,O_NONBLOCK) failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::Open fcntl(0,O_NONBLOCK) failed", error::Strerror(errno).c_str());
         return -1;
     } else if (fcntl(mChannel[1], F_SETFL, fcntl(mChannel[1], F_GETFL) | O_NONBLOCK) == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::Open fcntl(1,O_NONBLOCK) failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::Open fcntl(1,O_NONBLOCK) failed", error::Strerror(errno).c_str());
         return -1;
     }
     
     if (fcntl(mChannel[0], F_SETFD, FD_CLOEXEC) == -1) {
-    	LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelSocket::Open fcntl(0,FD_CLOEXEC) failed", error::Strerror(errno).c_str());
+    	H_LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelSocket::Open fcntl(0,FD_CLOEXEC) failed", error::Strerror(errno).c_str());
     } else if (fcntl(mChannel[1], F_SETFD, FD_CLOEXEC) == -1) {
-    	LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelSocket::Open fcntl(1,FD_CLOEXEC) failed", error::Strerror(errno).c_str());
+    	H_LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelSocket::Open fcntl(1,FD_CLOEXEC) failed", error::Strerror(errno).c_str());
     }
     return 0;
 }
@@ -75,17 +75,17 @@ int wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
     int ret = 0;
     *size = recvmsg(mChannel[1], &msg, 0);
     if (*size == 0) {   // FIN package // client was closed
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::RecvBytes recvmsg(0) failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::RecvBytes recvmsg(0) failed", error::Strerror(errno).c_str());
     } else if (*size == -1) {
         if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::RecvBytes recvmsg(-1) failed", error::Strerror(errno).c_str());
+            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::RecvBytes recvmsg(-1) failed", error::Strerror(errno).c_str());
         } else {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::RecvBytes recvmsg() failed", error::Strerror(errno).c_str());
+            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::RecvBytes recvmsg() failed", error::Strerror(errno).c_str());
             ret = -1;
         }
     } else {
         if (msg.msg_flags & (MSG_TRUNC|MSG_CTRUNC)) {
-            LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelSocket::RecvBytes recvmsg() truncated data", "");
+            H_LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelSocket::RecvBytes recvmsg() truncated data", "");
         }
 
         // 数据协议
@@ -94,10 +94,10 @@ int wChannelSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
             struct wCommand *cmd = reinterpret_cast<struct wCommand*>(buf + sizeof(uint32_t) + sizeof(uint8_t));
             if (cmd->GetId() == CmdId(CMD_CHANNEL_REQ, CHANNEL_REQ_OPEN)) {
                 if (cmsg.cm.cmsg_len < static_cast<socklen_t>(CMSG_LEN(sizeof(int32_t)))) {
-                    LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::RecvBytes recvmsg() failed", "returned too small ancillary data");
+                    H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::RecvBytes recvmsg() failed", "returned too small ancillary data");
                     ret = -1;
                 } else if (cmsg.cm.cmsg_level != SOL_SOCKET || cmsg.cm.cmsg_type != SCM_RIGHTS) {
-                    LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::RecvBytes recvmsg() failed", "returned invalid ancillary data");
+                    H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::RecvBytes recvmsg() failed", "returned invalid ancillary data");
                     ret = -1;
                 } else {
                     wChannelReqOpen_t open;
@@ -167,13 +167,13 @@ int wChannelSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
     int ret = 0;
     *size = sendmsg(mChannel[0], &msg, 0);
     if (*size >= 0 && (*size - len != 0)) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s[%d]", "wChannelSocket::SendBytes sendmsg() failed", "size:", *size);
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s[%d]", "wChannelSocket::SendBytes sendmsg() failed", "size:", *size);
         ret = -1;
     } else if (*size == -1) {
         if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::SendBytes sendmsg() failed", error::Strerror(errno).c_str());
+            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::SendBytes sendmsg() failed", error::Strerror(errno).c_str());
         } else {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::SendBytes sendmsg() failed", error::Strerror(errno).c_str());
+            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelSocket::SendBytes sendmsg() failed", error::Strerror(errno).c_str());
             ret = -1;
         }
     }

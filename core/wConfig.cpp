@@ -35,7 +35,7 @@ int wConfig::GetOption(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         const char* p = argv[i];
         if (*p++ != '-') {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "should \"-\" begin");
+            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "should \"-\" begin");
             return -1;
         }
 
@@ -62,7 +62,7 @@ int wConfig::GetOption(int argc, char *argv[]) {
                 	SetStrConf("signal", p);
                     goto next;
                 }
-                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-s\" requires signal");
+                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-s\" requires signal");
                 return -1;
 
             case 'h':
@@ -76,7 +76,7 @@ int wConfig::GetOption(int argc, char *argv[]) {
                 	SetStrConf("host", p);
                     goto next;
                 }
-                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-h\" requires host");
+                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-h\" requires host");
                 return -1;
 
             case 'p':
@@ -92,7 +92,7 @@ int wConfig::GetOption(int argc, char *argv[]) {
                 	SetIntConf("port", i);
                 	goto next;
                 }
-                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-p\" requires port");
+                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-p\" requires port");
                 return -1;
 
             case 'x':
@@ -106,7 +106,7 @@ int wConfig::GetOption(int argc, char *argv[]) {
                     SetStrConf("protocol", p);
                     goto next;
                 }
-                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-x\" requires protocol");
+                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-x\" requires protocol");
                 return -1;
 
             case 'P':
@@ -120,7 +120,7 @@ int wConfig::GetOption(int argc, char *argv[]) {
                 	SetStrConf("pid_path", p);
                     goto next;
                 }
-                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-P\" requires pid path");
+                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-P\" requires pid path");
                 return -1;
 
             case 'l':
@@ -134,7 +134,7 @@ int wConfig::GetOption(int argc, char *argv[]) {
                 	SetStrConf("log_path", p);
                     goto next;
                 }
-                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-l\" requires log path");
+                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-l\" requires log path");
                 return -1;
 
             case 'n':
@@ -150,11 +150,11 @@ int wConfig::GetOption(int argc, char *argv[]) {
                 	SetIntConf("worker", i);
                 	goto next;
                 }
-                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-n\" requires workers num");
+                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-n\" requires workers num");
                 return -1;
 
             default:
-                LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "");
+                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "");
                 return -1;
             }
         }

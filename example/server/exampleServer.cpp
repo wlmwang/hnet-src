@@ -142,7 +142,7 @@ public:
 	virtual int NewTcpTask(wSocket* sock, wTask** ptr) {
 	    SAFE_NEW(ExampleTcpTask(sock, Shard(sock)), *ptr);
 	    if (!*ptr) {
-	    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewTcpTask new() failed", "");
+	    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewTcpTask new() failed", "");
 	    	return -1;
 	    }
 	    return 0;
@@ -151,7 +151,7 @@ public:
 	virtual int NewHttpTask(wSocket* sock, wTask** ptr) {
 	    SAFE_NEW(ExampleHttpTask(sock, Shard(sock)), *ptr);
 	    if (!*ptr) {
-	    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewHttpTask new() failed", "");
+	    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewHttpTask new() failed", "");
 	    	return -1;
 	    }
 	    return 0;
@@ -160,7 +160,7 @@ public:
 	virtual int NewChannelTask(wSocket* sock, wTask** ptr) {
 		SAFE_NEW(ExampleChannelTask(sock, mMaster, Shard(sock)), *ptr);
 	    if (!*ptr) {
-	    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewChannelTask new() failed", "");
+	    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewChannelTask new() failed", "");
 	    	return -1;
 	    }
 	    return 0;

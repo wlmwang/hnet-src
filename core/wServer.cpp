@@ -45,13 +45,13 @@ int wServer::PrepareStart(const std::string& ipaddr, uint16_t port, const std::s
 	// 创建非阻塞listen socket
 	int ret = AddListener(ipaddr, port, protocol);
     if (ret == -1) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::PrepareStart AddListener() failed", "");
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::PrepareStart AddListener() failed", "");
 		return ret;
     }
 
     ret = PrepareRun();
     if (ret == -1) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::PrepareStart PrepareRun() failed", "");
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::PrepareStart PrepareRun() failed", "");
     	return ret;
     }
     return ret;
@@ -60,13 +60,13 @@ int wServer::PrepareStart(const std::string& ipaddr, uint16_t port, const std::s
 int wServer::SingleStart(bool daemon) {
 	int ret = InitEpoll();
     if (ret == -1) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::SingleStart InitEpoll() failed", "");
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::SingleStart InitEpoll() failed", "");
 		return ret;
     }
 
     ret = Listener2Epoll(true);
     if (ret == -1) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::SingleStart Listener2Epoll() failed", "");
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::SingleStart Listener2Epoll() failed", "");
 		return ret;
     }
     
@@ -95,26 +95,26 @@ int wServer::WorkerStart(bool daemon) {
 	// 初始化epoll，并监听listen socket、channel socket事件
     int ret = InitEpoll();
     if (ret == -1) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::WorkerStart InitEpoll() failed", "");
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::WorkerStart InitEpoll() failed", "");
 		return ret;
     }
 
     ret = Listener2Epoll(true);
     if (ret == -1) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::WorkerStart Listener2Epoll() failed", "");
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::WorkerStart Listener2Epoll() failed", "");
 		return ret;
     }
 
     ret = Channel2Epoll(true);
     if (ret == -1) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::WorkerStart Channel2Epoll() failed", "");
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::WorkerStart Channel2Epoll() failed", "");
     	return ret;
     }
 
     // 清除epoll中listen socket监听事件，由各worker争抢惊群锁
     if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
     	if (RemoveListener(false) == -1) {
-    		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::WorkerStart RemoveListener() failed", "");
+    		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::WorkerStart RemoveListener() failed", "");
     		return -1;
     	}
     }
@@ -161,7 +161,7 @@ int wServer::HandleSignal() {
 int wServer::NewTcpTask(wSocket* sock, wTask** ptr) {
     SAFE_NEW(wTcpTask(sock, Shard(sock)), *ptr);
     if (!*ptr) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewTcpTask new() failed", "");
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewTcpTask new() failed", "");
     	return -1;
     }
     return 0;
@@ -170,7 +170,7 @@ int wServer::NewTcpTask(wSocket* sock, wTask** ptr) {
 int wServer::NewUdpTask(wSocket* sock, wTask** ptr) {
     SAFE_NEW(wUdpTask(sock, Shard(sock)), *ptr);
     if (!*ptr) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewUdpTask new() failed", "");
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewUdpTask new() failed", "");
     	return -1;
     }
     return 0;
@@ -179,7 +179,7 @@ int wServer::NewUdpTask(wSocket* sock, wTask** ptr) {
 int wServer::NewUnixTask(wSocket* sock, wTask** ptr) {
     SAFE_NEW(wUnixTask(sock, Shard(sock)), *ptr);
     if (!*ptr) {
-		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewUnixTask new() failed", "");
+		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewUnixTask new() failed", "");
 		return -1;
     }
     return 0;
@@ -188,7 +188,7 @@ int wServer::NewUnixTask(wSocket* sock, wTask** ptr) {
 int wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
 	SAFE_NEW(wChannelTask(sock, mMaster, Shard(sock)), *ptr);
     if (!*ptr) {
-		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewChannelTask new() failed", "");
+		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewChannelTask new() failed", "");
 		return -1;
     }
     return 0;
@@ -197,7 +197,7 @@ int wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
 int wServer::NewHttpTask(wSocket* sock, wTask** ptr) {
     SAFE_NEW(wHttpTask(sock, Shard(sock)), *ptr);
     if (!*ptr) {
-		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewHttpTask new() failed", "");
+		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewHttpTask new() failed", "");
 		return -1;
     }
     return 0;
@@ -253,11 +253,11 @@ int wServer::InitAcceptMutex() {
     					SAFE_NEW((ptr)wAtomic<int>, mAcceptAtomic);
     					mAcceptAtomic->Exchange(-1);
     				} else {
-    					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::InitAcceptMutex AllocShm() failed", "");
+    					H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::InitAcceptMutex AllocShm() failed", "");
     					return -1;
     				}
     			} else {
-    				LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::InitAcceptMutex CreateShm() failed", "");
+    				H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::InitAcceptMutex CreateShm() failed", "");
     				return -1;
     			}
     		}
@@ -294,7 +294,7 @@ int wServer::Recv() {
 	struct epoll_event evt[kListenBacklog];
 	int ret = epoll_wait(mEpollFD, evt, kListenBacklog, mTimeout);
 	if (ret == -1) {
-		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Recv epoll_wait() failed", error::Strerror(errno).c_str());
+		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Recv epoll_wait() failed", error::Strerror(errno).c_str());
 	}
 	if (mScheduleTurn) Unlocks();
 
@@ -313,10 +313,10 @@ int wServer::Recv() {
 		} else if (task->Socket()->ST() == kStListen && task->Socket()->SS() == kSsListened) {
 			if (evt[i].events & EPOLLIN) {	// 套接口准备好了接受新连接
 				if (AcceptConn(task) == -1) {
-					LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Recv AcceptConn() failed", "");
+					H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Recv AcceptConn() failed", "");
 				}
 			} else {
-				LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Recv () failed", "error event");
+				H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Recv () failed", "error event");
 			}
 		} else if (task->Socket()->ST() == kStConnect && task->Socket()->SS() == kSsConnected) {
 			if (evt[i].events & EPOLLIN) {	// 套接口准备好了读取操作
@@ -367,10 +367,10 @@ int wServer::AcceptConn(wTask *task) {
 		socklen_t sockAddrSize = sizeof(sockAddr);
 		ret = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize);
 		if (ret == -1) {
-			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn Accept() failed", "");
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn Accept() failed", "");
 			return -1;
 		} else if (fd <= 0) {
-			LOG_ERROR(soft::GetLogPath(), "%s : %s[%d]", "wServer::AcceptConn Accept() failed", "fd", fd);
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s[%d]", "wServer::AcceptConn Accept() failed", "fd", fd);
 			return -1;
 		}
 
@@ -378,7 +378,7 @@ int wServer::AcceptConn(wTask *task) {
 		wUnixSocket *socket = NULL;
 		SAFE_NEW(wUnixSocket(kStConnect), socket);
 		if (!socket) {
-			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn new() failed", error::Strerror(errno).c_str());
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn new() failed", error::Strerror(errno).c_str());
 			return -1;
 		}
 
@@ -390,14 +390,14 @@ int wServer::AcceptConn(wTask *task) {
 		ret = socket->SetNonblock();
 		if (ret == -1) {
 			SAFE_DELETE(socket);
-			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn SetNonblock() failed", "");
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn SetNonblock() failed", "");
 			return ret;
 		}
 
 		ret = NewUnixTask(socket, &ctask);
 		if (ret == -1) {
 			SAFE_DELETE(socket);
-			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn NewUnixTask() failed", "");
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn NewUnixTask() failed", "");
 			return ret;
 		}
 
@@ -406,10 +406,10 @@ int wServer::AcceptConn(wTask *task) {
 		socklen_t sockAddrSize = sizeof(sockAddr);
 		ret = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize);
 		if (ret == -1) {
-			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn Accept() failed", "");
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn Accept() failed", "");
 			return -1;
 		} else if (fd <= 0) {
-			LOG_ERROR(soft::GetLogPath(), "%s : %s[%d]", "wServer::AcceptConn Accept() failed", "fd", fd);
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s[%d]", "wServer::AcceptConn Accept() failed", "fd", fd);
 			return -1;
 		}
 
@@ -417,7 +417,7 @@ int wServer::AcceptConn(wTask *task) {
 		wTcpSocket *socket = NULL;
 		SAFE_NEW(wTcpSocket(kStConnect), socket);
 		if (!socket) {
-			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn new() failed", error::Strerror(errno).c_str());
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn new() failed", error::Strerror(errno).c_str());
 			return -1;
 		}
 
@@ -429,14 +429,14 @@ int wServer::AcceptConn(wTask *task) {
 		ret = socket->SetNonblock();
 		if (ret == -1) {
 			SAFE_DELETE(socket);
-			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn SetNonblock() failed", "");
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn SetNonblock() failed", "");
 			return ret;
 		}
 
 		ret = NewTcpTask(socket, &ctask);
 		if (ret == -1) {
 			SAFE_DELETE(socket);
-			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn NewTcpTask() failed", "");
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn NewTcpTask() failed", "");
 			return ret;
 		}
 
@@ -445,10 +445,10 @@ int wServer::AcceptConn(wTask *task) {
 		socklen_t sockAddrSize = sizeof(sockAddr);	
 		ret = task->Socket()->Accept(&fd, reinterpret_cast<struct sockaddr*>(&sockAddr), &sockAddrSize);
 		if (ret == -1) {
-		    LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn Accept() failed", "");
+		    H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn Accept() failed", "");
 		    return -1;
 		} else if (fd <= 0) {
-			LOG_ERROR(soft::GetLogPath(), "%s : %s[%d]", "wServer::AcceptConn Accept() failed", "fd", fd);
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s[%d]", "wServer::AcceptConn Accept() failed", "fd", fd);
 			return -1;
 		}
 
@@ -456,7 +456,7 @@ int wServer::AcceptConn(wTask *task) {
 		wTcpSocket *socket = NULL;
 		SAFE_NEW(wTcpSocket(kStConnect, kSpHttp), socket);
 		if (!socket) {
-			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn new() failed", error::Strerror(errno).c_str());
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn new() failed", error::Strerror(errno).c_str());
 			return -1;
 		}
 
@@ -468,31 +468,31 @@ int wServer::AcceptConn(wTask *task) {
 		ret = socket->SetNonblock();
 		if (ret == -1) {
 			SAFE_DELETE(socket);
-		    LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn SetNonblock() failed", "");
+		    H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn SetNonblock() failed", "");
 		    return ret;
 		}
 
 		ret = NewHttpTask(socket, &ctask);
 		if (ret == -1) {
 			SAFE_DELETE(socket);
-			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn NewHttpTask() failed", "");
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn NewHttpTask() failed", "");
 			return ret;
 		}
 
     } else {
-		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn () failed", "");
+		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn () failed", "");
 		return -1;
     }
 
     ret = AddTask(ctask);
 	if (ret == -1) {
-		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn AddTask() failed", "");
+		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn AddTask() failed", "");
 	    return RemoveTask(ctask);
 	}
 
 	ret = ctask->Connect();
 	if (ret == -1) {
-		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn Connect() failed", "");
+		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AcceptConn Connect() failed", "");
 		return RemoveTask(ctask);
 	}
     return 0;
@@ -548,13 +548,13 @@ int wServer::Send(wTask *task, const google::protobuf::Message* msg) {
 
 int wServer::FindTaskBySocket(wTask** task, const wSocket* sock) {
 	if (!sock) {
-		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::FindTaskBySocket () failed", "sock null");
+		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::FindTaskBySocket () failed", "sock null");
 		return -1;
 	}
 
 	uint32_t type = Shard(sock);
 	if (mTaskPool[type].empty()) {
-		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::FindTaskBySocket () failed", "pool null");
+		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::FindTaskBySocket () failed", "pool null");
 		return -1;
 	}
 
@@ -565,7 +565,7 @@ int wServer::FindTaskBySocket(wTask** task, const wSocket* sock) {
 		}
 	}
 
-	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::FindTaskBySocket () failed", "not found");
+	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::FindTaskBySocket () failed", "not found");
 	return -1;
 }
 
@@ -703,21 +703,21 @@ int wServer::AddListener(const std::string& ipaddr, uint16_t port, const std::st
     }
     
     if (!socket) {
-		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AddListener new() failed", "");
+		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AddListener new() failed", "");
 		return -1;
     }
 
     int ret = socket->Open();
 	if (ret == -1) {
 	    SAFE_DELETE(socket);
-	    LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AddListener Open() failed", "");
+	    H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AddListener Open() failed", "");
 	    return ret;
 	}
 
 	ret = socket->Listen(ipaddr, port);
 	if (ret == -1) {
 	    SAFE_DELETE(socket);
-	    LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AddListener Listen() failed", "");
+	    H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AddListener Listen() failed", "");
 	    return ret;
 	}
 
@@ -733,7 +733,7 @@ int wServer::AddListener(const std::string& ipaddr, uint16_t port, const std::st
 int wServer::InitEpoll() {
     int ret = epoll_create(kListenBacklog);
     if (ret == -1) {
-		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::InitEpoll epoll_create() failed", error::Strerror(errno).c_str());
+		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::InitEpoll epoll_create() failed", error::Strerror(errno).c_str());
 		return ret;
     }
     mEpollFD = ret;
@@ -752,7 +752,7 @@ int wServer::Listener2Epoll(bool addpool) {
         		}
         	}
         	if (!oldtask) {
-        		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Listener2Epoll AddTask() failed", error::Strerror(errno).c_str());
+        		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Listener2Epoll AddTask() failed", error::Strerror(errno).c_str());
         		return -1;
         	} else {
         		continue;
@@ -763,30 +763,30 @@ int wServer::Listener2Epoll(bool addpool) {
     	switch ((*it)->SP()) {
 		case kSpTcp:
 		    if (NewTcpTask(*it, &ctask) == -1) {
-		    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Listener2Epoll NewTcpTask() failed", "");
+		    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Listener2Epoll NewTcpTask() failed", "");
 		    	return -1;
 		    }
 		    break;
 		case kSpUdp:
 		    if (NewUdpTask(*it, &ctask) == -1) {
-		    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Listener2Epoll NewUdpTask() failed", "");
+		    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Listener2Epoll NewUdpTask() failed", "");
 		    	return -1;
 		    }
 		    break;
 		case kSpUnix:
 		    if (NewUnixTask(*it, &ctask) == -1) {
-		    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Listener2Epoll NewUnixTask() failed", "");
+		    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Listener2Epoll NewUnixTask() failed", "");
 		    	return -1;
 		    }
 		    break;
 		case kSpHttp:
 		    if (NewHttpTask(*it, &ctask) == -1) {
-		    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Listener2Epoll NewHttpTask() failed", "");
+		    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Listener2Epoll NewHttpTask() failed", "");
 		    	return -1;
 		    }
 		    break;
 		default:
-			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Listener2Epoll () failed", "unknown sp");
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Listener2Epoll () failed", "unknown sp");
 			return -1;
 		}
 
@@ -827,7 +827,7 @@ int wServer::Channel2Epoll(bool addpool) {
 
 			wTask *ctask;
 			if (NewChannelTask(socket, &ctask) == -1) {
-				LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Channel2Epoll NewChannelTask() failed", "");
+				H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Channel2Epoll NewChannelTask() failed", "");
 				return -1;
 			}
 
@@ -848,7 +848,7 @@ int wServer::AddTask(wTask* task, int ev, int op, bool addpool) {
     evt.data.ptr = task;
     int ret = epoll_ctl(mEpollFD, op, task->Socket()->FD(), &evt);
     if (ret == -1) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AddTask epoll_ctl() failed", error::Strerror(errno).c_str());
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::AddTask epoll_ctl() failed", error::Strerror(errno).c_str());
     	return ret;
     }
 
@@ -864,7 +864,7 @@ int wServer::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter, bool d
     evt.data.ptr = NULL;
     int ret = epoll_ctl(mEpollFD, EPOLL_CTL_DEL, task->Socket()->FD(), &evt);
     if (ret == -1) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::RemoveTask epoll_ctl() failed", error::Strerror(errno).c_str());
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::RemoveTask epoll_ctl() failed", error::Strerror(errno).c_str());
     }
 
     if (delpool) {
@@ -883,7 +883,7 @@ int wServer::CleanTask() {
 
     int ret = close(mEpollFD);
     if (ret == -1) {
-		LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::CleanTask close() failed", error::Strerror(errno).c_str());
+		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::CleanTask close() failed", error::Strerror(errno).c_str());
     }
 
     mEpollFD = kFDUnknown;

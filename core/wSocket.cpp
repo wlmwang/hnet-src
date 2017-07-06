@@ -35,7 +35,7 @@ int wSocket::RecvBytes(char buf[], size_t len, ssize_t *size) {
             //ret = 0;
             //break;
         } else {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::RecvBytes recv() failed", error::Strerror(errno).c_str());
+            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::RecvBytes recv() failed", error::Strerror(errno).c_str());
             ret = -1;
             break;
         }
@@ -68,7 +68,7 @@ int wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
             ret = -1;
             break;
         } else {
-            LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SendBytes send() failed", error::Strerror(errno).c_str());
+            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SendBytes send() failed", error::Strerror(errno).c_str());
             ret = -1;
             break;
         }
@@ -79,7 +79,7 @@ int wSocket::SendBytes(char buf[], size_t len, ssize_t *size) {
 int wSocket::Close() {
     int ret = close(mFD);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Close close() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Close close() failed", error::Strerror(errno).c_str());
     }
     mFD = kFDUnknown;
     return ret;
@@ -88,7 +88,7 @@ int wSocket::Close() {
 int wSocket::GetNonblock() {
     int ret = fcntl(mFD, F_GETFL, 0);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::GetNonblock fcntl() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::GetNonblock fcntl() failed", error::Strerror(errno).c_str());
         return -1;
     }
     return ret & O_NONBLOCK;
@@ -97,7 +97,7 @@ int wSocket::GetNonblock() {
 int wSocket::SetNonblock(bool nonblock) {
     int ret = fcntl(mFD, F_SETFL, (nonblock==true? fcntl(mFD, F_GETFL, 0) | O_NONBLOCK : fcntl(mFD, F_GETFL, 0) & ~O_NONBLOCK));
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetNonblock fcntl() O_NONBLOCK failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetNonblock fcntl() O_NONBLOCK failed", error::Strerror(errno).c_str());
     }
     return ret;
 }

@@ -39,14 +39,14 @@ int wChannelTask::ChannelOpen(struct Request_t *request) {
 		// @TODO
 		wTask *task = NULL;
 		if (mMaster->Server()->NewChannelTask(socket, &task) == -1) {
-			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelOpen NewChannelTask() failed", "");
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelOpen NewChannelTask() failed", "");
 			
 			//return -1;
 			exit(0);	// 进程重启
 		}
 		if (mMaster->Server()->AddTask(task) == -1) {
 			mMaster->Server()->RemoveTask(task);
-			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelOpen AddTask() failed", "");
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelOpen AddTask() failed", "");
 			
 			//return -1;
 			exit(0);	// 进程重启
@@ -68,7 +68,7 @@ int wChannelTask::ChannelClose(struct Request_t *request) {
 		if (mMaster->Server()->FindTaskBySocket(&task, socket) == 0) {
 			mMaster->Server()->RemoveTask(task);
 		} else {
-			LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelClose AddTask() failed", "");
+			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelClose AddTask() failed", "");
 
 			//return -1;
 			exit(2);
@@ -79,7 +79,7 @@ int wChannelTask::ChannelClose(struct Request_t *request) {
 	// 关闭描述符
 	if (mMaster->Worker(cls.slot())->ChannelFD(0) != kFDUnknown) {
 		if (close(mMaster->Worker(cls.slot())->ChannelFD(0)) == -1) {
-	    	LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelClose, close() failed", error::Strerror(errno).c_str());
+	    	H_LOG_DEBUG(soft::GetLogPath(), "%s : %s", "wChannelTask::ChannelClose, close() failed", error::Strerror(errno).c_str());
 
 	    	//return -1;
 	    	exit(2);

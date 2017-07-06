@@ -29,21 +29,21 @@ int wSingleClient::Connect(const std::string& ipaddr, uint16_t port, const std::
     }
 
     if (!socket) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect new() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect new() failed", error::Strerror(errno).c_str());
         return -1;
     }
 	
     int ret = socket->Open();
     if (ret == -1) {
         SAFE_DELETE(socket);
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect Open() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect Open() failed", "");
         return ret;
     }
 
     ret = socket->Connect(ipaddr, port);
     if (ret == -1) {
         SAFE_DELETE(socket);
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect Connect() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect Connect() failed", "");
         return ret;
     }
 
@@ -58,12 +58,12 @@ int wSingleClient::Connect(const std::string& ipaddr, uint16_t port, const std::
         SAFE_NEW(wUnixTask(socket), mTask);
     } else {
         SAFE_DELETE(socket);
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect () failed", "unknown sp");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect () failed", "unknown sp");
         return -1;
     }
 
     if (!mTask) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect new() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect new() failed", error::Strerror(errno).c_str());
         return -1;
     }
     return 0;
@@ -72,7 +72,7 @@ int wSingleClient::Connect(const std::string& ipaddr, uint16_t port, const std::
 int wSingleClient::HttpGet(const std::string& url, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout) {
     int ret = mTask->HttpGet(url, header, res, timeout);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::HttpGet HttpGet() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::HttpGet HttpGet() failed", "");
     }
     return ret;
 }
@@ -81,7 +81,7 @@ int wSingleClient::HttpPost(const std::string& url, const std::map<std::string, 
     const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout) {
     int ret = mTask->HttpPost(url, data, header, res, timeout);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::HttpPost HttpPost() failed", "");
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::HttpPost HttpPost() failed", "");
     }
     return ret;
 }

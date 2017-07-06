@@ -17,7 +17,7 @@ wSigSet::wSigSet() {
 int wSigSet::EmptySet() {
     int ret = sigemptyset(&mSet);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::EmptySet sigemptyset() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::EmptySet sigemptyset() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -25,7 +25,7 @@ int wSigSet::EmptySet() {
 int wSigSet::FillSet() {
 	int ret = sigfillset(&mSet);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::FillSet sigfillset() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::FillSet sigfillset() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -33,7 +33,7 @@ int wSigSet::FillSet() {
 int wSigSet::AddSet(int signo) {
 	int ret = sigaddset(&mSet, signo);
     if (ret == -1) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::AddSet sigaddset() failed", error::Strerror(errno).c_str());
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::AddSet sigaddset() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -41,7 +41,7 @@ int wSigSet::AddSet(int signo) {
 int wSigSet::DelSet(int signo) {
 	int ret = sigdelset(&mSet, signo);
     if (ret == -1) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::DelSet sigdelset() failed", error::Strerror(errno).c_str());
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::DelSet sigdelset() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -50,7 +50,7 @@ int wSigSet::DelSet(int signo) {
 int wSigSet::Ismember(int signo) {
 	int ret = sigismember(&mSet, signo);
     if (ret == -1) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::Ismember sigismember() failed", error::Strerror(errno).c_str());
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::Ismember sigismember() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -62,7 +62,7 @@ int wSigSet::Ismember(int signo) {
 int wSigSet::Procmask(int type, sigset_t *oldset) {
 	int ret = sigprocmask(type, &mSet, oldset);
     if (ret == -1) {
-    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::Procmask sigprocmask() failed", error::Strerror(errno).c_str());
+    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::Procmask sigprocmask() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -71,7 +71,7 @@ int wSigSet::Procmask(int type, sigset_t *oldset) {
 int wSigSet::Pending(sigset_t *pPendSet) {
 	int ret = sigpending(pPendSet);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::Pending sigpending() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::Pending sigpending() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -80,7 +80,7 @@ int wSigSet::Pending(sigset_t *pPendSet) {
 int wSigSet::Suspend() {
 	int ret = sigsuspend(&mSet);
     if (ret == -1) {
-        LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::Suspend sigsuspend() failed", error::Strerror(errno).c_str());
+        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSigSet::Suspend sigsuspend() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }

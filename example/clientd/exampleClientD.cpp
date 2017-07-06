@@ -84,7 +84,7 @@ public:
 	virtual int NewTcpTask(wSocket* sock, wTask** ptr, int type = 0) {
 	    SAFE_NEW(ExampleTask(sock, type), *ptr);
 	    if (!*ptr) {
-	    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleClient::NewTcpTask new() failed", "");
+	    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleClient::NewTcpTask new() failed", "");
 	    	return -1;
 	    }
 	    return 0;
@@ -96,7 +96,7 @@ public:
 
 	    wConfig* config = Config<wConfig*>();
 	    if (!config || !config->GetConf("host", &host) || !config->GetConf("port", &port)) {
-	    	LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleClient::PrepareRun () failed", "");
+	    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleClient::PrepareRun () failed", "");
 	    	return -1;
 	    }
 
