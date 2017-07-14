@@ -47,7 +47,7 @@ int wDaemon::Start(const std::string& lock_path, const char *prefix) {
     }
 
     if (fork() != 0) {
-        exit(-1);
+        exit(0);
     }
     setsid();
     
@@ -64,7 +64,7 @@ int wDaemon::Start(const std::string& lock_path, const char *prefix) {
     s.AddSigno(SIGTTOU);
 
     if (fork() != 0) {
-        exit(-1);
+        exit(0);
     }
     return 0;
 }

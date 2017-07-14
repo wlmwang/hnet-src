@@ -368,7 +368,7 @@ int wMaster::HandleSignal() {
 		    mServer->DeleteAcceptFile();
 	    }
 	    DeletePidFile();
-	    exit(-1);
+	    exit(0);
 	}
 	
 	// SIGTERM、SIGINT
