@@ -27,9 +27,6 @@
 
 namespace hnet {
 
-const int kServerNumShardBits = 4;
-const int kServerNumShard = 1 << kServerNumShardBits;
-
 class wConfig;
 class wTask;
 class wMaster;
@@ -127,14 +124,6 @@ public:
 protected:
     friend class wMaster;
     friend class wWorker;
-  
-    // 散列到mTaskPool的某个分组中
-    static uint32_t Shard(const wSocket* sock) {
-        uint32_t hash = misc::Hash(sock->Host().c_str(), sock->Host().size(), 0);
-        return hash >> (32 - kServerNumShardBits);
-    }
-    void Locks(std::vector<int>* slot = NULL, std::vector<int>* blackslot = NULL);
-    void Unlocks(std::vector<int>* slot = NULL, std::vector<int>* blackslot = NULL);
     
     // 事件读写主调函数
     int Recv();
@@ -159,8 +148,6 @@ protected:
     std::vector<wTask*>::iterator RemoveTaskPool(wTask *task);
     int CleanTaskPool(std::vector<wTask*> pool);
 
-    static void ScheduleRun(void* argv);
-
     bool mExiting;
 
     // 服务器当前时间 微妙
@@ -172,11 +159,6 @@ protected:
     // 心跳定时器
     wTimer mHeartbeatTimer;
 
-    // 心跳线程分离
-    bool mScheduleTurn;
-    bool mScheduleOk;
-    wMutex mScheduleMutex;
-
     // 多listen socket监听服务描述符
     std::vector<wSocket*> mListenSock;
 
@@ -184,9 +166,8 @@ protected:
     int64_t mTimeout;
 
     // task|pool
-    std::vector<wTask*> mTaskPool[kServerNumShard];
-    wMutex mTaskPoolMutex[kServerNumShard];
-
+    std::vector<wTask*> mTaskPool;
+    
     // 惊群锁
     wShm *mShm;
     wAtomic<int>* mAcceptAtomic;

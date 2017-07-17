@@ -28,9 +28,9 @@
 
 namespace hnet {
 
-wServer::wServer(wConfig* config) : mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mScheduleTurn(kScheduleTurn), mScheduleOk(true), 
-mEpollFD(kFDUnknown), mTimeout(10), mShm(NULL), mAcceptAtomic(NULL), mAcceptFL(NULL), mUseAcceptTurn(kAcceptTurn), 
-mAcceptHeld(false), mAcceptDisabled(0), mMaster(NULL), mConfig(config), mEnv(wEnv::Default()) {
+wServer::wServer(wConfig* config): mExiting(false), mTick(0), mHeartbeatTurn(kHeartbeatTurn), mEpollFD(kFDUnknown), mTimeout(10), 
+mShm(NULL), mAcceptAtomic(NULL), mAcceptFL(NULL), mUseAcceptTurn(kAcceptTurn), mAcceptHeld(false), mAcceptDisabled(0), 
+mMaster(NULL), mConfig(config), mEnv(wEnv::Default()) {
 	assert(mConfig != NULL);
     mLatestTm = soft::TimeUsec();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
@@ -159,7 +159,7 @@ int wServer::HandleSignal() {
 }
 
 int wServer::NewTcpTask(wSocket* sock, wTask** ptr) {
-    SAFE_NEW(wTcpTask(sock, Shard(sock)), *ptr);
+    SAFE_NEW(wTcpTask(sock), *ptr);
     if (!*ptr) {
     	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewTcpTask new() failed", "");
     	return -1;
@@ -168,7 +168,7 @@ int wServer::NewTcpTask(wSocket* sock, wTask** ptr) {
 }
 
 int wServer::NewUdpTask(wSocket* sock, wTask** ptr) {
-    SAFE_NEW(wUdpTask(sock, Shard(sock)), *ptr);
+    SAFE_NEW(wUdpTask(sock), *ptr);
     if (!*ptr) {
     	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewUdpTask new() failed", "");
     	return -1;
@@ -177,7 +177,7 @@ int wServer::NewUdpTask(wSocket* sock, wTask** ptr) {
 }
 
 int wServer::NewUnixTask(wSocket* sock, wTask** ptr) {
-    SAFE_NEW(wUnixTask(sock, Shard(sock)), *ptr);
+    SAFE_NEW(wUnixTask(sock), *ptr);
     if (!*ptr) {
 		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewUnixTask new() failed", "");
 		return -1;
@@ -186,7 +186,7 @@ int wServer::NewUnixTask(wSocket* sock, wTask** ptr) {
 }
 
 int wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
-	SAFE_NEW(wChannelTask(sock, mMaster, Shard(sock)), *ptr);
+	SAFE_NEW(wChannelTask(sock, mMaster), *ptr);
     if (!*ptr) {
 		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewChannelTask new() failed", "");
 		return -1;
@@ -195,52 +195,12 @@ int wServer::NewChannelTask(wSocket* sock, wTask** ptr) {
 }
 
 int wServer::NewHttpTask(wSocket* sock, wTask** ptr) {
-    SAFE_NEW(wHttpTask(sock, Shard(sock)), *ptr);
+    SAFE_NEW(wHttpTask(sock), *ptr);
     if (!*ptr) {
 		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::NewHttpTask new() failed", "");
 		return -1;
     }
     return 0;
-}
-
-void wServer::Locks(std::vector<int>* slot, std::vector<int>* blackslot) {
-	if (slot) {
-	    for (std::vector<int>::iterator it = slot->begin(); it != slot->end(); it++) {
-	        if (blackslot && std::find(blackslot->begin(), blackslot->end(), *it) != blackslot->end()) {
-	            continue;
-	        } else if (*it < kServerNumShard) {
-	        	mTaskPoolMutex[*it].Lock();
-	        }
-	    }
-	} else {
-	    for (int i = 0; i < kServerNumShard; i++) {
-	        if (blackslot && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
-	            continue;
-	        }
-	        mTaskPoolMutex[i].Lock();
-	    }
-	}
-	return;
-}
-
-void wServer::Unlocks(std::vector<int>* slot, std::vector<int>* blackslot) {
-	if (slot) {
-	    for (std::vector<int>::iterator it = slot->begin(); it != slot->end(); it++) {
-	        if (blackslot && std::find(blackslot->begin(), blackslot->end(), *it) != blackslot->end()) {
-	            continue;
-	        } else if (*it < kServerNumShard) {
-	        	mTaskPoolMutex[*it].Unlock();
-	        }
-	    }
-	} else {
-	    for (int i = 0; i < kServerNumShard; i++) {
-	        if (blackslot && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
-	            continue;
-	        }
-	        mTaskPoolMutex[i].Unlock();
-	    }
-	}
-	return;
 }
 
 int wServer::InitAcceptMutex() {
@@ -281,7 +241,8 @@ int wServer::ReleaseAcceptMutex(int pid) {
 }
 
 int wServer::Recv() {
-	if (mUseAcceptTurn == true && mAcceptHeld == false) {	// 争抢accept锁
+	// 争抢accept锁
+	if (mUseAcceptTurn == true && mAcceptHeld == false) {
 		if ((kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeWeak(-1, mMaster->mWorker->mPid)) ||
 			(kAcceptStuff == 1 && mEnv->LockFile(soft::GetAcceptmtxPath(), &mAcceptFL) == 0)) {
 			Listener2Epoll(false);
@@ -290,20 +251,14 @@ int wServer::Recv() {
 	}
 
 	// 事件循环
-	if (mScheduleTurn) Locks();
 	struct epoll_event evt[kListenBacklog];
 	int ret = epoll_wait(mEpollFD, evt, kListenBacklog, mTimeout);
 	if (ret == -1) {
 		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Recv epoll_wait() failed", error::Strerror(errno).c_str());
 	}
-	if (mScheduleTurn) Unlocks();
 
 	for (int i = 0; i < ret && evt[i].data.ptr; i++) {
-		if (mScheduleTurn) Locks();
 		wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
-
-		std::vector<int> slot(1, task->Type());
-		if (mScheduleTurn) Unlocks(NULL, &slot);
 
 		if (task->Socket()->FD() == kFDUnknown || evt[i].events & (EPOLLERR | EPOLLPRI)) {
 			if (task->Socket()->SP() != kSpUdp && task->Socket()->SP() != kSpChannel) {	// udp无需删除task
@@ -343,10 +298,9 @@ int wServer::Recv() {
 				}
 			}
 		}
-
-		if (mScheduleTurn) Unlocks(&slot);
 	}
 
+	// 释放accept锁
 	if (mUseAcceptTurn == true && mAcceptHeld == true) {
 		if (kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeWeak(mMaster->mWorker->mPid, -1)) {
 			RemoveListener(false);
@@ -499,31 +453,23 @@ int wServer::AcceptConn(wTask *task) {
 }
 
 int wServer::Broadcast(char *cmd, int len) {
-    for (int i = 0; i < kServerNumShard; i++) {
-	    if (mTaskPool[i].size() > 0) {
-			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
-				if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected && (*it)->Socket()->SP() == kSpTcp && 
-					((*it)->Socket()->SF() == kSfSend || (*it)->Socket()->SF() == kSfRvsd)) {
-					Send(*it, cmd, len);
-				}
-			}
-	    }
-    }
+	for (std::vector<wTask*>::iterator it = mTaskPool.begin(); it != mTaskPool.end(); it++) {
+		if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected && (*it)->Socket()->SP() == kSpTcp && 
+			((*it)->Socket()->SF() == kSfSend || (*it)->Socket()->SF() == kSfRvsd)) {
+			Send(*it, cmd, len);
+		}
+	}
     return 0;
 }
 
 #ifdef _USE_PROTOBUF_
 int wServer::Broadcast(const google::protobuf::Message* msg) {
-    for (int i = 0; i < kServerNumShard; i++) {
-	    if (mTaskPool[i].size() > 0) {
-			for (std::vector<wTask*>::iterator it = mTaskPool[i].begin(); it != mTaskPool[i].end(); it++) {
-				if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected && (*it)->Socket()->SP() == kSpTcp && 
-					((*it)->Socket()->SF() == kSfSend || (*it)->Socket()->SF() == kSfRvsd)) {
-					Send(*it, msg);
-				}
-			}
-	    }
-    }
+	for (std::vector<wTask*>::iterator it = mTaskPool.begin(); it != mTaskPool.end(); it++) {
+		if ((*it)->Socket()->ST() == kStConnect && (*it)->Socket()->SS() == kSsConnected && (*it)->Socket()->SP() == kSpTcp && 
+			((*it)->Socket()->SF() == kSfSend || (*it)->Socket()->SF() == kSfRvsd)) {
+			Send(*it, msg);
+		}
+	}
     return 0;
 }
 #endif
@@ -552,19 +498,12 @@ int wServer::FindTaskBySocket(wTask** task, const wSocket* sock) {
 		return -1;
 	}
 
-	uint32_t type = Shard(sock);
-	if (mTaskPool[type].empty()) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::FindTaskBySocket () failed", "pool null");
-		return -1;
-	}
-
-	for (std::vector<wTask*>::iterator it = mTaskPool[type].begin(); it != mTaskPool[type].end(); it++) {
+	for (std::vector<wTask*>::iterator it = mTaskPool.begin(); it != mTaskPool.end(); it++) {
 		if ((*it)->Socket() == sock) {	// 直接地址比较
 			*task = *it;
 			return 0;
 		}
 	}
-
 	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::FindTaskBySocket () failed", "not found");
 	return -1;
 }
@@ -744,13 +683,14 @@ int wServer::Listener2Epoll(bool addpool) {
     for (std::vector<wSocket *>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
     	if (!addpool) {
     		bool oldtask = false;
-        	for (std::vector<wTask*>::iterator im = mTaskPool[Shard(*it)].begin(); im != mTaskPool[Shard(*it)].end(); im++) {
+        	for (std::vector<wTask*>::iterator im = mTaskPool.begin(); im != mTaskPool.end(); im++) {
         		if ((*im)->Socket() == *it) {
         			oldtask = true;
         			AddTask(*im, EPOLLIN, EPOLL_CTL_ADD, false);
         			break;
         		}
         	}
+
         	if (!oldtask) {
         		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wServer::Listener2Epoll AddTask() failed", error::Strerror(errno).c_str());
         		return -1;
@@ -799,8 +739,7 @@ int wServer::Listener2Epoll(bool addpool) {
 
 int wServer::RemoveListener(bool delpool) {
     for (std::vector<wSocket*>::iterator it = mListenSock.begin(); it != mListenSock.end(); it++) {
-    	uint32_t id = Shard(*it);
-    	for (std::vector<wTask*>::iterator im = mTaskPool[id].begin(); im != mTaskPool[id].end(); im++) {
+    	for (std::vector<wTask*>::iterator im = mTaskPool.begin(); im != mTaskPool.end(); im++) {
     		if ((*im)->Socket() == *it) {
     			RemoveTask(*im, &im, delpool);
     			break;
@@ -877,9 +816,7 @@ int wServer::RemoveTask(wTask* task, std::vector<wTask*>::iterator* iter, bool d
 }
 
 int wServer::CleanTask() {
-    for (int i = 0; i < kServerNumShard; i++) {
-    	CleanTaskPool(mTaskPool[i]);
-    }
+    CleanTaskPool(mTaskPool);
 
     int ret = close(mEpollFD);
     if (ret == -1) {
@@ -891,26 +828,23 @@ int wServer::CleanTask() {
 }
 
 int wServer::AddToTaskPool(wTask* task) {
-    mTaskPool[task->Type()].push_back(task);
+    mTaskPool.push_back(task);
     return 0;
 }
 
 std::vector<wTask*>::iterator wServer::RemoveTaskPool(wTask* task) {
-	int32_t type =  task->Type();
-    std::vector<wTask*>::iterator it = std::find(mTaskPool[type].begin(), mTaskPool[type].end(), task);
-    if (it != mTaskPool[type].end()) {
+    std::vector<wTask*>::iterator it = std::find(mTaskPool.begin(), mTaskPool.end(), task);
+    if (it != mTaskPool.end()) {
     	SAFE_DELETE(task);
-        it = mTaskPool[type].erase(it);
+        it = mTaskPool.erase(it);
     }
     return it;
 }
 
 int wServer::CleanTaskPool(std::vector<wTask*> pool) {
-    if (pool.size() > 0) {
-		for (std::vector<wTask*>::iterator it = pool.begin(); it != pool.end(); it++) {
-		    SAFE_DELETE(*it);
-		}
-    }
+	for (std::vector<wTask*>::iterator it = pool.begin(); it != pool.end(); it++) {
+	    SAFE_DELETE(*it);
+	}
     pool.clear();
     return 0;
 }
@@ -937,64 +871,30 @@ void wServer::CheckTick() {
 	}
 	mLatestTm += mTick;
 
-	if (mScheduleTurn) {	// 任务开关
-		if (mScheduleMutex.TryLock() == 0) {
-		    if (mScheduleOk == true) {
-		    	mScheduleOk = false;
-		    	mEnv->Schedule(wServer::ScheduleRun, this);
-		    }
-		    mScheduleMutex.Unlock();
-		}
-	} else {
-		if (mHeartbeatTurn && mHeartbeatTimer.CheckTimer(mTick/1000)) {
-			CheckHeartBeat();
-		}
+	if (mHeartbeatTurn && mHeartbeatTimer.CheckTimer(mTick/1000)) {
+		CheckHeartBeat();
 	}
-}
-
-void wServer::ScheduleRun(void* argv) {
-    wServer* server = reinterpret_cast<wServer*>(argv);
-	if (server->mScheduleMutex.Lock() == 0) {
-	    if (server->mHeartbeatTurn && server->mHeartbeatTimer.CheckTimer(server->mTick/1000)) {
-	    	server->CheckHeartBeat();
-	    }
-	    server->mScheduleOk = true;
-	}
-    server->mScheduleMutex.Unlock();
 }
 
 void wServer::CheckHeartBeat() {
-    for (int i = 0; i < kServerNumShard; i++) {
-    	std::vector<int> slot(1, i);
-    	if (mScheduleTurn) Locks(&slot);
-	    if (!mTaskPool[i].empty()) {
-	    	std::vector<wTask*>::iterator it = mTaskPool[i].begin();
-	    	while (it != mTaskPool[i].end()) {
-	    		if ((*it)->Socket()->ST() == kStConnect && ((*it)->Socket()->SP() == kSpTcp || (*it)->Socket()->SP() == kSpUnix)) {
-	    			if ((*it)->Socket()->SS() == kSsUnconnect) {	// 断线连接
-	    				
-	    				(*it)->DisConnect();
-	    				RemoveTask(*it, &it);
-
-	    				if (mScheduleTurn) Unlocks(&slot);
-	    				continue;
-	    			} else {	// 心跳检测
-						(*it)->HeartbeatSend();	// 发送心跳
-						if ((*it)->HeartbeatOut()) {	// 心跳超限
-							
-							(*it)->DisConnect();
-							RemoveTask(*it, &it);
-
-							if (mScheduleTurn) Unlocks(&slot);
-							continue;
-						}
-	    			}
-	    		}
-	    		it++;
-	    	}
-	    }
-    	if (mScheduleTurn) Unlocks(&slot);
-    }
+	for (std::vector<wTask*>::iterator it = mTaskPool.begin(); it != mTaskPool.end();) {
+		if ((*it)->Socket()->ST() == kStConnect && ((*it)->Socket()->SP() == kSpTcp || (*it)->Socket()->SP() == kSpUnix)) {
+			if ((*it)->Socket()->SS() == kSsUnconnect) {	// 断线连接
+				(*it)->DisConnect();
+				RemoveTask(*it, &it);
+				continue;
+			} else {	// 心跳检测
+				(*it)->HeartbeatSend();	// 发送心跳
+				if ((*it)->HeartbeatOut()) {	// 心跳超限
+					
+					(*it)->DisConnect();
+					RemoveTask(*it, &it);
+					continue;
+				}
+			}
+		}
+		it++;
+	}
 }
 
 }	// namespace hnet

@@ -15,8 +15,8 @@
 
 namespace hnet {
 
-wMultiClient::wMultiClient(wConfig* config, wServer* server, bool join) : wThread(join), mTick(0), mHeartbeatTurn(kHeartbeatTurn),
-mScheduleTurn(kScheduleTurn), mScheduleOk(true), mEpollFD(kFDUnknown), mTimeout(10), mConfig(config), mServer(server) {
+wMultiClient::wMultiClient(wConfig* config, wServer* server, bool join) : wThread(join), mTick(0),
+mHeartbeatTurn(kHeartbeatTurn),mEpollFD(kFDUnknown), mTimeout(10), mConfig(config), mServer(server) {
 	assert(mConfig != NULL);
     mLatestTm = soft::TimeUsec();
     mHeartbeatTimer = wTimer(kKeepAliveTm);
@@ -126,7 +126,6 @@ int wMultiClient::ReConnect(wTask* task) {
         H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::ReConnect Connect() failed", "");
         return ret;
     }
-
     socket->SS() = kSsConnected;
 
     task->ResetBuffer();    // 重置task缓冲
@@ -217,61 +216,16 @@ int wMultiClient::InitEpoll() {
     return 0;
 }
 
-void wMultiClient::Locks(std::vector<int>* slot, std::vector<int>* blackslot) {
-    if (slot) {
-        for (std::vector<int>::iterator it = slot->begin(); it != slot->end(); it++) {
-            if (blackslot && std::find(blackslot->begin(), blackslot->end(), *it) != blackslot->end()) {
-                continue;
-            } else if (*it < kClientNumShard) {
-                mTaskPoolMutex[*it].Lock();
-            }
-        }
-    } else {
-        for (int i = 0; i < kClientNumShard; i++) {
-            if (blackslot && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
-                continue;
-            }
-            mTaskPoolMutex[i].Lock();
-        }
-    }
-    return;
-}
-
-void wMultiClient::Unlocks(std::vector<int>* slot, std::vector<int>* blackslot) {
-    if (slot) {
-        for (std::vector<int>::iterator it = slot->begin(); it != slot->end(); it++) {
-            if (blackslot && std::find(blackslot->begin(), blackslot->end(), *it) != blackslot->end()) {
-                continue;
-            } else if (*it < kClientNumShard) {
-                mTaskPoolMutex[*it].Unlock();
-            }
-        }
-    } else {
-        for (int i = 0; i < kClientNumShard; i++) {
-            if (blackslot && std::find(blackslot->begin(), blackslot->end(), i) != blackslot->end()) {
-                continue;
-            }
-            mTaskPoolMutex[i].Unlock();
-        }
-    }
-    return;
-}
-
 int wMultiClient::Recv() {
     // 事件循环
-    if (mScheduleTurn) Locks();
     struct epoll_event evt[kListenBacklog];
     int ret = epoll_wait(mEpollFD, evt, kListenBacklog, mTimeout);
     if (ret == -1) {
         H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::Recv epoll_wait() failed", error::Strerror(errno).c_str());
     }
-    if (mScheduleTurn) Unlocks();
 
     for (int i = 0; i < ret && evt[i].data.ptr; i++) {
-        if (mScheduleTurn) Locks();
         wTask* task = reinterpret_cast<wTask*>(evt[i].data.ptr);
-        std::vector<int> slot(1, task->Type());
-        if (mScheduleTurn) Unlocks(NULL, &slot);
 
         if (task->Socket()->FD() == kFDUnknown || evt[i].events & (EPOLLERR|EPOLLPRI)) {
             task->Socket()->SS() = kSsUnconnect;
@@ -297,10 +251,7 @@ int wMultiClient::Recv() {
                 }
             }
         }
-
-        if (mScheduleTurn) Unlocks(&slot);
     }
-
     return 0;
 }
 
@@ -371,7 +322,7 @@ int wMultiClient::Send(wTask *task, const google::protobuf::Message* msg) {
 #endif
 
 int wMultiClient::AddTask(wTask* task, int ev, int op, bool addpool) {    
-    task->SetClient(this);  // 方便异步发送
+    task->SetClient(this);      // 方便异步发送
     task->Server() = mServer;   // 方便worker进程间通信
 
     struct epoll_event evt;
@@ -453,37 +404,13 @@ void wMultiClient::CheckTick() {
 	}
 	mLatestTm += mTick;
 
-	if (mScheduleTurn) {
-		// 任务开关
-		if (mScheduleMutex.TryLock() == 0) {
-		    if (mScheduleOk == true) {
-		    	mScheduleOk = false;
-		    	wEnv::Default()->Schedule(wMultiClient::ScheduleRun, this);
-		    }
-		    mScheduleMutex.Unlock();
-		}
-	} else {
-        if (mHeartbeatTurn && mHeartbeatTimer.CheckTimer(mTick/1000)) {
-            CheckHeartBeat();
-        }
-	}
-}
-
-void wMultiClient::ScheduleRun(void* argv) {
-    wMultiClient* client = reinterpret_cast<wMultiClient* >(argv);
-	if (client->mScheduleMutex.Lock() == 0) {
-	    if (client->mHeartbeatTurn && client->mHeartbeatTimer.CheckTimer(client->mTick/1000)) {
-	    	client->CheckHeartBeat();
-	    }
-	    client->mScheduleOk = true;
-	}
-    client->mScheduleMutex.Unlock();
+    if (mHeartbeatTurn && mHeartbeatTimer.CheckTimer(mTick/1000)) {
+        CheckHeartBeat();
+    }
 }
 
 void wMultiClient::CheckHeartBeat() {
     for (int i = 0; i < kClientNumShard; i++) {
-        std::vector<int> slot(1, i);
-        if (mScheduleTurn) Locks(&slot);
         if (mTaskPool[i].size() > 0) {
         	std::vector<wTask*>::iterator it = mTaskPool[i].begin();
         	while (it != mTaskPool[i].end()) {
@@ -491,13 +418,13 @@ void wMultiClient::CheckHeartBeat() {
         			if ((*it)->Socket()->SS() == kSsUnconnect) {
                     	// 重连服务器
                     	ReConnect(*it);
-        			} else { // 心跳检测
+        			} else { 
+                        // 心跳检测
                         (*it)->HeartbeatSend(); // 发送心跳
+                        
                         if ((*it)->HeartbeatOut()) {    // 心跳超限
-
                             (*it)->DisConnect();
                             (*it)->Socket()->SS() = kSsUnconnect;
-                            
                             RemoveTask(*it, NULL, false);
                         }
         			}
@@ -505,7 +432,6 @@ void wMultiClient::CheckHeartBeat() {
         		it++;
         	}
         }
-        if (mScheduleTurn) Unlocks(&slot);
     }
 }
 

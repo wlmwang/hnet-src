@@ -90,9 +90,6 @@ public:
     int AddTask(wTask* task, int ev = EPOLLIN, int op = EPOLL_CTL_ADD, bool addpool = true);
     
 protected:
-    void Locks(std::vector<int>* slot = NULL, std::vector<int>* blackslot = NULL);
-    void Unlocks(std::vector<int>* slot = NULL, std::vector<int>* blackslot = NULL);
-
     int Recv();
     int InitEpoll();
 
@@ -103,8 +100,6 @@ protected:
     std::vector<wTask*>::iterator RemoveTaskPool(wTask *task);
     int CleanTaskPool(std::vector<wTask*> pool);
 
-    static void ScheduleRun(void* argv);
-
     // 服务器当前时间 微妙
     uint64_t mLatestTm;
     uint64_t mTick;
@@ -114,16 +109,11 @@ protected:
     // 心跳定时器
     wTimer mHeartbeatTimer;
 
-    bool mScheduleTurn;
-    bool mScheduleOk;
-    wMutex mScheduleMutex;
-
     int mEpollFD;
     int64_t mTimeout;
 
     // task|pool
     std::vector<wTask*> mTaskPool[kClientNumShard];
-    wMutex mTaskPoolMutex[kClientNumShard];
 
     wConfig* mConfig;
     wServer* mServer;

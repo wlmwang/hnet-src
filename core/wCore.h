@@ -91,9 +91,8 @@ const uint32_t  kMinPackageSize = 3;
 const uint32_t  kPageSize = 4096;
 const bool		kLittleEndian = true;
 
-// 心跳线程与主线程分离开关
-const bool		kScheduleTurn = false;
-const bool		kHeartbeatTurn = true;	// 心跳开关
+// 心跳开关及次数
+const bool		kHeartbeatTurn = true;
 const uint8_t   kHeartbeat = 10;
 
 // 进程相关

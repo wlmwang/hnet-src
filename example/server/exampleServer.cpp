@@ -48,7 +48,7 @@ int ExampleChannelTask::ExampleEchoReq(struct Request_t *request) {
 // TCP客户端类
 class ExampleTcpTask : public wTcpTask {
 public:
-	ExampleTcpTask(wSocket *socket, int32_t type) : wTcpTask(socket, type) {
+	ExampleTcpTask(wSocket *socket, int32_t type = 0) : wTcpTask(socket, type) {
 		// 多播事件注册
 #ifdef _USE_PROTOBUF_
 		On("example.ExampleEchoReq", &ExampleTcpTask::ExampleEchoReq, this);
@@ -110,7 +110,7 @@ int ExampleTcpTask::ExampleEchoChannel(struct Request_t *request) {
 
 class ExampleHttpTask : public wHttpTask {
 public:
-	ExampleHttpTask(wSocket *socket, int32_t type) : wHttpTask(socket, type) {
+	ExampleHttpTask(wSocket *socket, int32_t type = 0) : wHttpTask(socket, type) {
 		// 多播事件注册
 		On(example::CMD_EXAMPLE_REQ, example::EXAMPLE_REQ_ECHO, &ExampleHttpTask::ExampleEchoReq, this);
 	}
@@ -140,7 +140,7 @@ public:
 	ExampleServer(wConfig* config) : wServer(config) { }
 
 	virtual int NewTcpTask(wSocket* sock, wTask** ptr) {
-	    SAFE_NEW(ExampleTcpTask(sock, Shard(sock)), *ptr);
+	    SAFE_NEW(ExampleTcpTask(sock), *ptr);
 	    if (!*ptr) {
 	    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewTcpTask new() failed", "");
 	    	return -1;
@@ -149,7 +149,7 @@ public:
 	}
 	
 	virtual int NewHttpTask(wSocket* sock, wTask** ptr) {
-	    SAFE_NEW(ExampleHttpTask(sock, Shard(sock)), *ptr);
+	    SAFE_NEW(ExampleHttpTask(sock), *ptr);
 	    if (!*ptr) {
 	    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewHttpTask new() failed", "");
 	    	return -1;
@@ -158,7 +158,7 @@ public:
 	}
 
 	virtual int NewChannelTask(wSocket* sock, wTask** ptr) {
-		SAFE_NEW(ExampleChannelTask(sock, mMaster, Shard(sock)), *ptr);
+		SAFE_NEW(ExampleChannelTask(sock, mMaster), *ptr);
 	    if (!*ptr) {
 	    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewChannelTask new() failed", "");
 	    	return -1;

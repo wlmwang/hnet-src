@@ -6,6 +6,7 @@
 
 #include "wCore.h"
 #include "wMisc.h"
+#include "wDaemon.h"
 #include "wTcpTask.h"
 #include "wMultiClient.h"
 #include "exampleCmd.h"
@@ -18,7 +19,7 @@ using namespace hnet;
 
 class ExampleTask : public wTcpTask {
 public:
-	ExampleTask(wSocket *socket, int32_t type) : wTcpTask(socket, type) {
+	ExampleTask(wSocket *socket, int32_t type = 0) : wTcpTask(socket, type) {
 #ifdef _USE_PROTOBUF_
 		On("example.ExampleEchoRes", &ExampleTask::ExampleEchoRes, this);
 #else
@@ -135,21 +136,22 @@ int main(int argc, char *argv[]) {
 	}
 
 	// 版本输出 && 守护进程创建
-	bool version, daemon;
-	if (config->GetConf("version", &version) && version == true) {
-		std::cout << soft::SetSoftName("example client daemon -") << soft::GetSoftVer() << std::endl;
+	bool vn, dn;
+	if (config->GetConf("version", &vn) && vn) {
+		std::cout << soft::SetSoftName("example clientd -") << soft::GetSoftVer() << std::endl;
 		SAFE_DELETE(config);
 		return -1;
-	} else if (config->GetConf("daemon", &daemon) && daemon == true) {
+	} else if (config->GetConf("daemon", &dn) && dn) {
 		std::string lock_path;
 		config->GetConf("lock_path", &lock_path);
-		if (misc::InitDaemon(lock_path) == -1) {
+		wDaemon daemon;
+		if (daemon.Start(lock_path) == -1) {
 			std::cout << "create daemon failed" << std::endl;
 			SAFE_DELETE(config);
 			return -1;
 		}
 	}
-
+	
 	// 创建客户端
     ExampleClient* client;
 	SAFE_NEW(ExampleClient(config), client);
