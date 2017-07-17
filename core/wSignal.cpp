@@ -10,16 +10,16 @@
 
 namespace hnet {
 
-volatile int g_sigalrm = 0;
-volatile int g_sigio = 0;
-volatile int g_terminate = 0;
-volatile int g_quit = 0;
-volatile int g_reconfigure = 0;
-volatile int g_reap = 0;
-volatile int g_reopen = 0;
+volatile int hnet_sigalrm = 0;
+volatile int hnet_sigio = 0;
+volatile int hnet_terminate = 0;
+volatile int hnet_quit = 0;
+volatile int hnet_reconfigure = 0;
+volatile int hnet_reap = 0;
+volatile int hnet_reopen = 0;
 
 // 信号集
-wSignal::Signal_t g_signals[] = {
+wSignal::Signal_t hnet_signals[] = {
     {SIGHUP,    "SIGHUP",   "restart",  &wSignal::SignalHandler},   // 重启
     {SIGUSR1,   "SIGUSR1",  "reopen",   &wSignal::SignalHandler},   // 清除日志
     {SIGQUIT,   "SIGQUIT",  "quit",     &wSignal::SignalHandler},   // 优雅退出
@@ -45,7 +45,7 @@ int wSignal::EmptySet(__sighandler_t  func) {
     mSigAct.sa_flags = 0;
     int ret = sigemptyset(&mSigAct.sa_mask);
     if (ret == -1) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::wSignal sigemptyset() failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::wSignal sigemptyset() failed", error::Strerror(errno).c_str());
     }
     return -1;
 }
@@ -53,7 +53,7 @@ int wSignal::EmptySet(__sighandler_t  func) {
 int wSignal::AddMaskSet(int signo) {
     int ret = sigaddset(&mSigAct.sa_mask, signo);
     if (ret == -1) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddMaskSet sigaddset() failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddMaskSet sigaddset() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -61,7 +61,7 @@ int wSignal::AddMaskSet(int signo) {
 int wSignal::AddSigno(int signo, struct sigaction *oact) {
     int ret = sigaction(signo, &mSigAct, oact);
     if (ret == -1) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddSigno sigaction() failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddSigno sigaction() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -71,20 +71,20 @@ int wSignal::AddHandler(const Signal_t *signal) {
     mSigAct.sa_flags = 0;
     int ret = sigemptyset(&mSigAct.sa_mask);
     if (ret == -1) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddHandler sigemptyset() failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSignal::AddHandler sigemptyset() failed", error::Strerror(errno).c_str());
         return ret;
     }
     return AddSigno(signal->mSigno);
 }
 
 // 信号处理入口函数
-// 对于SIGCHLD信号，由自定义函数处理g_reap时调用waitpid
+// 对于SIGCHLD信号，由自定义函数处理hnet_reap时调用waitpid
 void wSignal::SignalHandler(int signo) {
     soft::TimeUpdate();
     
     int err = errno;
     wSignal::Signal_t *signal;
-    for (signal = g_signals; signal->mSigno != 0; signal++) {
+    for (signal = hnet_signals; signal->mSigno != 0; signal++) {
         if (signal->mSigno == signo) {
             break;
         }
@@ -93,37 +93,37 @@ void wSignal::SignalHandler(int signo) {
     std::string action = "";
     switch (signo) {
     case SIGQUIT:
-        g_quit = 1;
+        hnet_quit = 1;
         action = ", shutting down";
         break;
         
     case SIGABRT:
     case SIGTERM:
     case SIGINT:
-        g_terminate = 1;
+        hnet_terminate = 1;
         action = ", exiting";
         break;
 
     case SIGHUP:
-        g_reconfigure = 1;
+        hnet_reconfigure = 1;
         action = ", reconfiguring";
         break;
     
     case SIGUSR1:
-        g_reopen = 1;
+        hnet_reopen = 1;
         action = ", reopen";
         break;
 
     case SIGALRM:
-        g_sigalrm = 1;
+        hnet_sigalrm = 1;
         break;
 
     case SIGIO:
-        g_sigio = 1;
+        hnet_sigio = 1;
         break;
 
     case SIGCHLD:
-        g_reap = 1;
+        hnet_reap = 1;
         break;
     }
     errno = err;

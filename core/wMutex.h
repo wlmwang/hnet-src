@@ -18,7 +18,7 @@ namespace hnet {
 static int PthreadCall(const char* label, int err) {
     if (err != 0) {
     	std::string str = "wMutex::PthreadCall, pthread ";
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", (str+label).c_str(), error::Strerror(err).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", (str+label).c_str(), error::Strerror(err).c_str());
     	exit(-1);
     }
     return err;

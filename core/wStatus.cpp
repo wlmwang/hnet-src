@@ -15,7 +15,7 @@ const char* wStatus::CopyState(const char* state) {
     uint32_t size;
     char* result;
     memcpy(&size, state, sizeof(size));
-    SAFE_NEW_VEC(size + 5, char, result);
+    HNET_NEW_VEC(size + 5, char, result);
     assert(result != NULL);
     memcpy(result, state, size + 5);
     return result;
@@ -27,7 +27,7 @@ wStatus::wStatus(Code code, const wSlice& msg, const wSlice& msg2, bool log) {
     const uint32_t len2 = msg2.size();
     const uint32_t size = len1 + (len2 ? (2 + len2) : 0);
     char* result;
-    SAFE_NEW_VEC(size + 5, char, result);
+    HNET_NEW_VEC(size + 5, char, result);
     assert(result != NULL);
     memcpy(result, &size, sizeof(size));
     result[4] = static_cast<char>(code);

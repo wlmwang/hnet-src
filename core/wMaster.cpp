@@ -34,7 +34,7 @@ mLive(1), mServer(server), mWorker(NULL), mEnv(wEnv::Default()) {
 
 wMaster::~wMaster() {
     for (uint32_t i = 0; i < kMaxProcess; ++i) {
-		SAFE_DELETE(mWorkerPool[i]);
+		HNET_DELETE(mWorkerPool[i]);
     }
 }
 
@@ -44,13 +44,13 @@ int wMaster::PrepareStart() {
     std::string host;
     uint16_t port = 0;
     if (!mServer->Config()->GetConf("host", &host) || !mServer->Config()->GetConf("port", &port)) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::PrepareStart GetConf() failed", "");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::PrepareStart GetConf() failed", "");
     	return -1;
     }
 
     int ret = PrepareRun();
     if (ret == -1) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::PrepareStart PrepareRun() failed", "");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::PrepareStart PrepareRun() failed", "");
     	return ret;
     }
 
@@ -63,7 +63,7 @@ int wMaster::PrepareStart() {
     // 进程标题
     ret = mServer->Config()->Setproctitle(kMasterTitle, mTitle.c_str());
     if (ret == -1) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::PrepareStart Setproctitle() failed", "");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::PrepareStart Setproctitle() failed", "");
     	return ret;
     }
 
@@ -77,7 +77,7 @@ int wMaster::PrepareStart() {
     }
 
     if (ret == -1) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::PrepareStart PrepareStart() failed", "");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::PrepareStart PrepareStart() failed", "");
     }
     return ret;
 }
@@ -85,45 +85,45 @@ int wMaster::PrepareStart() {
 int wMaster::SingleStart() {
 	int ret = CreatePidFile();
     if (ret == -1) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SingleStart CreatePidFile() failed", "");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SingleStart CreatePidFile() failed", "");
     	return ret;
     }
 
     ret = InitSignals();
     if (ret == -1) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SingleStart InitSignals() failed", "");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SingleStart InitSignals() failed", "");
         return ret;
     }
     
     ret = Run();
     if (ret == -1) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SingleStart Run() failed", "");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SingleStart Run() failed", "");
     	return ret;
     }
     
     ret = mServer->SingleStart();
     if (ret == -1) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SingleStart SingleStart() failed", "");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SingleStart SingleStart() failed", "");
     }
     return ret;
 }
 
 int wMaster::MasterStart() {
     if (mWorkerNum < 0 || mWorkerNum > kMaxProcess) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart () failed", "workernum invalid");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart () failed", "workernum invalid");
         return -1;
     }
 
     // 创建pid && 初始化信号处理器
     int ret = CreatePidFile();
     if (ret == -1) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart CreatePidFile() failed", "");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart CreatePidFile() failed", "");
     	return ret;
     }
 
     ret = InitSignals();
     if (ret == -1) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart InitSignals() failed", "");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart InitSignals() failed", "");
     	return ret;
     }
 
@@ -140,27 +140,27 @@ int wMaster::MasterStart() {
     ss.AddSet(SIGUSR1);	// 重启服务
     ret = ss.Procmask();
     if (ret == -1) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart Procmask() failed", "");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart Procmask() failed", "");
     	return ret;
     }
     
     // 初始化惊群锁
     ret = mServer->InitAcceptMutex();
     if (ret == -1) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart InitAcceptMutex() failed", "");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart InitAcceptMutex() failed", "");
     	return ret;
     }
 
     // 初始化进程表
 	for (uint32_t i = 0; i < kMaxProcess; i++) {
 		if (NewWorker(i, &mWorkerPool[i]) == -1) {
-			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart NewWorker() failed", "");
+			HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart NewWorker() failed", "");
 			return -1;
 		}
 
-		SAFE_NEW(wChannelSocket(kStConnect), mWorkerPool[i]->mChannel);
+		HNET_NEW(wChannelSocket(kStConnect), mWorkerPool[i]->mChannel);
 		if (!mWorkerPool[i]->mChannel) {
-			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart new() failed", error::Strerror(errno).c_str());
+			HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart new() failed", error::Strerror(errno).c_str());
 			return -1;
 		}
 	}
@@ -168,7 +168,7 @@ int wMaster::MasterStart() {
     // 启动worker工作进程
     ret = WorkerStart(mWorkerNum, kProcessRespawn);
     if (ret == -1) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart WorkerStart() failed", "");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::MasterStart WorkerStart() failed", "");
     	return ret;
     }
 
@@ -182,9 +182,9 @@ int wMaster::MasterStart() {
 }
 
 int wMaster::NewWorker(uint32_t slot, wWorker** ptr) {
-    SAFE_NEW(wWorker(mTitle, slot, this), *ptr);
+    HNET_NEW(wWorker(mTitle, slot, this), *ptr);
     if (!*ptr) {
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::NewWorker new() failed", "");
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::NewWorker new() failed", "");
     	return -1;
     }
     return 0;
@@ -194,7 +194,7 @@ int wMaster::WorkerStart(uint32_t n, int32_t type) {
 	wChannelReqOpen_t open;
 	for (uint32_t i = 0; i < n; ++i) {
 		if (SpawnWorker(type) == -1) {	// 启动worker
-			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::WorkerStart SpawnWorker() failed", "");
+			HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::WorkerStart SpawnWorker() failed", "");
 			return -1;
 		}
 
@@ -223,7 +223,7 @@ int wMaster::SpawnWorker(int64_t type) {
 		mSlot = idx;
 	}
 	if (mSlot >= kMaxProcess || mSlot < 0) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SpawnWorker () failed", "slot invalid");
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SpawnWorker () failed", "slot invalid");
 		return -1;
 	}
 
@@ -233,7 +233,7 @@ int wMaster::SpawnWorker(int64_t type) {
 	// 打开进程间channel通道
 	int ret = mWorker->Channel()->Open();
 	if (ret == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SpawnWorker Channel.Open() failed", "");
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SpawnWorker Channel.Open() failed", "");
 		return ret;
 	}
 
@@ -244,7 +244,7 @@ int wMaster::SpawnWorker(int64_t type) {
     case -1:
 		// 关闭channel
     	ret = mWorker->Channel()->Close();
-    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SpawnWorker fork() failed", error::Strerror(errno).c_str());
+    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SpawnWorker fork() failed", error::Strerror(errno).c_str());
     	return ret;
 
     case 0:
@@ -328,10 +328,10 @@ void wMaster::ProcessExit() {
 
 int wMaster::HandleSignal() {
 	if (mDelay) {
-		if (g_sigalrm) {
+		if (hnet_sigalrm) {
 			mSigio = 0;
 			mDelay *= 2;
-			g_sigalrm = 0;
+			hnet_sigalrm = 0;
 		}
 
 		struct itimerval itv;
@@ -342,7 +342,7 @@ int wMaster::HandleSignal() {
 
 		// 设置定时器，以系统真实时间来计算，送出SIGALRM信号（主要用户优雅退出）
 		if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
-			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::HandleSignal setitimer() failed", error::Strerror(errno).c_str());
+			HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::HandleSignal setitimer() failed", error::Strerror(errno).c_str());
 			return -1;
 		}
 	}
@@ -353,15 +353,15 @@ int wMaster::HandleSignal() {
 	ss.Suspend();
 	
 	// SIGCHLD
-	if (g_reap) {
-		g_reap = 0;
+	if (hnet_reap) {
+		hnet_reap = 0;
 
 		WorkerExitStat();	// 进程退出状态
 		ReapChildren();		// 重启退出的worker
 	}
 	
 	// 所有worker退出，且收到了退出信号，则master退出
-	if (!mLive && (g_terminate || g_quit)) {
+	if (!mLive && (hnet_terminate || hnet_quit)) {
 	    ProcessExit();
 	    if (mServer) {
 		    mServer->CleanListenSock();
@@ -372,7 +372,7 @@ int wMaster::HandleSignal() {
 	}
 	
 	// SIGTERM、SIGINT
-	if (g_terminate) {
+	if (hnet_terminate) {
 		// 设置延时，50ms
 		if (mDelay == 0) {
 			mDelay = 50;
@@ -395,22 +395,22 @@ int wMaster::HandleSignal() {
 	}
 
 	// SIGQUIT
-	if (g_quit) {
+	if (hnet_quit) {
 		// 给所有的worker发送SIGQUIT信号
 		SignalWorker(SIGQUIT);
 		return 0;
 	}
 	
 	// SIGHUP
-	if (g_reconfigure) {
-		g_reconfigure = 0;
+	if (hnet_reconfigure) {
+		hnet_reconfigure = 0;
 		
 		// 重新初始化主进程配置
 		int ret = Reload();
 		if (ret == -1) {
 			SignalWorker(SIGQUIT);	// 关闭所有worker进程
 
-			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::HandleSignal Reload() failed", "");
+			HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::HandleSignal Reload() failed", "");
 			return ret;
 		}
 
@@ -453,7 +453,7 @@ int wMaster::ReapChildren() {
 			}
 			
 			// 非重启命令时，且有进程异常退出，重启
-			if (mWorkerPool[i]->mRespawn && !mWorkerPool[i]->mExiting && !g_terminate && !g_quit) {
+			if (mWorkerPool[i]->mRespawn && !mWorkerPool[i]->mExiting && !hnet_terminate && !hnet_quit) {
 				if (SpawnWorker(i) == -1) {
 					continue;
 				}
@@ -518,7 +518,7 @@ void wMaster::SignalWorker(int signo) {
             if (errno == ESRCH) {	// 进程或者线程不存在
                 mWorkerPool[i]->mExited = 1;
                 mWorkerPool[i]->mExiting = 0;
-				g_reap = 1;
+                hnet_reap = 1;
             }
             continue;
         }
@@ -542,16 +542,16 @@ int wMaster::DeletePidFile() {
 int wMaster::SignalProcess(const std::string& signal) {
 	std::string str;
 	if (ReadFileToString(mEnv, mPidPath, &str) != 0) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SignalProcess ReadFileToString() failed", "");
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SignalProcess ReadFileToString() failed", "");
 		return -1;
 	}
 
 	uint64_t pid = 0;
 	if (logging::DecimalStringToNumber(str, &pid) && pid > 0) {
-		for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
+		for (wSignal::Signal_t* s = hnet_signals; s->mSigno != 0; ++s) {
 			if (memcmp(signal.c_str(), s->mName, signal.size()) == 0) {
 				if (kill(pid, s->mSigno) == -1) {
-					H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SignalProcess kill() failed", error::Strerror(errno).c_str());
+					HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SignalProcess kill() failed", error::Strerror(errno).c_str());
 					return -1;
 				} else {
 					return 0;
@@ -560,15 +560,15 @@ int wMaster::SignalProcess(const std::string& signal) {
 		}
 	}
 
-	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SignalProcess signal() failed", "unfound signal");
+	HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::SignalProcess signal() failed", "unfound signal");
 	return -1;
 }
 
 int wMaster::InitSignals() {
 	wSignal signal;
-	for (wSignal::Signal_t* s = g_signals; s->mSigno != 0; ++s) {
+	for (wSignal::Signal_t* s = hnet_signals; s->mSigno != 0; ++s) {
 		if (signal.AddHandler(s) == -1) {
-			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::InitSignals AddHandler() failed", "");
+			HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMaster::InitSignals AddHandler() failed", "");
 			return -1;
 		}
 	}
@@ -609,17 +609,17 @@ void wMaster::WorkerExitStat() {
 		std::string str = "wMaster::WorkerExitStat, child(" + logging::NumberToString(pid) + ") ";
         if (WTERMSIG(status)) {
 			str += "exited on signal";
-			H_LOG_DEBUG(soft::GetLogPath(), "%s : %s", str.c_str(), logging::NumberToString(WTERMSIG(status)).c_str());
+			HNET_DEBUG(soft::GetLogPath(), "%s : %s", str.c_str(), logging::NumberToString(WTERMSIG(status)).c_str());
         } else {
 			str += "exited with code";
-			H_LOG_DEBUG(soft::GetLogPath(), "%s : %s", str.c_str(), logging::NumberToString(WEXITSTATUS(status)).c_str());
+			HNET_DEBUG(soft::GetLogPath(), "%s : %s", str.c_str(), logging::NumberToString(WEXITSTATUS(status)).c_str());
         }
 	
 		// 退出码为2时，退出后不重启
         if (WEXITSTATUS(status) == 2 && mWorkerPool[i]->mRespawn) {
         	mWorkerPool[i]->mRespawn = 0;
         	str += ";exited with fatal code, and cannot be respawned";
-        	H_LOG_DEBUG(soft::GetLogPath(), "%s : %s", str.c_str(), logging::NumberToString(WEXITSTATUS(status)).c_str());
+        	HNET_DEBUG(soft::GetLogPath(), "%s : %s", str.c_str(), logging::NumberToString(WEXITSTATUS(status)).c_str());
         }
     }
     return;

@@ -83,9 +83,9 @@ public:
 	ExampleClient(wConfig* config, wServer* server = NULL) : wMultiClient(config, server, true) { }
 
 	virtual int NewTcpTask(wSocket* sock, wTask** ptr, int type = 0) {
-	    SAFE_NEW(ExampleTask(sock, type), *ptr);
+	    HNET_NEW(ExampleTask(sock, type), *ptr);
 	    if (!*ptr) {
-	    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleClient::NewTcpTask new() failed", "");
+	    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "ExampleClient::NewTcpTask new() failed", "");
 	    	return -1;
 	    }
 	    return 0;
@@ -97,7 +97,7 @@ public:
 
 	    wConfig* config = Config<wConfig*>();
 	    if (!config || !config->GetConf("host", &host) || !config->GetConf("port", &port)) {
-	    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleClient::PrepareRun () failed", "");
+	    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "ExampleClient::PrepareRun () failed", "");
 	    	return -1;
 	    }
 
@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
 
 	// 创建配置对象
 	wConfig* config;
-	SAFE_NEW(wConfig, config);
+	HNET_NEW(wConfig, config);
 	if (!config) {
 		std::cout << "config new failed" << std::endl;
 		return -1;
@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
 	// 解析命令行
 	if (config->GetOption(argc, argv) == -1) {
 		std::cout << "get configure failed" << std::endl;
-		SAFE_DELETE(config);
+		HNET_DELETE(config);
 		return -1;
 	}
 
@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
 	bool vn, dn;
 	if (config->GetConf("version", &vn) && vn) {
 		std::cout << soft::SetSoftName("example clientd -") << soft::GetSoftVer() << std::endl;
-		SAFE_DELETE(config);
+		HNET_DELETE(config);
 		return -1;
 	} else if (config->GetConf("daemon", &dn) && dn) {
 		std::string lock_path;
@@ -147,17 +147,17 @@ int main(int argc, char *argv[]) {
 		wDaemon daemon;
 		if (daemon.Start(lock_path) == -1) {
 			std::cout << "create daemon failed" << std::endl;
-			SAFE_DELETE(config);
+			HNET_DELETE(config);
 			return -1;
 		}
 	}
 	
 	// 创建客户端
     ExampleClient* client;
-	SAFE_NEW(ExampleClient(config), client);
+	HNET_NEW(ExampleClient(config), client);
 	if (client == NULL) {
 		std::cout << "client new failed" << std::endl;
-		SAFE_DELETE(config);
+		HNET_DELETE(config);
 		return -1;
 	}
 
@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
 		ret = -1;
 	}
 	
-	SAFE_DELETE(config);
-	SAFE_DELETE(client);
+	HNET_DELETE(config);
+	HNET_DELETE(client);
 	return ret;
 }

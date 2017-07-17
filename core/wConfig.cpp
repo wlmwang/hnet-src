@@ -17,13 +17,13 @@ wConfig::wConfig(): mPool(NULL), mProcTitle(NULL) {
 	error::StrerrorInit(); // 初始化错误列表
     http::StatusCodeInit(); // 初始化http状态码
 
-	SAFE_NEW(wMemPool, mPool);
-    SAFE_NEW(wProcTitle, mProcTitle);
+	HNET_NEW(wMemPool, mPool);
+    HNET_NEW(wProcTitle, mProcTitle);
 }
 
 wConfig::~wConfig() {
-    SAFE_DELETE(mPool);
-    SAFE_DELETE(mProcTitle);
+    HNET_DELETE(mPool);
+    HNET_DELETE(mProcTitle);
 }
 
 // 参数形式
@@ -35,7 +35,7 @@ int wConfig::GetOption(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         const char* p = argv[i];
         if (*p++ != '-') {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "should \"-\" begin");
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "should \"-\" begin");
             return -1;
         }
 
@@ -62,7 +62,7 @@ int wConfig::GetOption(int argc, char *argv[]) {
                 	SetStrConf("signal", p);
                     goto next;
                 }
-                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-s\" requires signal");
+                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-s\" requires signal");
                 return -1;
 
             case 'h':
@@ -76,7 +76,7 @@ int wConfig::GetOption(int argc, char *argv[]) {
                 	SetStrConf("host", p);
                     goto next;
                 }
-                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-h\" requires host");
+                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-h\" requires host");
                 return -1;
 
             case 'p':
@@ -92,7 +92,7 @@ int wConfig::GetOption(int argc, char *argv[]) {
                 	SetIntConf("port", i);
                 	goto next;
                 }
-                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-p\" requires port");
+                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-p\" requires port");
                 return -1;
 
             case 'x':
@@ -106,7 +106,7 @@ int wConfig::GetOption(int argc, char *argv[]) {
                     SetStrConf("protocol", p);
                     goto next;
                 }
-                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-x\" requires protocol");
+                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-x\" requires protocol");
                 return -1;
 
             case 'P':
@@ -120,7 +120,7 @@ int wConfig::GetOption(int argc, char *argv[]) {
                 	SetStrConf("pid_path", p);
                     goto next;
                 }
-                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-P\" requires pid path");
+                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-P\" requires pid path");
                 return -1;
 
             case 'l':
@@ -134,7 +134,7 @@ int wConfig::GetOption(int argc, char *argv[]) {
                 	SetStrConf("log_path", p);
                     goto next;
                 }
-                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-l\" requires log path");
+                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-l\" requires log path");
                 return -1;
 
             case 'n':
@@ -150,11 +150,11 @@ int wConfig::GetOption(int argc, char *argv[]) {
                 	SetIntConf("worker", i);
                 	goto next;
                 }
-                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-n\" requires workers num");
+                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-n\" requires workers num");
                 return -1;
 
             default:
-                H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "");
+                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "");
                 return -1;
             }
         }
@@ -208,7 +208,7 @@ bool wConfig::SetStrConf(const std::string& key, const char *val, bool force) {
 	
     // 初始化string对象（string使用前必须初始化）
     std::string *s;  
-	SAFE_NEW((c)std::string(), s);
+	HNET_NEW((c)std::string(), s);
 	*s = val;
 	mConf[key] = reinterpret_cast<void*>(s);
 	return true;

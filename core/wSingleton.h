@@ -15,7 +15,7 @@ template <typename T>
 class wSingletonFactory {
 public:
 	static T* Instance() {
-		T* ptr; SAFE_NEW(T, ptr);
+		T* ptr; HNET_NEW(T, ptr);
 		return ptr;
 	}
 };
@@ -24,7 +24,7 @@ template <typename T, typename MANA = wSingletonFactory<T> >
 class wSingleton {
 public:
 	virtual ~wSingleton() {
-		SAFE_DELETE(mSingletonPtr);
+		HNET_DELETE(mSingletonPtr);
 	}
 
 	static T* Instance() {

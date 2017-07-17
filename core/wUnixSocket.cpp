@@ -19,13 +19,13 @@ wUnixSocket::~wUnixSocket() {
 int wUnixSocket::Open() {
 	mFD = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (mFD == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Open socket() failed", error::Strerror(errno).c_str());
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Open socket() failed", error::Strerror(errno).c_str());
 		return -1;
 	}
 
 	int flags = 1;
 	if (setsockopt(mFD, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags)) == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Open setsockopt(SO_REUSEADDR) failed", error::Strerror(errno).c_str());
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Open setsockopt(SO_REUSEADDR) failed", error::Strerror(errno).c_str());
 		return -1;
 	}
 	
@@ -33,7 +33,7 @@ int wUnixSocket::Open() {
 	// 底层将未发送完的数据发送完成后再释放资源
 	struct linger l = {0, 0};
 	if (setsockopt(mFD, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Open setsockopt(SO_LINGER) failed", error::Strerror(errno).c_str());
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Open setsockopt(SO_LINGER) failed", error::Strerror(errno).c_str());
 		return -1;
 	}
 	return 0;
@@ -46,7 +46,7 @@ int wUnixSocket::Bind(const std::string& host, uint16_t port) {
 	strncpy(socketAddr.sun_path, host.c_str(), sizeof(socketAddr.sun_path) - 1);
 	int ret = bind(mFD, reinterpret_cast<struct sockaddr*>(&socketAddr), sizeof(socketAddr));
 	if (ret == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Bind bind() failed", error::Strerror(errno).c_str());
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Bind bind() failed", error::Strerror(errno).c_str());
 	}
 	return ret;
 }
@@ -56,24 +56,24 @@ int wUnixSocket::Listen(const std::string& host, uint16_t port) {
 	mPort = port;
 
 	if (Bind(mHost, mPort) == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Listen Bind() failed", "");
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Listen Bind() failed", "");
 		return -1;
 	}
 
 	// 设置发送缓冲大小4M
 	socklen_t optVal = 0x400000;
 	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void*>(&optVal), sizeof(socklen_t)) == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Listen setsockopt(SO_SNDBUF) failed", error::Strerror(errno).c_str());
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Listen setsockopt(SO_SNDBUF) failed", error::Strerror(errno).c_str());
 		return -1;
 	}
 
 	if (listen(mFD, kListenBacklog) == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Listen listen() failed", error::Strerror(errno).c_str());
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Listen listen() failed", error::Strerror(errno).c_str());
 		return -1;
 	}
 	
 	if (SetNonblock() == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Listen SetNonblock() failed", "");
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Listen SetNonblock() failed", "");
 		return -1;
 	}
 	return 0;
@@ -86,20 +86,20 @@ int wUnixSocket::Connect(const std::string& host, uint16_t port, float timeout) 
 	mPort = 0;
 
 	if (Bind(mHost, mPort) == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect Bind() failed", "");
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect Bind() failed", "");
 		return -1;
 	}
 
 	// 设置非阻塞标志
 	int oldfl = GetNonblock();
 	if (oldfl == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect GetNonblock() failed", "");
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect GetNonblock() failed", "");
 		return -1;
 	}
 
 	if (timeout > 0 && oldfl == 0) {	// 阻塞
 		if (SetNonblock() == -1) {
-			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect SetNonblock() failed", "");
+			HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect SetNonblock() failed", "");
 			return -1;
 		}
 	}
@@ -122,12 +122,12 @@ int wUnixSocket::Connect(const std::string& host, uint16_t port, float timeout) 
 					if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {	// Interrupted system call
 					    continue;
 					}
-					H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect poll() failed", error::Strerror(errno).c_str());
+					HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect poll() failed", error::Strerror(errno).c_str());
 					ret = -1;
 					break;
 
 				} else if (r == 0) {
-					H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect poll() failed", "connect timeout");
+					HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect poll() failed", "connect timeout");
 					errno = ETIMEDOUT;
 					ret = -1;
 					break;
@@ -136,13 +136,13 @@ int wUnixSocket::Connect(const std::string& host, uint16_t port, float timeout) 
 					int error, len = sizeof(int);
 					int code = getsockopt(mFD, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&error), reinterpret_cast<socklen_t*>(&len));
 					if (code == -1) {
-					    H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect setsockopt() failed", error::Strerror(errno).c_str());
+					    HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect setsockopt() failed", error::Strerror(errno).c_str());
 						ret = -1;
 						break;
 					}
 
 					if (error != 0) {
-					    H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect connect() failed", error::Strerror(errno).c_str());
+					    HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect connect() failed", error::Strerror(errno).c_str());
 						errno = error;
 						ret = -1;
 						break;
@@ -153,14 +153,14 @@ int wUnixSocket::Connect(const std::string& host, uint16_t port, float timeout) 
 				}
 			}
 		} else {
-			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect connect() directly failed", error::Strerror(errno).c_str());
+			HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect connect() directly failed", error::Strerror(errno).c_str());
 		}
 	}
 
 	// 还原非阻塞状态
 	if (timeout > 0 && oldfl == 0) {
 		if (SetNonblock(false) == -1) {
-			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect SetNonblock() failed", "");
+			HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect SetNonblock() failed", "");
 			return -1;
 		}
 	}
@@ -168,7 +168,7 @@ int wUnixSocket::Connect(const std::string& host, uint16_t port, float timeout) 
 	// 设置发送缓冲大小4M
 	socklen_t optVal = 0x400000;
 	if (setsockopt(mFD, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void*>(&optVal), sizeof(socklen_t)) == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect setsockopt(SO_SNDBUF) failed", error::Strerror(errno).c_str());
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Connect setsockopt(SO_SNDBUF) failed", error::Strerror(errno).c_str());
 		return -1;
 	}
 	return ret;
@@ -176,7 +176,7 @@ int wUnixSocket::Connect(const std::string& host, uint16_t port, float timeout) 
 
 int wUnixSocket::Accept(int* fd, struct sockaddr* clientaddr, socklen_t *addrsize) {
 	if (mSockType != kStListen) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Accept () failed", "error st");
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Accept () failed", "error st");
 		return *fd = -1;
 	}
 
@@ -194,7 +194,7 @@ int wUnixSocket::Accept(int* fd, struct sockaddr* clientaddr, socklen_t *addrsiz
             ret = 0;
             break;
 		} else {
-		    H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Accept accept() failed", error::Strerror(errno).c_str());
+		    HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Accept accept() failed", error::Strerror(errno).c_str());
 		    ret = -1;
 		    break;
 		}
@@ -204,7 +204,7 @@ int wUnixSocket::Accept(int* fd, struct sockaddr* clientaddr, socklen_t *addrsiz
 		// 设置发送缓冲大小4M
 		socklen_t optVal = 0x400000;
 		if (setsockopt(static_cast<int>(*fd), SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void*>(&optVal), sizeof(socklen_t)) == -1) {
-			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Accept setsockopt(SO_SNDBUF) failed", error::Strerror(errno).c_str());
+			HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::Accept setsockopt(SO_SNDBUF) failed", error::Strerror(errno).c_str());
 			return -1;
 		}
 	}
@@ -227,7 +227,7 @@ int wUnixSocket::SetSendTimeout(float timeout) {
 		tv.tv_usec = 0;
 	}
 	if (setsockopt(mFD, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const void*>(&tv), sizeof(tv)) == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::SetSendTimeout setsockopt(SO_SNDTIMEO) failed", error::Strerror(errno).c_str());
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wUnixSocket::SetSendTimeout setsockopt(SO_SNDTIMEO) failed", error::Strerror(errno).c_str());
 		return -1;
 	}
 	return 0;
@@ -242,7 +242,7 @@ int wUnixSocket::SetRecvTimeout(float timeout) {
 		tv.tv_usec = 0;
 	}
 	if (setsockopt(mFD, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const void*>(&tv), sizeof(tv)) == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wTcpSocket::SetRecvTimeout setsockopt(SO_RCVTIMEO) failed", error::Strerror(errno).c_str());
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wTcpSocket::SetRecvTimeout setsockopt(SO_RCVTIMEO) failed", error::Strerror(errno).c_str());
 		return -1;
 	}
 	return 0;

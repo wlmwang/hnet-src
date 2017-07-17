@@ -15,55 +15,55 @@
 namespace hnet {
 
 wSingleClient::~wSingleClient() {
-    SAFE_DELETE(mTask);
+    HNET_DELETE(mTask);
 }
 
 int wSingleClient::Connect(const std::string& ipaddr, uint16_t port, const std::string& protocol) {
     wSocket *socket = NULL;
     if (protocol == "TCP") {
-       SAFE_NEW(wTcpSocket(kStConnect), socket);
+       HNET_NEW(wTcpSocket(kStConnect), socket);
     } else if (protocol == "HTTP") {
-        SAFE_NEW(wTcpSocket(kStConnect, kSpHttp), socket);
+        HNET_NEW(wTcpSocket(kStConnect, kSpHttp), socket);
     } else if (protocol == "UNIX") {
-       SAFE_NEW(wUnixSocket(kStConnect), socket);
+       HNET_NEW(wUnixSocket(kStConnect), socket);
     }
 
     if (!socket) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect new() failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect new() failed", error::Strerror(errno).c_str());
         return -1;
     }
 	
     int ret = socket->Open();
     if (ret == -1) {
-        SAFE_DELETE(socket);
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect Open() failed", "");
+        HNET_DELETE(socket);
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect Open() failed", "");
         return ret;
     }
 
     ret = socket->Connect(ipaddr, port);
     if (ret == -1) {
-        SAFE_DELETE(socket);
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect Connect() failed", "");
+        HNET_DELETE(socket);
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect Connect() failed", "");
         return ret;
     }
 
     socket->SS() = kSsConnected;
 
-    SAFE_DELETE(mTask);
+    HNET_DELETE(mTask);
     if (protocol == "TCP") {
-        SAFE_NEW(wTcpTask(socket), mTask);
+        HNET_NEW(wTcpTask(socket), mTask);
     } else if (protocol == "HTTP") {
-        SAFE_NEW(wHttpTask(socket), mTask);
+        HNET_NEW(wHttpTask(socket), mTask);
     } else if (protocol == "UNIX") {
-        SAFE_NEW(wUnixTask(socket), mTask);
+        HNET_NEW(wUnixTask(socket), mTask);
     } else {
-        SAFE_DELETE(socket);
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect () failed", "unknown sp");
+        HNET_DELETE(socket);
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect () failed", "unknown sp");
         return -1;
     }
 
     if (!mTask) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect new() failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::Connect new() failed", error::Strerror(errno).c_str());
         return -1;
     }
     return 0;
@@ -72,7 +72,7 @@ int wSingleClient::Connect(const std::string& ipaddr, uint16_t port, const std::
 int wSingleClient::HttpGet(const std::string& url, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout) {
     int ret = mTask->HttpGet(url, header, res, timeout);
     if (ret == -1) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::HttpGet HttpGet() failed", "");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::HttpGet HttpGet() failed", "");
     }
     return ret;
 }
@@ -81,7 +81,7 @@ int wSingleClient::HttpPost(const std::string& url, const std::map<std::string, 
     const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout) {
     int ret = mTask->HttpPost(url, data, header, res, timeout);
     if (ret == -1) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::HttpPost HttpPost() failed", "");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSingleClient::HttpPost HttpPost() failed", "");
     }
     return ret;
 }

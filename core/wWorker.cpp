@@ -25,7 +25,7 @@ int wWorker::PrepareStart() {
 	// -20 -> 20 高 -> 低。只有root可提高优先级，即可减少priority值
 	if (mSlot < kMaxProcess && mPriority != 0) {
         if (setpriority(PRIO_PROCESS, 0, mPriority) == -1) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::PrepareStart setpriority() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::PrepareStart setpriority() failed", error::Strerror(errno).c_str());
             return -1;
         }
     }
@@ -36,7 +36,7 @@ int wWorker::PrepareStart() {
         rlmt.rlim_cur = static_cast<rlim_t>(mRlimitCore);
         rlmt.rlim_max = static_cast<rlim_t>(mRlimitCore);
         if (setrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::PrepareStart setrlimit() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::PrepareStart setrlimit() failed", error::Strerror(errno).c_str());
             return -1;
         }
     }
@@ -47,25 +47,25 @@ int wWorker::PrepareStart() {
     	if (n == mSlot || mMaster->Worker(n) == NULL || mMaster->Worker(n)->mPid == -1) {
     		continue;
     	} else if (mMaster->Worker(n)->ChannelClose(1) == -1) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::PrepareStart close(1) failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::PrepareStart close(1) failed", error::Strerror(errno).c_str());
             return -1;
     	}
     }
     // 关闭该进程worker进程的channel[0]描述符
     if (mMaster->Worker(mSlot)->ChannelClose(0) == -1) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::PrepareStart close(0) failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::PrepareStart close(0) failed", error::Strerror(errno).c_str());
         return -1;
     }
     mTimeline = soft::TimeUnix();
 
 	if (PrepareRun() == -1) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::PrepareStart PrepareRun() failed", "");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::PrepareStart PrepareRun() failed", "");
 		return -1;
 	}
 	
     // 子进程标题
     if (mMaster->Server()->Config()->Setproctitle(kWorkerTitle, mTitle.c_str(), false) == -1) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::PrepareStart Setproctitle() failed", "");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::PrepareStart Setproctitle() failed", "");
         return -1;
     }
 	return 0;
@@ -76,18 +76,18 @@ int wWorker::Start() {
 	wSigSet ss;
     ss.EmptySet();
 	if (ss.Procmask(SIG_SETMASK) == -1) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::Start Procmask() failed", "");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::Start Procmask() failed", "");
         return -1;
 	}
 
     if (Run() == -1) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::Start Run() failed", "");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::Start Run() failed", "");
         return -1;
     }
     
     // 启动server服务
     if (mMaster->Server()->WorkerStart() == -1) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::Start WorkerStart() failed", "");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wWorker::Start WorkerStart() failed", "");
         return -1;
     }
 	return 0;

@@ -31,19 +31,19 @@ void* wThread::ThreadWrapper(void *argv) {
 }
 
 wThread::wThread(bool join): mJoinable(join), mAlive(false) {
-	SAFE_NEW(wMutex, mMutex);
-	SAFE_NEW(wCond, mCond);
+	HNET_NEW(wMutex, mMutex);
+	HNET_NEW(wCond, mCond);
 }
 
 wThread::~wThread() {
-	SAFE_DELETE(mMutex);
-	SAFE_DELETE(mCond);
+	HNET_DELETE(mMutex);
+	HNET_DELETE(mCond);
 }
 
 int wThread::StartThread() {
 	// 初始化线程对象的属性
 	if (pthread_attr_init(&mAttr) != 0) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wThread::StartThread pthread_attr_init() failed", error::Strerror(errno).c_str());
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wThread::StartThread pthread_attr_init() failed", error::Strerror(errno).c_str());
 		return -1;
 	}
 
@@ -51,30 +51,30 @@ int wThread::StartThread() {
 	// PTHREAD_SCOPE_SYSTEM 系统级上竞争资源
 	// PTHREAD_SCOPE_PROCESS 进程内竞争资源
 	if (pthread_attr_setscope(&mAttr, PTHREAD_SCOPE_SYSTEM) != 0) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wThread::StartThread pthread_attr_setscope() failed", error::Strerror(errno).c_str());
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wThread::StartThread pthread_attr_setscope() failed", error::Strerror(errno).c_str());
 		return -1;
 	}
 
 	if (mJoinable) {	// 结合线程
 		if (pthread_attr_setdetachstate(&mAttr, PTHREAD_CREATE_JOINABLE) != 0) {
-			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wThread::StartThread pthread_attr_setdetachstate(PTHREAD_CREATE_JOINABLE) failed", error::Strerror(errno).c_str());
+			HNET_ERROR(soft::GetLogPath(), "%s : %s", "wThread::StartThread pthread_attr_setdetachstate(PTHREAD_CREATE_JOINABLE) failed", error::Strerror(errno).c_str());
 			return -1;
 		}
 	} else {	// 分离线程
 		if (pthread_attr_setdetachstate(&mAttr, PTHREAD_CREATE_DETACHED) == -1) {			
-			H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wThread::StartThread pthread_attr_setdetachstate(PTHREAD_CREATE_DETACHED) failed", error::Strerror(errno).c_str());
+			HNET_ERROR(soft::GetLogPath(), "%s : %s", "wThread::StartThread pthread_attr_setdetachstate(PTHREAD_CREATE_DETACHED) failed", error::Strerror(errno).c_str());
 			return -1;
 		}
 	}
 
 	if (PrepareThread() == -1) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wThread::StartThread PrepareThread() failed", "");
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wThread::StartThread PrepareThread() failed", "");
 		return -1;
 	}
 
 	// 创建线程
 	if (pthread_create(&mPthreadId, &mAttr, &wThread::ThreadWrapper, reinterpret_cast<void*>(this)) != 0) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wThread::StartThread pthread_create() failed", error::Strerror(errno).c_str());
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wThread::StartThread pthread_create() failed", error::Strerror(errno).c_str());
 		return -1;
 	}
 
@@ -88,7 +88,7 @@ int wThread::StartThread() {
 	
 	// 释放属性
 	if (pthread_attr_destroy(&mAttr) != 0) {
-		H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wThread::StartThread pthread_attr_destroy() failed", error::Strerror(errno).c_str());
+		HNET_ERROR(soft::GetLogPath(), "%s : %s", "wThread::StartThread pthread_attr_destroy() failed", error::Strerror(errno).c_str());
 		return -1;
 	}
     return 0;
@@ -99,7 +99,7 @@ int wThread::JoinThread() {
 		// 线程阻塞，直到mPthreadId线程结束返回，被等待线程的资源被收回
 	    if (pthread_join(mPthreadId, NULL) != 0) {
 	    	if (errno != ESRCH) {
-				H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wThread::JoinThread pthread_join() failed", error::Strerror(errno).c_str());
+				HNET_ERROR(soft::GetLogPath(), "%s : %s", "wThread::JoinThread pthread_join() failed", error::Strerror(errno).c_str());
 				return -1;
 	    	}
 	    }

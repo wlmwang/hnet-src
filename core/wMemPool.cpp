@@ -12,7 +12,7 @@ namespace hnet {
 
 wMemPool::~wMemPool() {
     for (size_t i = 0; i < mBlocks.size(); i++) {
-        SAFE_DELETE_VEC(mBlocks[i]);
+        HNET_DELETE_VEC(mBlocks[i]);
     }
 }
 
@@ -53,7 +53,7 @@ char* wMemPool::AllocateAligned(size_t bytes) {
 
 char* wMemPool::AllocateNewBlock(size_t block_bytes) {
     char* result;
-    SAFE_NEW_VEC(block_bytes, char, result);
+    HNET_NEW_VEC(block_bytes, char, result);
     if (result != NULL) {
         mBlocksMemory += block_bytes;
         mBlocks.push_back(result);

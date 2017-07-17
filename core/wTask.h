@@ -104,12 +104,12 @@ public:
 #endif
 
     virtual int HttpGet(const std::string& url, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::HttpGet () failed", "method should be inherit");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::HttpGet () failed", "method should be inherit");
         return -1;
     }
 
     virtual int HttpPost(const std::string& url, const std::map<std::string, std::string>& data, const std::map<std::string, std::string>& header, std::string& res, uint32_t timeout = 30) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::HttpPost () failed", "method should be inherit");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::HttpPost () failed", "method should be inherit");
         return -1;
     }
 

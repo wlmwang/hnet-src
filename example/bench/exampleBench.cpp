@@ -20,8 +20,8 @@ pid_t SpawnProcess(int i, int request);
 void Handle(int i, int request);
 int exampleEchoWR();
 
-static std::string g_host = "";
-static uint16_t g_port = 0;
+static std::string hnet_host = "";
+static uint16_t hnet_port = 0;
 
 int main(int argc, char *argv[]) {
 	// 设置运行目录
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
 
 	// 创建配置对象
 	wConfig* config;
-	SAFE_NEW(wConfig, config);
+	HNET_NEW(wConfig, config);
 	if (!config) {
 		std::cout << "config new failed" << std::endl;
 		return -1;
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 	// 解析命令行
 	if (config->GetOption(argc, argv) == -1) {
 		std::cout << "get configure failed" << std::endl;
-		SAFE_DELETE(config);
+		HNET_DELETE(config);
 		return -1;
 	}
 
@@ -49,14 +49,14 @@ int main(int argc, char *argv[]) {
 	bool version;
 	if (config->GetConf("version", &version) && version) {
 		std::cout << soft::SetSoftName("example client -") << soft::GetSoftVer() << std::endl;
-		SAFE_DELETE(config);
+		HNET_DELETE(config);
 		return -1;
 	}
 
 	// 命令行-h、-p解析
-    if (!config->GetConf("host", &g_host) || !config->GetConf("port", &g_port)) {
+    if (!config->GetConf("host", &hnet_host) || !config->GetConf("port", &hnet_port)) {
     	std::cout << "host or port error" << std::endl;
-    	SAFE_DELETE(config);
+    	HNET_DELETE(config);
     	return -1;
     }
 
@@ -141,17 +141,17 @@ void Handle(int i, int request) {
 int exampleEchoWR() {
     // 创建客户端
 	wSingleClient *client;
-	SAFE_NEW(wSingleClient, client);
+	HNET_NEW(wSingleClient, client);
     if (!client) {
     	std::cout << "client new failed" << std::endl;
         return -1;
     }
     
     // 连接服务器
-    int ret = client->Connect(g_host, g_port);
+    int ret = client->Connect(hnet_host, hnet_port);
     if (ret == -1) {
     	std::cout << "client connect failed" << std::endl;
-    	SAFE_DELETE(client);
+    	HNET_DELETE(client);
     	return -1;
     }
 
@@ -173,7 +173,7 @@ int exampleEchoWR() {
 
 	if (ret == -1) {
 		std::cout << "client send failed" << std::endl;
-    	SAFE_DELETE(client);
+    	HNET_DELETE(client);
 		return -1;
 	}
 
@@ -184,7 +184,7 @@ int exampleEchoWR() {
 
 	if (ret == -1) {
 		std::cout << "client receive failed" << s.ToString() << std::endl;
-    	SAFE_DELETE(client);
+    	HNET_DELETE(client);
 		return -1;
 	}
 #else
@@ -193,11 +193,11 @@ int exampleEchoWR() {
 
 	if (ret == -1) {
 		std::cout << "client receive failed" << std::endl;
-    	SAFE_DELETE(client);
+    	HNET_DELETE(client);
 		return -1;
 	}
 #endif
 	
-	SAFE_DELETE(client);
+	HNET_DELETE(client);
 	return 0;
 }

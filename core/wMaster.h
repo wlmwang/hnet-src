@@ -81,7 +81,7 @@ protected:
     int SpawnWorker(int64_t type);
     
     // 注册信号回调
-    // 可覆盖全局变量g_signals，实现自定义信号处理
+    // 可覆盖全局变量hnet_signals，实现自定义信号处理
     int InitSignals();
 
     // 如果有worker异常退出，则重启

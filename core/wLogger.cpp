@@ -89,7 +89,7 @@ void wPosixLogger::Logv(const char* format, va_list ap) {
 			base = buffer;
 		} else {
 			bufsize = 30000;
-			SAFE_NEW_VEC(bufsize, char, base);
+			HNET_NEW_VEC(bufsize, char, base);
 		}
 		char* p = base;
 		char* limit = base + bufsize;
@@ -131,7 +131,7 @@ void wPosixLogger::Logv(const char* format, va_list ap) {
 
 		// 如果是new申请的缓冲地址，则它不会等于buffer的栈地址
 		if (base != buffer) {
-			SAFE_DELETE_VEC(base);
+			HNET_DELETE_VEC(base);
 		}
 		break;
 	}
@@ -154,15 +154,15 @@ static wLogger* LoggerEntry(const std::string& logpath) {
 }
 static void LoggerFree() {
 	for (std::map<std::string, wLogger*>::iterator it = gLogger.begin(); it != gLogger.end(); it++) {
-		SAFE_DELETE(it->second);
+		HNET_DELETE(it->second);
 	}
 	gLogger.clear();
 }
 
 // 写日志函数接口
-static wMutex g_logger_mutex;
+static wMutex hnet_logger_mutex;
 void Logv(const std::string& logpath, const char* format, ...) {
-	g_logger_mutex.Lock();
+	hnet_logger_mutex.Lock();
 	wLogger* l = LoggerEntry(logpath);
 	if (l != NULL) {
 		va_list ap;
@@ -170,12 +170,12 @@ void Logv(const std::string& logpath, const char* format, ...) {
 		l->Logv(format, ap);
 		va_end(ap);
 	}
-	g_logger_mutex.Unlock();
+	hnet_logger_mutex.Unlock();
 }
 void Logd() {
-	g_logger_mutex.Lock();
+	hnet_logger_mutex.Lock();
 	LoggerFree();
-	g_logger_mutex.Unlock();
+	hnet_logger_mutex.Unlock();
 }
 
 }	// namespace hnet

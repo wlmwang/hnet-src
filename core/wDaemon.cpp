@@ -25,23 +25,23 @@ int wDaemon::Start(const std::string& lock_path, const char *prefix) {
     // 独占式锁定文件，防止有相同程序的进程已经启动
     int lockFD = open(mFilename.c_str(), O_RDWR|O_CREAT, 0640);
     if (lockFD < 0) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wDaemon::Start open() failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wDaemon::Start open() failed", error::Strerror(errno).c_str());
     	return -1;
     }
 
     if (flock(lockFD, LOCK_EX | LOCK_NB) < 0) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wDaemon::Start flock() failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wDaemon::Start flock() failed", error::Strerror(errno).c_str());
         return -1;
     }
 
     // 若是以root身份运行，设置进程的实际、有效uid
     if (geteuid() == 0) {
         if (setuid(soft::GetUser()) == -1) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wDaemon::Start setuid() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wDaemon::Start setuid() failed", error::Strerror(errno).c_str());
             return -1;
         }
         if (setgid(soft::GetGroup()) == -1) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wDaemon::Start setgid() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wDaemon::Start setgid() failed", error::Strerror(errno).c_str());
             return -1;
         }
     }

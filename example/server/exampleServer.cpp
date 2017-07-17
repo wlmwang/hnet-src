@@ -140,27 +140,27 @@ public:
 	ExampleServer(wConfig* config) : wServer(config) { }
 
 	virtual int NewTcpTask(wSocket* sock, wTask** ptr) {
-	    SAFE_NEW(ExampleTcpTask(sock), *ptr);
+	    HNET_NEW(ExampleTcpTask(sock), *ptr);
 	    if (!*ptr) {
-	    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewTcpTask new() failed", "");
+	    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewTcpTask new() failed", "");
 	    	return -1;
 	    }
 	    return 0;
 	}
 	
 	virtual int NewHttpTask(wSocket* sock, wTask** ptr) {
-	    SAFE_NEW(ExampleHttpTask(sock), *ptr);
+	    HNET_NEW(ExampleHttpTask(sock), *ptr);
 	    if (!*ptr) {
-	    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewHttpTask new() failed", "");
+	    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewHttpTask new() failed", "");
 	    	return -1;
 	    }
 	    return 0;
 	}
 
 	virtual int NewChannelTask(wSocket* sock, wTask** ptr) {
-		SAFE_NEW(ExampleChannelTask(sock, mMaster), *ptr);
+		HNET_NEW(ExampleChannelTask(sock, mMaster), *ptr);
 	    if (!*ptr) {
-	    	H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewChannelTask new() failed", "");
+	    	HNET_ERROR(soft::GetLogPath(), "%s : %s", "ExampleServer::NewChannelTask new() failed", "");
 	    	return -1;
 	    }
 	    return 0;
@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
 
 	// 创建配置对象
 	wConfig* config;
-	SAFE_NEW(wConfig, config);
+	HNET_NEW(wConfig, config);
 	if (!config) {
 		std::cout << "config new failed" << std::endl;
 		return -1;
@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
 	// 解析命令行
 	if (config->GetOption(argc, argv) == -1) {
 		std::cout << "get configure failed" << std::endl;
-		SAFE_DELETE(config);
+		HNET_DELETE(config);
 		return -1;
 	}
 
@@ -193,7 +193,7 @@ int main(int argc, char *argv[]) {
 	bool vn, dn;
 	if (config->GetConf("version", &vn) && vn) {
 		std::cout << soft::SetSoftName("example server -") << soft::GetSoftVer() << std::endl;
-		SAFE_DELETE(config);
+		HNET_DELETE(config);
 		return -1;
 	} else if (config->GetConf("daemon", &dn) && dn) {
 		std::string lock_path;
@@ -201,24 +201,24 @@ int main(int argc, char *argv[]) {
 		wDaemon daemon;
 		if (daemon.Start(lock_path) == -1) {
 			std::cout << "create daemon failed" << std::endl;
-			SAFE_DELETE(config);
+			HNET_DELETE(config);
 			return -1;
 		}
 	}
 
 	// 创建服务器对象
 	ExampleServer* server;
-	SAFE_NEW(ExampleServer(config), server);
+	HNET_NEW(ExampleServer(config), server);
 	if (!server) {
 		std::cout << "server new failed" << std::endl;
-		SAFE_DELETE(config);
+		HNET_DELETE(config);
 		return -1;
 	}
 
 	// 创建master对象
 	int ret = 0;
 	wMaster* master;
-	SAFE_NEW(wMaster("EXAMPLE", server), master);
+	HNET_NEW(wMaster("EXAMPLE", server), master);
 	if (master) {
 	    std::string signal;
 	    if (config->GetConf("signal", &signal) && signal.size() > 0) {	// 接受命令信号
@@ -239,8 +239,8 @@ int main(int argc, char *argv[]) {
 		std::cout << "master new failed" << std::endl;
 	}
 
-	SAFE_DELETE(config);
-	SAFE_DELETE(server);
-	SAFE_DELETE(master);
+	HNET_DELETE(config);
+	HNET_DELETE(server);
+	HNET_DELETE(master);
 	return ret;
 }

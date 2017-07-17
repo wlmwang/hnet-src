@@ -69,49 +69,49 @@ public:
     // fd   > 0 新描述符值
     // 返回 =-1 表示需要关闭该连接，并清理内存
     virtual int Accept(int* fd, struct sockaddr* clientaddr, socklen_t *addrsize) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Accept () failed", "method should be inherit");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Accept () failed", "method should be inherit");
         return -1;
     }
 
     // 客户端连接服务器
     // 返回 =-1 表示需要关闭该连接，并清理内存
     virtual int Connect(const std::string& host, uint16_t port = 0, float timeout = 30) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Connect () failed", "method should be inherit");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Connect () failed", "method should be inherit");
         return -1;
     }
     
     // 监听socket描述符
     // 返回 =-1 表示需要关闭该连接，并清理内存
     virtual int Listen(const std::string& host, uint16_t port = 0) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Listen () failed", "method should be inherit");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Listen () failed", "method should be inherit");
         return -1;
     }
     
     // 创建socket描述符
     // 返回 =-1 表示需要关闭该连接，并清理内存
     virtual int Open() {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Open () failed", "method should be inherit");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::Open () failed", "method should be inherit");
         return -1;
     }
 
     // 设置描述符接受、发送超时时间
     // 返回 =-1 设置失败
     virtual int SetTimeout(float fTimeout = 30) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetTimeout () failed", "method should be inherit");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetTimeout () failed", "method should be inherit");
         return -1;
     }
 
     // 设置描述符发送超时时间
     // 返回 =-1 设置失败
     virtual int SetSendTimeout(float fTimeout = 30) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetSendTimeout () failed", "method should be inherit");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetSendTimeout () failed", "method should be inherit");
         return -1;
     }
 
     // 设置描述符接受超时时间
     // 返回 =-1 设置失败
     virtual int SetRecvTimeout(float fTimeout = 30) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetRecvTimeout () failed", "method should be inherit");
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wSocket::SetRecvTimeout () failed", "method should be inherit");
         return -1;
     }
 

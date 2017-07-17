@@ -18,7 +18,7 @@ public:
     wStatus(const wStatus& s);
     
     ~wStatus() {
-        SAFE_DELETE_VEC(mState);
+        HNET_DELETE_VEC(mState);
     }
 
     static wStatus NotFound(const wSlice& msg, const wSlice& msg2 = wSlice(), bool log = true) {
@@ -50,7 +50,7 @@ public:
     }
 
     wStatus& Clear() {
-    	SAFE_DELETE_VEC(mState);
+    	HNET_DELETE_VEC(mState);
     	return *this;
     }
 
@@ -104,7 +104,7 @@ inline wStatus::wStatus(const wStatus& s) {
 
 inline const wStatus& wStatus::operator=(const wStatus& s) {
     if (mState != s.mState) {
-        SAFE_DELETE_VEC(mState);
+        HNET_DELETE_VEC(mState);
         mState = (s.mState == NULL) ? NULL : CopyState(s.mState);
     }
     return *this;

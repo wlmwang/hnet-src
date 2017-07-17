@@ -13,19 +13,15 @@
 #include "wNoncopyable.h"
 
 #ifdef _USE_LOGGER_
-#	define  LOG_INIT()
-#	define  LOG_FREE()	hnet::Logd()
-#	define  H_LOG_ERROR(logpath, fmt, ...) hnet::Logv(logpath, fmt, ##__VA_ARGS__)
+#	define  HNET_ERROR(logpath, fmt, ...) hnet::Logv(logpath, fmt, ##__VA_ARGS__)
 #	ifndef _DEBUG_
-#		define  H_LOG_DEBUG(logpath, fmt, ...)
+#		define  HNET_DEBUG(logpath, fmt, ...)
 #	else
-#		define  H_LOG_DEBUG(logpath, fmt, ...) hnet::Logv(logpath, fmt, ##__VA_ARGS__)
+#		define  HNET_DEBUG(logpath, fmt, ...) hnet::Logv(logpath, fmt, ##__VA_ARGS__)
 #	endif
 #else
-#	define  LOG_INIT()
-#	define  LOG_FREE()
-#	define  H_LOG_ERROR(logpath, fmt, ...)
-#	define  H_LOG_DEBUG(logpath, fmt, ...)
+#	define  HNET_ERROR(logpath, fmt, ...)
+#	define  HNET_DEBUG(logpath, fmt, ...)
 #endif
 
 namespace hnet {

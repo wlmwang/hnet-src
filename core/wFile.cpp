@@ -18,7 +18,7 @@ int wPosixSequentialFile::Read(size_t n, wSlice* result, char* scratch) {
     *result = wSlice(scratch, r);
     if (r < n) {
         if (!feof(mFile)) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixSequentialFile::Read feof() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixSequentialFile::Read feof() failed", error::Strerror(errno).c_str());
             return -1;
         }
     }
@@ -28,7 +28,7 @@ int wPosixSequentialFile::Read(size_t n, wSlice* result, char* scratch) {
 int wPosixSequentialFile::Skip(uint64_t n) {
     int ret = fseek(mFile, n, SEEK_CUR);
     if (ret != 0) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixSequentialFile::Skip fseek() failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixSequentialFile::Skip fseek() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -38,7 +38,7 @@ int wPosixRandomAccessFile::Read(uint64_t offset, size_t n, wSlice* result, char
     ssize_t r = pread(mFD, scratch, n, static_cast<off_t>(offset));
     *result = wSlice(scratch, (r < 0) ? 0 : r);
     if (r < 0) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixRandomAccessFile::Read pread() failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixRandomAccessFile::Read pread() failed", error::Strerror(errno).c_str());
         return -1;
     }
     return 0;
@@ -66,7 +66,7 @@ wPosixMmapReadableFile::~wPosixMmapReadableFile() {
 int wPosixMmapReadableFile::Read(uint64_t offset, size_t n, wSlice* result, char* scratch) {
     if (offset + n > mLength) {
         *result = wSlice();
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixMmapReadableFile::Read n failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixMmapReadableFile::Read n failed", error::Strerror(errno).c_str());
         return -1;
     } else {
         *result = wSlice(reinterpret_cast<char*>(mMmappedRegion) + offset, n);
@@ -78,7 +78,7 @@ int wPosixMmapReadableFile::Read(uint64_t offset, size_t n, wSlice* result, char
 int wPosixWritableFile::Append(const wSlice& data) {
     size_t r = fwrite(data.data(), 1, data.size(), mFile);
     if (r != data.size()) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixWritableFile::Append fwrite() failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixWritableFile::Append fwrite() failed", error::Strerror(errno).c_str());
         return -1;
     }
     return 0;
@@ -87,7 +87,7 @@ int wPosixWritableFile::Append(const wSlice& data) {
 int wPosixWritableFile::Close() {
     int ret = fclose(mFile);
     if (ret != 0) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixWritableFile::Close fclose() failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixWritableFile::Close fclose() failed", error::Strerror(errno).c_str());
         return ret;
     }
     mFile = NULL;
@@ -97,7 +97,7 @@ int wPosixWritableFile::Close() {
 int wPosixWritableFile::Flush() {
     int ret = fflush(mFile);
     if (ret != 0) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixWritableFile::Close fflush() failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixWritableFile::Close fflush() failed", error::Strerror(errno).c_str());
     }
     return ret;
 }
@@ -105,7 +105,7 @@ int wPosixWritableFile::Flush() {
 // 刷新数据到文件
 int wPosixWritableFile::Sync() {
     if (fflush(mFile) != 0 || fdatasync(fileno(mFile)) != 0) {
-        H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixWritableFile::Close fflush() or fdatasync() failed", error::Strerror(errno).c_str());
+        HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixWritableFile::Close fflush() or fdatasync() failed", error::Strerror(errno).c_str());
         return -1;
     }
     return 0;
@@ -126,7 +126,7 @@ static int DoWriteStringToFile(wEnv* env, const wSlice& data, const std::string&
     if (ret == 0) {
         ret = file->Close();
     }
-    SAFE_DELETE(file);
+    HNET_DELETE(file);
 
     if (ret != 0) {
         env->DeleteFile(fname);
@@ -155,7 +155,7 @@ int ReadFileToString(wEnv* env, const std::string& fname, std::string* data) {
 
     static const int kBufferSize = 8192;
     char* space;
-    SAFE_NEW_VEC(kBufferSize, char, space);
+    HNET_NEW_VEC(kBufferSize, char, space);
     while (true) {
         wSlice fragment;
         ret = file->Read(kBufferSize, &fragment, space);
@@ -167,8 +167,8 @@ int ReadFileToString(wEnv* env, const std::string& fname, std::string* data) {
             break;
         }
     }
-    SAFE_DELETE_VEC(space);
-    SAFE_DELETE(file);
+    HNET_DELETE_VEC(space);
+    HNET_DELETE(file);
     return ret;
 }
 

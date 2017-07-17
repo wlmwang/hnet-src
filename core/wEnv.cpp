@@ -35,10 +35,10 @@ public:
         FILE* f = fopen(fname.c_str(), "r");
         *result = NULL;
         if (!f) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewSequentialFile fopen() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewSequentialFile fopen() failed", error::Strerror(errno).c_str());
             return -1;
         } else {
-            SAFE_NEW(wPosixSequentialFile(fname, f), *result);
+            HNET_NEW(wPosixSequentialFile(fname, f), *result);
         }
         return 0;
     }
@@ -47,7 +47,7 @@ public:
         *result = NULL;
         int fd = open(fname.c_str(), O_RDONLY);
         if (fd < 0) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewRandomAccessFile fopen() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewRandomAccessFile fopen() failed", error::Strerror(errno).c_str());
             return -1;
         } else if (mMmapLimit.Acquire()) {
         	// 创建mmaps
@@ -57,11 +57,11 @@ public:
                 // 对文件写入，相当于输出到文件。实际上直到调用msync()或者munmap()，文件才被更新
                 void* base = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
                 if (base != MAP_FAILED) {
-                    SAFE_NEW(wPosixMmapReadableFile(fname, base, size, &mMmapLimit), *result);
+                    HNET_NEW(wPosixMmapReadableFile(fname, base, size, &mMmapLimit), *result);
                 } else {
                     close(fd);
                     mMmapLimit.Release();
-                    H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewRandomAccessFile mmap() failed", error::Strerror(errno).c_str());
+                    HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewRandomAccessFile mmap() failed", error::Strerror(errno).c_str());
                     return -1;
                 }
             } else {
@@ -69,7 +69,7 @@ public:
             }
             close(fd);  // 读取IO，映射后可关闭文件
         } else {
-            SAFE_NEW(wPosixRandomAccessFile(fname, fd), *result);
+            HNET_NEW(wPosixRandomAccessFile(fname, fd), *result);
         }
         return 0;
     }
@@ -78,26 +78,26 @@ public:
         *result = NULL;
         FILE* f = fopen(fname.c_str(), "w");
         if (!f) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewWritableFile fopen() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewWritableFile fopen() failed", error::Strerror(errno).c_str());
             return -1;
         }
-        SAFE_NEW(wPosixWritableFile(fname, f), *result);
+        HNET_NEW(wPosixWritableFile(fname, f), *result);
         return 0;
     }
 
     virtual int NewSem(const std::string& name, wSem** result) {
-    	SAFE_NEW(wPosixSem(name), *result);
+    	HNET_NEW(wPosixSem(name), *result);
         if (!*result) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewSem new() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewSem new() failed", error::Strerror(errno).c_str());
             return -1;
         }
     	return 0;
     }
 
     virtual int NewShm(const std::string& filename, wShm** result, size_t size = kMsgQueueLen) {
-        SAFE_NEW(wPosixShm(filename, size), *result);
+        HNET_NEW(wPosixShm(filename, size), *result);
         if (!*result) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewShm new() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewShm new() failed", error::Strerror(errno).c_str());
             return -1;
         }
         return 0;
@@ -108,11 +108,11 @@ public:
         *lock = NULL;
         int fd = open(fname.c_str(), O_WRONLY|O_CREAT, 0644);
         if (fd < 0) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::LockFile open() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::LockFile open() failed", error::Strerror(errno).c_str());
             return -1;
         } else if (!mLocks.Insert(fname)) {   // 重复加锁
             close(fd);
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::LockFile Insert() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::LockFile Insert() failed", error::Strerror(errno).c_str());
             return -1;
         } else if (LockOrUnlock(fd, true) == -1) {  // 加锁失败
             close(fd);
@@ -120,7 +120,7 @@ public:
             return -1;
         } else {
             wPosixFileLock* my_lock;
-            SAFE_NEW(wPosixFileLock(), my_lock);
+            HNET_NEW(wPosixFileLock(), my_lock);
             my_lock->mFD = fd;
             my_lock->mName = fname;
             *lock = my_lock;
@@ -132,20 +132,20 @@ public:
     virtual int UnlockFile(wFileLock* lock) {
         wPosixFileLock* my_lock = reinterpret_cast<wPosixFileLock*>(lock);        
         if (LockOrUnlock(my_lock->mFD, false) == -1) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::UnlockFile LockOrUnlock() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::UnlockFile LockOrUnlock() failed", error::Strerror(errno).c_str());
             return -1;
         }
         mLocks.Remove(my_lock->mName);
         close(my_lock->mFD);
-        SAFE_DELETE(my_lock);
+        HNET_DELETE(my_lock);
         return 0;
     }
 
     // 日志对象
     virtual int NewLogger(const std::string& fname, wLogger** result, off_t maxsize = kMaxLoggerSize) {
-    	SAFE_NEW(wPosixLogger(fname, &wPosixEnv::getpid, maxsize), *result);
+    	HNET_NEW(wPosixLogger(fname, &wPosixEnv::getpid, maxsize), *result);
 		if (!*result) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewLogger new() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::NewLogger new() failed", error::Strerror(errno).c_str());
             return -1;
 		}
 		return 0;
@@ -156,7 +156,7 @@ public:
         result->clear();
         DIR* d = opendir(dir.c_str());
         if (!d) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::GetChildren opendir() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::GetChildren opendir() failed", error::Strerror(errno).c_str());
             return -1;
         }
         struct dirent* entry;
@@ -176,7 +176,7 @@ public:
     	char dir_path[256] = {'\0'};
     	int len = readlink(self.c_str(), dir_path, 256);
     	if (len < 0 || len >= 256) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::GetBinPath readlink() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::GetBinPath readlink() failed", error::Strerror(errno).c_str());
             return -1;
     	}
 		for (int i = len; i >= 0; --i) {
@@ -192,7 +192,7 @@ public:
     virtual int GetRealPath(const std::string& fname, std::string* result) {
     	char dir_path[256] = {'\0'};
         if (!realpath(fname.c_str(), dir_path)) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::GetRealPath realpath() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::GetRealPath realpath() failed", error::Strerror(errno).c_str());
             return -1;
         }
         *result = dir_path;
@@ -202,7 +202,7 @@ public:
     virtual int OpenFile(const std::string& fname, int& fd, int oflag = O_RDWR | O_CREAT, mode_t mode= 0644) {
         fd = open(fname.c_str(), oflag, mode);
         if (fd == -1) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::OpenFile open() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::OpenFile open() failed", error::Strerror(errno).c_str());
             return -1;
         }
         return 0;
@@ -211,7 +211,7 @@ public:
     virtual int CloseFD(int fd) {
         int ret = close(fd);
         if (ret != 0) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::CloseFD close() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::CloseFD close() failed", error::Strerror(errno).c_str());
         }
         return ret;
     }
@@ -219,7 +219,7 @@ public:
     virtual int DeleteFile(const std::string& fname) {
         int ret = unlink(fname.c_str());
         if (ret != 0) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::DeleteFile unlink() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::DeleteFile unlink() failed", error::Strerror(errno).c_str());
         }
         return ret;
     }
@@ -227,7 +227,7 @@ public:
     virtual int CreateDir(const std::string& name) {
         int ret = mkdir(name.c_str(), 0755);
         if (ret != 0) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::CreateDir mkdir() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::CreateDir mkdir() failed", error::Strerror(errno).c_str());
         }
         return ret;
     }
@@ -235,7 +235,7 @@ public:
     virtual int DeleteDir(const std::string& name) {
         int ret = rmdir(name.c_str());
         if (ret != 0) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::DeleteDir rmdir() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::DeleteDir rmdir() failed", error::Strerror(errno).c_str());
         }
         return ret;
     }
@@ -245,7 +245,7 @@ public:
         int ret = stat(fname.c_str(), &sbuf);
         if (ret != 0) {
             *size = 0;
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::GetFileSize stat() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::GetFileSize stat() failed", error::Strerror(errno).c_str());
         } else {
             *size = sbuf.st_size;
         }
@@ -255,7 +255,7 @@ public:
     virtual int RenameFile(const std::string& src, const std::string& target) {
         int ret = rename(src.c_str(), target.c_str());
         if (ret != 0) {
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::RenameFile rename() failed", error::Strerror(errno).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wPosixEnv::RenameFile rename() failed", error::Strerror(errno).c_str());
         }
         return ret;
     }
@@ -300,7 +300,7 @@ private:
     void PthreadCall(const char* label, int err) {
         if (err != 0) {
         	std::string str = "wPosixEnv::PthreadCall, pthread ";
-            H_LOG_ERROR(soft::GetLogPath(), "%s : %s", str.c_str(), error::Strerror(err).c_str());
+            HNET_ERROR(soft::GetLogPath(), "%s : %s", str.c_str(), error::Strerror(err).c_str());
         	exit(-1);
         }
     }
@@ -383,7 +383,7 @@ namespace {
 static void* StartThreadWrapper(void* arg) {
     StartThreadState_t* state = reinterpret_cast<StartThreadState_t*>(arg);
     state->user_function(state->arg);
-    SAFE_DELETE(state);
+    HNET_DELETE(state);
     return NULL;
 }
 
@@ -391,7 +391,7 @@ static void* StartThreadWrapper(void* arg) {
 void wPosixEnv::StartThread(void (*function)(void* arg), void* arg) {
     pthread_t t;
     StartThreadState_t* state;
-    SAFE_NEW(StartThreadState_t(), state);
+    HNET_NEW(StartThreadState_t(), state);
     state->user_function = function;
     state->arg = arg;
     PthreadCall("start thread", pthread_create(&t, NULL,  &StartThreadWrapper, state));
@@ -400,15 +400,15 @@ void wPosixEnv::StartThread(void (*function)(void* arg), void* arg) {
 }	// namespace anonymous
 
 // 实例化env对象
-static pthread_once_t g_once = PTHREAD_ONCE_INIT;
-static wEnv* g_defaultEnv;
+static pthread_once_t hnet_once = PTHREAD_ONCE_INIT;
+static wEnv* hnet_defaultEnv;
 static void InitDefaultEnv() {
-    SAFE_NEW(wPosixEnv(), g_defaultEnv);
+    HNET_NEW(wPosixEnv(), hnet_defaultEnv);
 }
 
 wEnv* wEnv::Default() {
-    pthread_once(&g_once, InitDefaultEnv);
-    return g_defaultEnv;
+    pthread_once(&hnet_once, InitDefaultEnv);
+    return hnet_defaultEnv;
 }
 
 }	// namespace hnet
