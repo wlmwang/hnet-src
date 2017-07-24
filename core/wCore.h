@@ -78,7 +78,7 @@ const uint8_t   kKeepAliveCnt = 10;
 // 100M单个归档日志大小
 const off_t		kMaxLoggerSize = 104857600;
 const uint8_t	kLoggerNum = 16;
-const uint8_t 	kFFlushPerLog = 0;
+const uint8_t 	kFFlushPerLog = 1;
 
 // 1M共享消息队列大小
 const uint32_t  kMsgQueueLen = 1048576;
@@ -126,7 +126,7 @@ const char      kLogPath[] = "hnet.log";
 const char		kBinPath[] = "./";
 
 const char      kSoftwareName[]   = "HNET";
-const char      kSoftwareVer[]    = "0.0.20";
+const char      kSoftwareVer[]    = "0.0.21";
 
 }   // namespace hnet
 

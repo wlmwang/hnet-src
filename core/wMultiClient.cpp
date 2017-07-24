@@ -34,11 +34,11 @@ int wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port,
     
     wSocket *socket = NULL;
     if (protocol == "TCP") {
-       HNET_NEW(wTcpSocket(kStConnect), socket);
+        HNET_NEW(wTcpSocket(kStConnect), socket);
     } else if (protocol == "HTTP") {
         HNET_NEW(wTcpSocket(kStConnect, kSpHttp), socket);
     } else if (protocol == "UNIX") {
-       HNET_NEW(wUnixSocket(kStConnect), socket);
+        HNET_NEW(wUnixSocket(kStConnect), socket);
     }
 
     if (!socket) {
@@ -110,10 +110,8 @@ int wMultiClient::AddConnect(int type, const std::string& ipaddr, uint16_t port,
 
 int wMultiClient::ReConnect(wTask* task) {
     wSocket *socket = task->Socket();
-    if (socket->SS() == kSsConnected) {
-    	socket->Close();
-    }
-
+    
+    socket->Close();
     int ret = socket->Open();
     if (ret == -1) {
         HNET_ERROR(soft::GetLogPath(), "%s : %s", "wMultiClient::ReConnect Open() failed", "");
