@@ -313,9 +313,10 @@ int SetBinPath(std::string bin_path, std::string self) {
 	// 获取bin目录
 	char dir_path[256] = {'\0'};
 	if (bin_path.size() == 0) {
+        // 可执行文件路径
 		int len = readlink(self.c_str(), dir_path, 256);
 		if (len < 0 || len >= 256) {
-			memcpy(dir_path, kBinPath, strlen(kBinPath) + 1);
+			memcpy(dir_path, kRuntimePath, strlen(kRuntimePath) + 1);
 		} else {
 			for (int i = len; i >= 0; --i) {
 				if (dir_path[i] == '/') {
@@ -327,6 +328,7 @@ int SetBinPath(std::string bin_path, std::string self) {
 	} else {
 		memcpy(dir_path, bin_path.c_str(), bin_path.size() + 1);
 	}
+    
 	// 切换目录
     if (chdir(dir_path) == -1) {
         return -1;
@@ -499,30 +501,74 @@ time_t TimeUnix() {
 
 static uid_t hnet_deamonUser = kDeamonUser;
 static gid_t hnet_deamonGroup = kDeamonGroup;
-static std::string	hnet_softwareName = kSoftwareName;
-static std::string	hnet_softwareVer = kSoftwareVer;
-static std::string	hnet_lockPath = kLockPath;
-static std::string	hnet_pidPath = kPidPath;
-static std::string	hnet_logPath = kLogPath;
-static std::string  hnet_acceptmtxPath = kAcceptmtxPath;
+static std::string  hnet_softwareName = kSoftwareName;
+static std::string  hnet_softwareVer = kSoftwareVer;
+
+static std::string  hnet_runtimePath = kRuntimePath;
+static std::string  hnet_logdirPath = kLogdirPath;
+
+static std::string  hnet_acceptFilename = kAcceptFilename;
+static std::string  hnet_lockFilename = kLockFilename;
+static std::string  hnet_pidFilename = kPidFilename;
+static std::string  hnet_logFilename = kLogFilename;
+
+static std::string  hnet_acceptFullPath = hnet_runtimePath + kAcceptFilename;
+static std::string  hnet_lockFullPath = hnet_runtimePath + kLockFilename;
+static std::string  hnet_pidFullPath = hnet_runtimePath + kPidFilename;
+static std::string  hnet_logFullPath = hnet_logdirPath + kLogFilename;
+
+// 设置运行用户
+uid_t SetUser(uid_t uid) { return hnet_deamonUser = uid;}
+gid_t SetGroup(gid_t gid) { return hnet_deamonGroup = gid;}
+
+// 设置版本信息
+const std::string& SetSoftName(const std::string& name) { return hnet_softwareName = name;}
+const std::string& SetSoftVer(const std::string& ver) { return hnet_softwareVer = ver;}
+
+// 设置路径
+void SetRuntimePath(const std::string& path) {
+    hnet_runtimePath = path;
+    hnet_acceptFullPath = path + hnet_acceptFilename;
+    hnet_lockFullPath = path + hnet_lockFilename;
+    hnet_pidFullPath = path + hnet_pidFilename;
+}
+
+void SetLogdirPath(const std::string& path) {
+    hnet_logdirPath = path;
+    hnet_logFullPath = path + hnet_logFilename;
+}
+
+// 设置文件名
+void SetAcceptFilename(const std::string& filename) {
+    hnet_acceptFilename = filename;
+    hnet_acceptFullPath = hnet_runtimePath + filename;
+}
+
+void SetLockFilename(const std::string& filename) {
+    hnet_lockFilename = filename;
+    hnet_lockFullPath = hnet_runtimePath + filename;
+}
+
+void SetPidFilename(const std::string& filename) {
+    hnet_pidFilename = filename;
+    hnet_pidFullPath = hnet_runtimePath + filename;
+}
+
+void SetLogFilename(const std::string& filename) {
+    hnet_logFilename = filename;
+    hnet_logFullPath = hnet_logdirPath + filename;
+}
 
 uid_t GetUser() { return hnet_deamonUser;}
 gid_t GetGroup() { return hnet_deamonGroup;}
 const std::string& GetSoftName() { return hnet_softwareName;}
 const std::string& GetSoftVer() { return hnet_softwareVer;}
-const std::string& GetLockPath() { return hnet_lockPath;}
-const std::string& GetPidPath() { return hnet_pidPath;}
-const std::string& GetLogPath() { return hnet_logPath;}
-const std::string& GetAcceptmtxPath() { return hnet_acceptmtxPath;}
-
-uid_t SetUser(uid_t uid) { return hnet_deamonUser = uid;}
-gid_t SetGroup(gid_t gid) { return hnet_deamonGroup = gid;}
-const std::string& SetSoftName(const std::string& name) { return hnet_softwareName = name;}
-const std::string& SetSoftVer(const std::string& ver) { return hnet_softwareVer = ver;}
-const std::string& SetLockPath(const std::string& path) { return hnet_lockPath = path;}
-const std::string& SetPidPath(const std::string& path) { return hnet_pidPath = path;}
-const std::string& SetLogPath(const std::string& path) { return hnet_logPath = path;}
-const std::string& SetAcceptmtxPath(const std::string& path) { return hnet_acceptmtxPath = path;}
+const std::string& GetRuntimePath() { return hnet_runtimePath;}
+const std::string& GetLogdirPath() { return hnet_logdirPath;}
+const std::string& GetAcceptPath(bool fullpath) { return fullpath? hnet_acceptFullPath: hnet_acceptFilename;}
+const std::string& GetLockPath(bool fullpath) { return fullpath? hnet_lockFullPath: hnet_lockFilename;}
+const std::string& GetPidPath(bool fullpath) { return fullpath? hnet_pidFullPath: hnet_pidFilename;}
+const std::string& GetLogPath(bool fullpath) { return fullpath? hnet_logFullPath: hnet_logFilename;}
 
 }	// namespace hnet
 

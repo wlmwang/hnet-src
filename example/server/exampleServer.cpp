@@ -168,12 +168,6 @@ public:
 };
 
 int main(int argc, char *argv[]) {
-	// 设置运行目录
-	if (misc::SetBinPath() == -1) {
-		std::cout << "set bin path failed" << std::endl;
-		return -1;
-	}
-
 	// 创建配置对象
 	wConfig* config;
 	HNET_NEW(wConfig, config);
@@ -189,6 +183,18 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
+	// 日志路径
+	std::string log_path;
+	if (config->GetConf("log_path", &log_path)) {
+		soft::SetLogdirPath(log_path);
+	}
+
+	// 相对目录路径
+	std::string runtime_path;
+	if (config->GetConf("runtime_path", &runtime_path)) {
+		soft::SetRuntimePath(runtime_path);
+	}
+
 	// 版本输出 && 守护进程创建
 	bool vn, dn;
 	if (config->GetConf("version", &vn) && vn) {
@@ -196,10 +202,8 @@ int main(int argc, char *argv[]) {
 		HNET_DELETE(config);
 		return -1;
 	} else if (config->GetConf("daemon", &dn) && dn) {
-		std::string lock_path;
-		config->GetConf("lock_path", &lock_path);
 		wDaemon daemon;
-		if (daemon.Start(lock_path) == -1) {
+		if (daemon.Start(soft::GetLockPath()) == -1) {
 			std::cout << "create daemon failed" << std::endl;
 			HNET_DELETE(config);
 			return -1;

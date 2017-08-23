@@ -29,70 +29,74 @@ wConfig::~wConfig() {
 // 参数形式
 // ./bin/server -?
 // ./bin/server -d
-// ./bin/server -h127.0.0.1  
+// ./bin/server -h127.0.0.1
 // ./bin/server -h 127.0.0.1
-int wConfig::GetOption(int argc, char *argv[]) {
-    for (int i = 1; i < argc; i++) {
+int wConfig::ParseArgs(int argc, char *argv[]) {
+for (int i = 1; i < argc; i++) {
         const char* p = argv[i];
         if (*p++ != '-') {
-            HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "should \"-\" begin");
+            //HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::ParseArgs failed, invalid option", "should \"-\" begin");
+            std::cout << "wConfig::ParseArgs failed, invalid option" << " : " << "should \"-\" begin" << std::endl;
             return -1;
         }
 
         while (*p) {
             switch (*p++) {
             case '?':
-            	SetBoolConf("help", true);
-            	break;
+                SetBoolConf("help", true);
+                break;
             case 'v':
-            	SetBoolConf("version", true);
-            	break;
+                SetBoolConf("version", true);
+                break;
             case 'd':
-            	SetBoolConf("daemon", true);
-            	break;
+                SetBoolConf("daemon", true);
+                break;
 
             case 's':
                 if (*p) {
-                	SetStrConf("signal", p);
+                    SetStrConf("signal", p);
                     goto next;
                 }
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
-                	SetStrConf("signal", p);
+                    SetStrConf("signal", p);
                     goto next;
                 }
-                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-s\" requires signal");
+                //HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::ParseArgs failed, invalid option", "option \"-s\" requires signal");
+                std::cout << "wConfig::ParseArgs failed, invalid option" << " : " << "option \"-s\" requires signal" << std::endl;
                 return -1;
 
             case 'h':
                 if (*p) {
-                	SetStrConf("host", p);
+                    SetStrConf("host", p);
                     goto next;
                 }
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
-                	SetStrConf("host", p);
+                    SetStrConf("host", p);
                     goto next;
                 }
-                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-h\" requires host");
+                //HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::ParseArgs failed, invalid option", "option \"-h\" requires host");
+                std::cout << "wConfig::ParseArgs failed, invalid option" << " : " << "option \"-h\" requires host" << std::endl;
                 return -1;
 
             case 'p':
                 if (*p) {
-                	int i = atoi(p);
-                	SetIntConf("port", i);
-                	goto next;
+                    int i = atoi(p);
+                    SetIntConf("port", i);
+                    goto next;
                 }
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
-                	int i = atoi(p);
-                	SetIntConf("port", i);
-                	goto next;
+                    int i = atoi(p);
+                    SetIntConf("port", i);
+                    goto next;
                 }
-                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-p\" requires port");
+                //HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::ParseArgs failed, invalid option", "option \"-p\" requires port");
+                std::cout << "wConfig::ParseArgs failed, invalid option" << " : " << "option \"-p\" requires port" << std::endl;
                 return -1;
 
             case 'x':
@@ -106,60 +110,73 @@ int wConfig::GetOption(int argc, char *argv[]) {
                     SetStrConf("protocol", p);
                     goto next;
                 }
-                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-x\" requires protocol");
+                //HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::ParseArgs failed, invalid option", "option \"-x\" requires protocol");
+                std::cout << "wConfig::ParseArgs failed, invalid option" << " : " << "option \"-x\" requires protocol" << std::endl;
                 return -1;
 
-            case 'P':
+            case 'r':
                 if (*p) {
-                	SetStrConf("pid_path", p);
+                    SetStrConf("runtime_path", p);
                     goto next;
                 }
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
-                	SetStrConf("pid_path", p);
+                    SetStrConf("runtime_path", p);
                     goto next;
                 }
-                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-P\" requires pid path");
+                //HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::ParseArgs failed, invalid option", "option \"-r\" requires runtime_path");
+                std::cout << "wConfig::ParseArgs failed, invalid option" << " : " << "option \"-r\" requires runtime_path" << std::endl;
                 return -1;
 
             case 'l':
                 if (*p) {
-                	SetStrConf("log_path", p);
+                    SetStrConf("log_path", p);
                     goto next;
                 }
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
-                	SetStrConf("log_path", p);
+                    SetStrConf("log_path", p);
                     goto next;
                 }
-                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-l\" requires log path");
+                //HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::ParseArgs failed, invalid option", "option \"-l\" requires log_path");
+                std::cout << "wConfig::ParseArgs failed, invalid option" << " : " << "option \"-l\" requires log_path" << std::endl;
                 return -1;
 
             case 'n':
                 if (*p) {
-                	int i = atoi(p);
-                	SetIntConf("worker", i);
-                	goto next;
+                    int i = atoi(p);
+                    SetIntConf("worker", i);
+                    goto next;
                 }
 
                 p = argv[++i]; // 多一个空格
                 if (*p) {
-                	int i = atoi(p);
-                	SetIntConf("worker", i);
-                	goto next;
+                    int i = atoi(p);
+                    SetIntConf("worker", i);
+                    goto next;
                 }
-                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "option \"-n\" requires workers num");
+                //HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::ParseArgs failed, invalid option", "option \"-n\" requires workers num");
+                std::cout << "wConfig::ParseArgs failed, invalid option" << " : " << "option \"-n\" requires workers num" << std::endl;
                 return -1;
 
             default:
-                HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::GetOption failed, invalid option", "");
+                //HNET_ERROR(soft::GetLogPath(), "%s : %s", "wConfig::ParseArgs failed, invalid option", "unknown");
+                std::cout << "wConfig::ParseArgs failed, invalid option" << " : " << "unknown" << std::endl;
                 return -1;
             }
         }
     next:
         continue;
+    }
+
+    return 0;
+}
+
+int wConfig::GetOption(int argc, char *argv[]) {
+    if (ParseArgs(argc, argv) == -1) {
+        return -1;
     }
     return InitProcTitle(argc, argv);
 }

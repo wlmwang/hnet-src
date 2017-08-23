@@ -201,23 +201,36 @@ int64_t TimeUpdate();
 int64_t TimeUsec();
 time_t TimeUnix();
 
+// 设置运行用户
+uid_t SetUser(uid_t uid);
+gid_t SetGroup(gid_t gid);
+
+// 设置版本信息
+const std::string& SetSoftName(const std::string& name);
+const std::string& SetSoftVer(const std::string& ver);
+
+// 设置路径
+void SetRuntimePath(const std::string& path);
+void SetLogdirPath(const std::string& path);
+
+// 设置文件名
+void SetAcceptFilename(const std::string& filename);
+void SetLockFilename(const std::string& filename);
+void SetPidFilename(const std::string& filename);
+void SetLogFilename(const std::string& filename);
+
 uid_t GetUser();
 gid_t GetGroup();
 const std::string& GetSoftName();
 const std::string& GetSoftVer();
-const std::string& GetLockPath();
-const std::string& GetPidPath();
-const std::string& GetLogPath();
-const std::string& GetAcceptmtxPath();
 
-uid_t SetUser(uid_t uid);
-gid_t SetGroup(gid_t gid);
-const std::string& SetSoftName(const std::string& name);
-const std::string& SetSoftVer(const std::string& ver);
-const std::string& SetLockPath(const std::string& path);
-const std::string& SetPidPath(const std::string& path);
-const std::string& SetLogPath(const std::string& path);
-const std::string& SetAcceptmtxPath(const std::string& path);
+const std::string& GetRuntimePath();
+const std::string& GetLogdirPath();
+
+const std::string& GetLockPath(bool fullpath = true);
+const std::string& GetPidPath(bool fullpath = true);
+const std::string& GetLogPath(bool fullpath = true);
+const std::string& GetAcceptPath(bool fullpath = true);
 
 }	// namespace soft
 

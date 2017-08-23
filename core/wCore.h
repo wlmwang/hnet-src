@@ -77,8 +77,8 @@ const uint8_t   kKeepAliveCnt = 10;
 
 // 100M单个归档日志大小
 const off_t		kMaxLoggerSize = 104857600;
-const uint8_t	kLoggerNum = 16;
-const uint8_t 	kFFlushPerLog = 1;
+const uint8_t	kLoggerNum = 10;
+const uint8_t 	kFFlushPerLog = 0;
 
 // 1M共享消息队列大小
 const uint32_t  kMsgQueueLen = 1048576;
@@ -118,12 +118,17 @@ const gid_t     kDeamonGroup = 0;
  */
 const bool		kAcceptTurn = true;
 const int8_t	kAcceptStuff = 0;	// atmoic
-const char		kAcceptmtxPath[] = "hnet.mtx";
 
-const char      kLockPath[] = "hnet.lock";
-const char      kPidPath[] = "hnet.pid";
-const char      kLogPath[] = "hnet.log";
-const char		kBinPath[] = "./";
+// 目录
+const char 		kRuntimePath[] = "./";	// 进程运行宿主目录
+const char 		kLogdirPath[] = "./";	// 日志目录
+
+// 相对 kRuntimePath 目录
+const char		kAcceptFilename[] = "hnet.mtx";
+const char      kLockFilename[] = "hnet.lock";
+const char      kPidFilename[] = "hnet.pid";
+// 相对 kLogDirPath 目录
+const char      kLogFilename[] = "hnet.log";
 
 const char      kSoftwareName[]   = "HNET";
 const char      kSoftwareVer[]    = "0.0.21";

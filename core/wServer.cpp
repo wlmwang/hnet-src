@@ -206,7 +206,7 @@ int wServer::NewHttpTask(wSocket* sock, wTask** ptr) {
 int wServer::InitAcceptMutex() {
 	if (mUseAcceptTurn == true && mMaster->WorkerNum() > 1) {
 		if (kAcceptStuff == 0) {
-    		if (mEnv->NewShm(soft::GetAcceptmtxPath(), &mShm, sizeof(wAtomic<int>)) == 0) {
+    		if (mEnv->NewShm(soft::GetAcceptPath(), &mShm, sizeof(wAtomic<int>)) == 0) {
     			if (mShm->CreateShm() == 0) {
     				void* ptr = mShm->AllocShm(sizeof(wAtomic<int>));
     				if (ptr) {
@@ -223,7 +223,7 @@ int wServer::InitAcceptMutex() {
     		}
 		} else if (kAcceptStuff == 1) {
     		int fd;
-    		if (mEnv->OpenFile(soft::GetAcceptmtxPath(), fd) == 0) {
+    		if (mEnv->OpenFile(soft::GetAcceptPath(), fd) == 0) {
     			mEnv->CloseFD(fd);
     		}
 		}
@@ -244,7 +244,7 @@ int wServer::Recv() {
 	// 争抢accept锁
 	if (mUseAcceptTurn == true && mAcceptHeld == false) {
 		if ((kAcceptStuff == 0 && mAcceptAtomic->CompareExchangeWeak(-1, mMaster->mWorker->mPid)) ||
-			(kAcceptStuff == 1 && mEnv->LockFile(soft::GetAcceptmtxPath(), &mAcceptFL) == 0)) {
+			(kAcceptStuff == 1 && mEnv->LockFile(soft::GetAcceptPath(), &mAcceptFL) == 0)) {
 			Listener2Epoll(false);
 			mAcceptHeld = true;
 		}
@@ -860,7 +860,7 @@ int wServer::DeleteAcceptFile() {
     if (kAcceptStuff == 0 && mShm) {
     	mShm->Destroy();
     }
-    mEnv->DeleteFile(soft::GetAcceptmtxPath());
+    mEnv->DeleteFile(soft::GetAcceptPath());
 	return 0;
 }
 

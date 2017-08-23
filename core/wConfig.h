@@ -20,10 +20,11 @@ class wConfig : private wNoncopyable {
 public:
     wConfig();
     virtual ~wConfig();
-    virtual int GetOption(int argc, char *argv[]);
-    
+    virtual int ParseArgs(int argc, char *argv[]);
+
     char** Argv();
     char** Environ();
+    int GetOption(int argc, char *argv[]);
     int InitProcTitle(int argc, char *argv[]);
     int Setproctitle(const char* pretitle, const char* title, bool attach = true);
 
