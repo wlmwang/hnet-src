@@ -24,6 +24,12 @@ static std::string hnet_host = "";
 static uint16_t hnet_port = 0;
 
 int main(int argc, char *argv[]) {
+	// 设置运行目录
+	if (misc::SetBinPath() == -1) {
+		std::cout << "set bin path failed" << std::endl;
+		return -1;
+	}
+
 	// 创建配置对象
 	wConfig* config;
 	HNET_NEW(wConfig, config);
